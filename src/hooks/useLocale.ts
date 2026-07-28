@@ -1,21 +1,12 @@
-
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { translations, TranslationKey } from "@/locales";
 
 export function useLocale() {
-  const { locale: settingsLocale, updateSettings } = useSettings();
-  const [locale, setLocale] = useState<"ar" | "fr">(settingsLocale || "ar");
+  const { locale, updateSettings } = useSettings();
 
+  // Apply RTL/LTR direction based on language on mount and when locale changes
   useEffect(() => {
-    // Sync with settings context
-    if (settingsLocale && settingsLocale !== locale) {
-      setLocale(settingsLocale);
-    }
-  }, [settingsLocale]);
-
-  useEffect(() => {
-    // Apply RTL/LTR direction based on language
     const htmlElement = document.documentElement;
     if (locale === "ar") {
       htmlElement.setAttribute("dir", "rtl");
@@ -27,12 +18,11 @@ export function useLocale() {
   }, [locale]);
 
   const changeLocale = (lang: "ar" | "fr") => {
-    setLocale(lang);
     localStorage.setItem("app-locale", lang);
-    // Update settings context when locale changes
+    // Update settings context which will instantly trigger re-renders across the app
     updateSettings({ locale: lang });
-    
-    // Force re-render by updating document attributes
+
+    // Force immediate DOM update
     const htmlElement = document.documentElement;
     if (lang === "ar") {
       htmlElement.setAttribute("dir", "rtl");
@@ -45,7 +35,7 @@ export function useLocale() {
 
   // Translation function
   const t = useCallback((key: TranslationKey): string => {
-    return translations[locale][key] || translations.ar[key] || key;
+    return translations[locale]?.[key] || translations.ar[key] || key;
   }, [locale]);
 
   // Check if current locale is RTL
