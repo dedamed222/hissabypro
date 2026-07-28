@@ -73,7 +73,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
 
       <div className="relative z-10 p-8 print:p-6 flex flex-col h-full bg-white/80 print:bg-transparent">
         {/* Header Section */}
-        <div className="flex justify-between items-start mb-6 mt-16 print:mt-24">
+        <div className="flex justify-between items-start mb-6 mt-32 print:mt-36">
           {/* Company Info */}
           <div className="flex flex-col gap-2 max-w-[50%]">
             <div>
