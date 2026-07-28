@@ -1,0 +1,32 @@
+{
+  "short_name": "حسابي برو",
+  "name": "حسابي برو - نظام إدارة المتاجر",
+  "description": "نظام إدارة شامل للمتاجر يعمل بدون إنترنت",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "lovable-uploads/9bf8f3b6-2cd1-4788-a907-3ea9cb2eb6fc.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "lovable-uploads/9bf8f3b6-2cd1-4788-a907-3ea9cb2eb6fc.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#6366F1",
+  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false
+}

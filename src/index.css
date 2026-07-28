@@ -1,0 +1,520 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 30% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 94%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 221 83% 53%;
+
+    --radius: 0.625rem;
+
+    /* Field design tokens */
+    --field-border: 214deg 32% 85%;
+    --field-focus-ring: 221deg 83% 53%;
+    --field-bg: 0deg 0% 100%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    background-image: url("/lovable-uploads/9bf8f3b6-2cd1-4788-a907-3ea9cb2eb6fc.png");
+    background-repeat: repeat;
+    background-size: 100px;
+    background-attachment: fixed;
+    background-position: center;
+  }
+
+  /* Main content wrapper with background color */
+  #root {
+    @apply bg-white/95;
+    min-height: 100vh;
+  }
+
+  /* Arabic text alignment and styles */
+  h1, h2, h3, h4, h5, h6, p, span, div, button, a, label, input, textarea, select {
+    @apply font-sans;
+  }
+
+  /* Override for LTR elements if needed */
+  .ltr {
+    direction: ltr;
+  }
+
+  /* ===== Cards ===== */
+  .arab-card {
+    background: #fff;
+    border-radius: 0.875rem;
+    border: 1px solid hsl(214, 32%, 91%);
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 3px hsl(214 32% 85% / 0.4), 0 4px 16px hsl(221 83% 53% / 0.04);
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+  }
+
+  .arab-card:hover {
+    box-shadow: 0 2px 8px hsl(214 32% 85% / 0.5), 0 8px 24px hsl(221 83% 53% / 0.07);
+  }
+
+  .arab-card::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(180deg, hsl(221, 83%, 53%) 0%, hsl(190, 80%, 50%) 100%);
+    border-radius: 0 0 0 0.875rem;
+    opacity: 0.7;
+  }
+
+  .arab-stat-card {
+    @apply flex flex-col justify-between h-full;
+  }
+
+  .arab-icon-bg {
+    @apply p-2 rounded-full bg-opacity-20;
+  }
+  
+  /* Dashboard stats */
+  .stat-value {
+    @apply text-2xl font-bold my-1;
+  }
+  
+  .stat-label {
+    @apply text-sm text-gray-500;
+  }
+
+  /* Sidebar styling */
+  .arab-sidebar {
+    @apply bg-arab-blue text-white h-screen fixed top-0 right-0 w-64 overflow-y-auto border-l border-arab-blue-dark;
+  }
+  
+  .arab-sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 text-white hover:bg-arab-blue-light transition-colors;
+  }
+  
+  .arab-sidebar-link.active {
+    @apply bg-arab-blue-dark font-semibold;
+  }
+  
+  /* ===== Professional Form Fields ===== */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="search"],
+  input[type="tel"],
+  select,
+  textarea {
+    border: 1.5px solid hsl(214, 32%, 86%);
+    border-radius: 0.625rem;
+    background: #fff;
+    padding: 0.55rem 0.875rem;
+    font-size: 0.9rem;
+    color: hsl(222, 47%, 14%);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    box-shadow: 0 1px 2px hsl(214 32% 85% / 0.5);
+    width: 100%;
+    outline: none;
+  }
+
+  input[type="text"]:focus,
+  input[type="number"]:focus,
+  input[type="email"]:focus,
+  input[type="password"]:focus,
+  input[type="date"]:focus,
+  input[type="search"]:focus,
+  input[type="tel"]:focus,
+  select:focus,
+  textarea:focus {
+    border-color: hsl(221, 83%, 53%);
+    box-shadow: 0 0 0 3.5px hsl(221 83% 53% / 0.14), 0 1px 3px hsl(214 32% 85% / 0.4);
+    background: #fafcff;
+  }
+
+  input:read-only,
+  input[readonly] {
+    background: hsl(210, 30%, 97%);
+    color: hsl(215, 16%, 52%);
+    cursor: not-allowed;
+    border-color: hsl(214, 32%, 90%);
+  }
+
+  /* ===== Table styles ===== */
+  .arab-table {
+    @apply w-full text-sm;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  .arab-table th {
+    padding: 0.75rem 0.875rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: hsl(215, 25%, 40%);
+    background: hsl(210, 30%, 97%);
+    border-bottom: 1.5px solid hsl(214, 32%, 88%);
+    text-align: right;
+  }
+  
+  .arab-table td {
+    padding: 0.75rem 0.875rem;
+    border-bottom: 1px solid hsl(214, 32%, 93%);
+    color: hsl(222, 47%, 18%);
+    text-align: right;
+    transition: background 0.12s ease;
+  }
+
+  .arab-table tbody tr:nth-child(even) td {
+    background: hsl(210, 30%, 99%);
+  }
+
+  .arab-table tbody tr:hover td {
+    background: hsl(221, 83%, 97%);
+  }
+
+  /* ===== Form group & Label ===== */
+  .arab-form-group {
+    margin-bottom: 1.1rem;
+  }
+  
+  .arab-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: hsl(215, 25%, 38%);
+    margin-bottom: 0.4rem;
+  }
+
+  label.block {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: hsl(215, 25%, 38%);
+    margin-bottom: 0.35rem;
+  }
+  
+  /* New colored cards */
+  .card-blue {
+    @apply bg-arab-blue/10 border-arab-blue/30;
+  }
+
+  .card-purple {
+    @apply bg-arab-purple/10 border-arab-purple/30;
+  }
+
+  .card-teal {
+    @apply bg-arab-teal/10 border-arab-teal/30;
+  }
+
+  .card-amber {
+    @apply bg-arab-amber/10 border-arab-amber/30;
+  }
+
+  .card-rose {
+    @apply bg-arab-rose/10 border-arab-rose/30;
+  }
+
+  /* New cards with new colors */
+  .card-emerald {
+    @apply bg-arab-emerald/10 border-arab-emerald/30;
+  }
+
+  .card-indigo {
+    @apply bg-arab-indigo/10 border-arab-indigo/30;
+  }
+
+  .card-orange {
+    @apply bg-arab-orange/10 border-arab-orange/30;
+  }
+
+  .card-sky {
+    @apply bg-arab-sky/10 border-arab-sky/30;
+  }
+
+  .card-lime {
+    @apply bg-arab-lime/10 border-arab-lime/30;
+  }
+
+  /* الكروت الجديدة بالألوان الجديدة */
+  .card-pink {
+    @apply bg-arab-pink/10 border-arab-pink/30;
+  }
+
+  .card-cyan {
+    @apply bg-arab-cyan/10 border-arab-cyan/30;
+  }
+
+  .card-fuchsia {
+    @apply bg-arab-fuchsia/10 border-arab-fuchsia/30;
+  }
+
+  .card-red {
+    @apply bg-arab-red/10 border-arab-red/30;
+  }
+
+  .card-yellow {
+    @apply bg-arab-yellow/10 border-arab-yellow/30;
+  }
+
+  /* Colored buttons */
+  .btn-purple {
+    @apply bg-arab-purple text-white hover:bg-arab-purple-dark;
+  }
+
+  .btn-teal {
+    @apply bg-arab-teal text-white hover:bg-arab-teal-dark;
+  }
+
+  .btn-amber {
+    @apply bg-arab-amber text-white hover:bg-arab-amber-dark;
+  }
+
+  .btn-rose {
+    @apply bg-arab-rose text-white hover:bg-arab-rose-dark;
+  }
+
+  /* New colored buttons */
+  .btn-emerald {
+    @apply bg-arab-emerald text-white hover:bg-arab-emerald-dark;
+  }
+
+  .btn-indigo {
+    @apply bg-arab-indigo text-white hover:bg-arab-indigo-dark;
+  }
+
+  .btn-orange {
+    @apply bg-arab-orange text-white hover:bg-arab-orange-dark;
+  }
+
+  .btn-sky {
+    @apply bg-arab-sky text-white hover:bg-arab-sky-dark;
+  }
+
+  .btn-lime {
+    @apply bg-arab-lime text-white hover:bg-arab-lime-dark;
+  }
+
+  /* الأزرار الجديدة بالألوان الجديدة */
+  .btn-pink {
+    @apply bg-arab-pink text-white hover:bg-arab-pink-dark;
+  }
+
+  .btn-cyan {
+    @apply bg-arab-cyan text-white hover:bg-arab-cyan-dark;
+  }
+
+  .btn-fuchsia {
+    @apply bg-arab-fuchsia text-white hover:bg-arab-fuchsia-dark;
+  }
+
+  .btn-red {
+    @apply bg-arab-red text-white hover:bg-arab-red-dark;
+  }
+
+  .btn-yellow {
+    @apply bg-arab-yellow text-white hover:bg-arab-yellow-dark;
+  }
+
+  /* Gradient backgrounds */
+  .bg-gradient-purple {
+    @apply bg-arab-purple-gradient;
+  }
+
+  .bg-gradient-teal {
+    @apply bg-arab-teal-gradient;
+  }
+
+  .bg-gradient-amber {
+    @apply bg-arab-amber-gradient;
+  }
+
+  .bg-gradient-rose {
+    @apply bg-arab-rose-gradient;
+  }
+
+  /* New gradient backgrounds */
+  .bg-gradient-emerald {
+    @apply bg-arab-emerald-gradient;
+  }
+
+  .bg-gradient-indigo {
+    @apply bg-arab-indigo-gradient;
+  }
+
+  .bg-gradient-orange {
+    @apply bg-arab-orange-gradient;
+  }
+
+  .bg-gradient-sky {
+    @apply bg-arab-sky-gradient;
+  }
+
+  .bg-gradient-lime {
+    @apply bg-arab-lime-gradient;
+  }
+
+  .bg-gradient-sunset {
+    @apply bg-arab-sunset-gradient;
+  }
+
+  .bg-gradient-ocean {
+    @apply bg-arab-ocean-gradient;
+  }
+
+  .bg-gradient-forest {
+    @apply bg-arab-forest-gradient;
+  }
+
+  .bg-gradient-lavender {
+    @apply bg-arab-lavender-gradient;
+  }
+
+  .bg-gradient-golden {
+    @apply bg-arab-golden-gradient;
+  }
+
+  /* الخلفيات المتدرجة الجديدة */
+  .bg-gradient-pink {
+    @apply bg-arab-pink-gradient;
+  }
+
+  .bg-gradient-cyan {
+    @apply bg-arab-cyan-gradient;
+  }
+
+  .bg-gradient-fuchsia {
+    @apply bg-arab-fuchsia-gradient;
+  }
+
+  .bg-gradient-red {
+    @apply bg-arab-red-gradient;
+  }
+
+  .bg-gradient-yellow {
+    @apply bg-arab-yellow-gradient;
+  }
+
+  .bg-gradient-rainbow {
+    @apply bg-arab-rainbow-gradient;
+  }
+
+  .bg-gradient-sunset-new {
+    @apply bg-arab-sunset-new-gradient;
+  }
+
+  .bg-gradient-ocean-new {
+    @apply bg-arab-ocean-new-gradient;
+  }
+
+  .bg-gradient-nature {
+    @apply bg-arab-nature-gradient;
+  }
+
+  .bg-gradient-luxury {
+    @apply bg-arab-luxury-gradient;
+  }
+  
+  /* Print-specific styles */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    
+    .print-only {
+      display: block !important;
+    }
+    
+    body {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+}
