@@ -151,19 +151,19 @@ const Sidebar = () => {
     <>
       {/* Mobile Backdrop */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
       <div className={cn(
-        "bg-white/95 backdrop-blur-md shadow-lg border-r rtl:border-r-0 rtl:border-l border-gray-200/50 transition-all duration-300 print:hidden",
-        "fixed inset-y-0 rtl:right-0 ltr:left-0 z-50 h-full lg:relative lg:translate-x-0 lg:rtl:translate-x-0",
+        "bg-white/95 backdrop-blur-md shadow-lg border-e border-gray-200/50 transition-all duration-300 print:hidden",
+        "fixed inset-y-0 start-0 z-50 h-full lg:relative lg:transform-none",
         sidebarCollapsed ? "w-20" : "w-64",
-        sidebarOpen 
-          ? "translate-x-0" 
-          : "rtl:translate-x-full ltr:-translate-x-full lg:translate-x-0 lg:rtl:translate-x-0"
+        sidebarOpen
+          ? "translate-x-0"
+          : "-translate-x-full rtl:translate-x-full"
       )}>
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
@@ -175,10 +175,10 @@ const Sidebar = () => {
                 aria-label={sidebarCollapsed ? t.expandMenu : t.collapseMenu}
                 title={sidebarCollapsed ? t.expandMenu : t.collapseMenu}
               >
-                <svg 
+                <svg
                   className={cn("w-5 h-5 text-gray-600 transition-transform", sidebarCollapsed && "rotate-180")}
-                  fill="none" 
-                  stroke="currentColor" 
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
@@ -220,14 +220,13 @@ const Sidebar = () => {
               >
                 {({ isActive }) => (
                   <>
-                     <div className={`p-2 rounded-lg transition-all duration-200 ${
-                       isActive 
-                         ? `bg-gradient-to-r ${item.color} text-white shadow-lg`
-                         : "bg-gray-100 group-hover:bg-gray-200"
-                     }`}>
-                       <item.icon className="w-5 h-5 flex-shrink-0" />
-                     </div>
-                     {!sidebarCollapsed && <span className="truncate flex-1">{t[item.titleKey as keyof typeof t]}</span>}
+                    <div className={`p-2 rounded-lg transition-all duration-200 ${isActive
+                      ? `bg-gradient-to-r ${item.color} text-white shadow-lg`
+                      : "bg-gray-100 group-hover:bg-gray-200"
+                      }`}>
+                      <item.icon className="w-5 h-5 flex-shrink-0" />
+                    </div>
+                    {!sidebarCollapsed && <span className="truncate flex-1">{t[item.titleKey as keyof typeof t]}</span>}
                     {!sidebarCollapsed && isActive && (
                       <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full"></div>
                     )}
@@ -268,7 +267,7 @@ const Sidebar = () => {
                 {!sidebarCollapsed && <span className="truncate flex-1">{t.login}</span>}
               </button>
             )}
-            
+
             {!sidebarCollapsed && (
               <div className="text-center">
                 <div className="text-xs text-gray-500 mb-2">
