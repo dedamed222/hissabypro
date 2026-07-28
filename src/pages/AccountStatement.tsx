@@ -10,13 +10,13 @@ import { Customer, Invoice, Return, Creditor, Debtor, Product } from "@/types";
 import { FileText, Search, TrendingUp, TrendingDown, DollarSign, Package, CheckCircle2 } from "lucide-react";
 import ExportActions from "@/components/shared/ExportActions";
 import { useLocale } from "@/hooks/useLocale";
-import { 
-  getCustomers, 
-  getInvoices, 
-  getCreditors, 
-  getDebtors, 
+import {
+  getCustomers,
+  getInvoices,
+  getCreditors,
+  getDebtors,
   getProducts,
-  getReturns 
+  getReturns
 } from "@/lib/database";
 
 interface AccountTransaction {
@@ -40,9 +40,9 @@ export default function AccountStatement() {
   const [searchText, setSearchText] = useState("");
   const [transactions, setTransactions] = useState<AccountTransaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<AccountTransaction[]>([]);
-  
+
   const { t, locale, isRTL, formatDate } = useLocale();
-  
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [creditors, setCreditors] = useState<Creditor[]>([]);
@@ -171,11 +171,7 @@ export default function AccountStatement() {
 
     // Add invoices (Customer owes us - Debit)
     invoices
-      .filter((invoice: Invoice) => 
-        (invoice.customerId === selectedCustomer) &&
-        (!startDate || invoice.date >= startDate) &&
-        (!endDate || invoice.date <= endDate)
-      )
+      .filter((invoice: Invoice) => invoice.customerId === selectedCustomer)
       .forEach((invoice: Invoice) => {
         const items = invoice.items || [];
         const totalQuantity = items.reduce((sum: number, item: any) => sum + item.quantity, 0);
@@ -183,7 +179,7 @@ export default function AccountStatement() {
           const product = products.find(p => p.id === item.product_id || p.id === item.productId);
           return product?.code || '';
         }).filter(code => code).join(', ');
-        
+
         allTransactions.push({
           id: invoice.id,
           date: invoice.date || '',
@@ -198,11 +194,7 @@ export default function AccountStatement() {
 
     // Add returns (We owe customer - Credit)
     returns
-      .filter((returnItem: Return) => 
-        (returnItem.customerId === selectedCustomer) &&
-        (!startDate || returnItem.date >= startDate) &&
-        (!endDate || returnItem.date <= endDate)
-      )
+      .filter((returnItem: Return) => returnItem.customerId === selectedCustomer)
       .forEach((returnItem: Return) => {
         const items = returnItem.products || [];
         const totalQuantity = items.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
@@ -225,10 +217,8 @@ export default function AccountStatement() {
 
     // Add creditors (Customer paid us / We owe customer - Credit)
     creditors
-      .filter((creditor: Creditor) => 
-        (creditor.customer_id === selectedCustomer || (!creditor.customer_id && creditor.name === customer.name)) &&
-        (!startDate || (creditor.date && creditor.date >= startDate)) &&
-        (!endDate || (creditor.date && creditor.date <= endDate))
+      .filter((creditor: Creditor) =>
+        (creditor.customer_id === selectedCustomer || (!creditor.customer_id && creditor.name === customer.name))
       )
       .forEach((creditor: Creditor) => {
         allTransactions.push({
@@ -246,15 +236,13 @@ export default function AccountStatement() {
 
     // Add debtors (Customer owes us - Debit)
     debtors
-      .filter((debtor: Debtor) => 
-        (debtor.customer_id === selectedCustomer || (!debtor.customer_id && (debtor.name === customer.name || debtor.debtorName === customer.name))) &&
-        (!startDate || debtor.date >= startDate) &&
-        (!endDate || debtor.date <= endDate)
+      .filter((debtor: Debtor) =>
+        (debtor.customer_id === selectedCustomer || (!debtor.customer_id && (debtor.name === customer.name || debtor.debtorName === customer.name)))
       )
       .forEach((debtor: Debtor) => {
         let totalQuantity = 0;
         let productCodes = '';
-        
+
         const products_list = (debtor.products as any[]) || [];
         if (products_list.length > 0) {
           totalQuantity = products_list.reduce((sum, product) => sum + (product.quantity || 0), 0);
@@ -263,7 +251,7 @@ export default function AccountStatement() {
           totalQuantity = debtor.quantity || 0;
           productCodes = debtor.productCode || '';
         }
-        
+
         allTransactions.push({
           id: debtor.id,
           date: debtor.date || '',
@@ -281,7 +269,7 @@ export default function AccountStatement() {
     // Remove transactions that represent the same conceptual event across different source tables.
     // 1. Group by ID first (Deduplicate by unique ID across ALL types)
     const uniqueById = new Map<string, AccountTransaction>();
-    
+
     // We prioritize Invoices and Returns first
     allTransactions.forEach(t => {
       if (t.type === 'invoice' || t.type === 'return') {
@@ -296,10 +284,10 @@ export default function AccountStatement() {
         if (!uniqueById.has(t.id)) {
           // Additional logic check: Is there an invoice on the same date with the exact same amount?
           // This prevents "Double Counting" an invoice that was also recorded as a debt.
-          const isDuplicateOfInvoice = Array.from(uniqueById.values()).some(existing => 
-            (existing.type === 'invoice' || existing.type === 'return') && 
-            existing.date === t.date && 
-            Math.abs(existing.debit - t.debit) < 0.01 && 
+          const isDuplicateOfInvoice = Array.from(uniqueById.values()).some(existing =>
+            (existing.type === 'invoice' || existing.type === 'return') &&
+            existing.date === t.date &&
+            Math.abs(existing.debit - t.debit) < 0.01 &&
             Math.abs(existing.credit - t.credit) < 0.01
           );
 
@@ -313,7 +301,7 @@ export default function AccountStatement() {
     // 3. Prevent duplicate Invoice Numbers on the same day for the same customer
     const uniqueByLogicKey = new Map<string, AccountTransaction>();
     const finalTransactions: AccountTransaction[] = [];
-    
+
     Array.from(uniqueById.values()).forEach(t => {
       // Key: Type-Date-Amount-Description (to be very sure it's a duplicate)
       const logicKey = `${t.type}-${t.date}-${t.debit}-${t.credit}-${t.description}`;
@@ -327,7 +315,7 @@ export default function AccountStatement() {
 
     // Sort by date
     dedupedTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
+
     // Calculate running balance
     let runningBalance = 0;
     const transactionsWithBalance = dedupedTransactions.map(transaction => {
@@ -337,26 +325,34 @@ export default function AccountStatement() {
         balance: runningBalance
       };
     });
-    
+
     setTransactions(transactionsWithBalance);
-    
-    // Apply filters: transaction type and search text
+
+    // Apply filters: date range, transaction type and search text
     let filtered = transactionsWithBalance;
-    
+
+    // Filter by date range
+    if (startDate) {
+      filtered = filtered.filter(t => t.date >= startDate);
+    }
+    if (endDate) {
+      filtered = filtered.filter(t => t.date <= endDate);
+    }
+
     // Filter by transaction type
     if (transactionType !== "all") {
       filtered = filtered.filter(t => t.type === transactionType);
     }
-    
+
     // Filter by search text (search in description and product code)
     if (searchText.trim()) {
       const searchLower = searchText.toLowerCase();
-      filtered = filtered.filter(t => 
+      filtered = filtered.filter(t =>
         t.description.toLowerCase().includes(searchLower) ||
         (t.productCode && t.productCode.toLowerCase().includes(searchLower))
       );
     }
-    
+
     setFilteredTransactions(filtered);
   };
 
@@ -364,12 +360,22 @@ export default function AccountStatement() {
     const totalQuantity = filteredTransactions.reduce((sum, t) => sum + (t.quantity || 0), 0);
     const totalDebit = filteredTransactions.reduce((sum, t) => sum + t.debit, 0);
     const totalCredit = filteredTransactions.reduce((sum, t) => sum + t.credit, 0);
-    const finalBalance = totalDebit - totalCredit;
-    
-    return { totalQuantity, totalDebit, totalCredit, finalBalance };
+
+    // The final balance should be the balance of the last transaction in the filtered list
+    // This ensures it matches the running balance shown in the table
+    const finalBalance = filteredTransactions.length > 0
+      ? filteredTransactions[filteredTransactions.length - 1].balance || 0
+      : 0;
+
+    // Calculate opening balance if there's a start date
+    const openingBalance = filteredTransactions.length > 0
+      ? (filteredTransactions[0].balance || 0) - filteredTransactions[0].debit + filteredTransactions[0].credit
+      : 0;
+
+    return { totalQuantity, totalDebit, totalCredit, finalBalance, openingBalance };
   };
 
-  const { totalQuantity, totalDebit, totalCredit, finalBalance } = calculateTotals();
+  const { totalQuantity, totalDebit, totalCredit, finalBalance, openingBalance } = calculateTotals();
 
   const exportColumns = [
     { key: 'date', header: t('date'), render: (t: AccountTransaction) => formatDate(t.date) },
@@ -453,34 +459,34 @@ export default function AccountStatement() {
             </div>
             <div>
               <label htmlFor="start-date" className="block mb-2 font-medium">{t('fromDate')}</label>
-              <Input 
+              <Input
                 id="start-date"
-                type="date" 
-                value={startDate} 
-                onChange={e => setStartDate(e.target.value)} 
+                type="date"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
               />
             </div>
             <div>
               <label htmlFor="end-date" className="block mb-2 font-medium">{t('toDate')}</label>
-              <Input 
+              <Input
                 id="end-date"
-                type="date" 
-                value={endDate} 
-                onChange={e => setEndDate(e.target.value)} 
+                type="date"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
               />
             </div>
           </div>
-          
+
           <div className="mt-4">
             <label htmlFor="search-description" className="block mb-2 font-medium flex items-center gap-2">
               <Search className="w-4 h-4" />
               {t('searchDescriptionPlaceholder').split('...')[0]}
             </label>
-            <Input 
+            <Input
               id="search-description"
-              type="text" 
+              type="text"
               placeholder={t('searchDescriptionPlaceholder')}
-              value={searchText} 
+              value={searchText}
               onChange={e => setSearchText(e.target.value)}
               className="max-w-xl"
             />
@@ -525,17 +531,36 @@ export default function AccountStatement() {
                   </tr>
                 </thead>
                 <tbody>
+                  {startDate && filteredTransactions.length > 0 && openingBalance !== 0 && (
+                    <tr className="border-b bg-blue-50/30">
+                      <td className="p-3 text-gray-700 font-medium" colSpan={4}>{t('openingBalance') || 'الرصيد الافتتاحي'}</td>
+                      <td className="p-3 font-bold text-red-700">{openingBalance > 0 ? formatCurrency(openingBalance) : '-'}</td>
+                      <td className="p-3 font-bold text-green-700">{openingBalance < 0 ? formatCurrency(Math.abs(openingBalance)) : '-'}</td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-bold text-lg ${openingBalance > 0 ? "text-red-700" : "text-green-700"}`}>
+                            {formatCurrency(Math.abs(openingBalance))}
+                          </span>
+                          <Badge
+                            variant={openingBalance > 0 ? "destructive" : "default"}
+                            className={openingBalance > 0 ? "" : "bg-green-600 hover:bg-green-700"}
+                          >
+                            {openingBalance > 0 ? t('debtorStatus') : t('creditorStatus')}
+                          </Badge>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {filteredTransactions.map((transaction, index) => {
                     const isDebitTransaction = transaction.debit > 0;
-                    
+
                     return (
-                      <tr 
-                        key={transaction.id} 
-                        className={`border-b transition-colors ${
-                          isDebitTransaction 
-                            ? 'bg-red-50/50 hover:bg-red-50' 
+                      <tr
+                        key={transaction.id}
+                        className={`border-b transition-colors ${isDebitTransaction
+                            ? 'bg-red-50/50 hover:bg-red-50'
                             : 'bg-green-50/50 hover:bg-green-50'
-                        }`}
+                          }`}
                       >
                         <td className="p-3 text-gray-700">{formatDate(transaction.date)}</td>
                         <td className="p-3">
@@ -577,7 +602,7 @@ export default function AccountStatement() {
                             <span className={`font-bold text-lg ${transaction.balance! > 0 ? "text-red-700" : "text-green-700"}`}>
                               {formatCurrency(Math.abs(transaction.balance!))}
                             </span>
-                            <Badge 
+                            <Badge
                               variant={transaction.balance! > 0 ? "destructive" : "default"}
                               className={transaction.balance! > 0 ? "" : "bg-green-600 hover:bg-green-700"}
                             >
@@ -597,19 +622,20 @@ export default function AccountStatement() {
                     <td className="p-4 font-bold text-green-700 text-lg bg-green-50">{formatCurrency(totalCredit)}</td>
                     <td className="p-4">
                       <div className="flex flex-col items-center gap-2">
-                        <span className={`font-bold text-xl ${finalBalance > 0 ? "text-red-700" : "text-green-700"}`}>
+                        <span className={`font-bold text-xl ${finalBalance > 0 ? "text-red-700" : finalBalance < 0 ? "text-green-700" : "text-gray-700"}`}>
                           {formatCurrency(Math.abs(finalBalance))}
                         </span>
-                        <Badge 
-                          variant={finalBalance > 0 ? "destructive" : "default"}
-                          className={`text-sm px-3 ${
-                            finalBalance > 0 
-                              ? "bg-red-600 hover:bg-red-700" 
-                              : "bg-green-600 hover:bg-green-700"
-                          }`}
-                        >
-                          {finalBalance > 0 ? t('debtorLabel') : t('creditorLabel')}
-                        </Badge>
+                        {finalBalance !== 0 && (
+                          <Badge
+                            variant={finalBalance > 0 ? "destructive" : "default"}
+                            className={`text-sm px-3 ${finalBalance > 0
+                                ? "bg-red-600 hover:bg-red-700"
+                                : "bg-green-600 hover:bg-green-700"
+                              }`}
+                          >
+                            {finalBalance > 0 ? t('debtorLabel') : t('creditorLabel')}
+                          </Badge>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -631,7 +657,7 @@ export default function AccountStatement() {
                   </div>
                 </CardContent>
               </Card>
-              
+
               <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -648,7 +674,7 @@ export default function AccountStatement() {
                   </div>
                 </CardContent>
               </Card>
-              
+
               <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -665,12 +691,11 @@ export default function AccountStatement() {
                   </div>
                 </CardContent>
               </Card>
-              
-              <Card className={`bg-gradient-to-br shadow-lg ${
-                finalBalance > 0 
-                  ? "from-red-50 to-red-100 border-red-300" 
+
+              <Card className={`bg-gradient-to-br shadow-lg ${finalBalance > 0
+                  ? "from-red-50 to-red-100 border-red-300"
                   : "from-green-50 to-green-100 border-green-300"
-              }`}>
+                }`}>
                 <CardContent className="p-6">
                   <div className="space-y-4">
                     <div className="flex items-center justify-center gap-2 pb-3 border-b-2 border-gray-300">
@@ -681,13 +706,12 @@ export default function AccountStatement() {
                     <div className="text-center">
                       <p className="text-sm text-gray-600 mb-2">{t('balanceStatusLabel')}</p>
                       <div className="flex items-center justify-center gap-2">
-                        <Badge 
+                        <Badge
                           variant={finalBalance > 0 ? "destructive" : "default"}
-                          className={`text-base px-4 py-2 ${
-                            finalBalance > 0 
-                              ? "bg-red-600 hover:bg-red-700" 
+                          className={`text-base px-4 py-2 ${finalBalance > 0
+                              ? "bg-red-600 hover:bg-red-700"
                               : "bg-green-600 hover:bg-green-700"
-                          }`}
+                            }`}
                         >
                           {finalBalance > 0 ? t('clientIsDebtor') : t('clientIsCreditor')}
                         </Badge>
@@ -703,7 +727,7 @@ export default function AccountStatement() {
 
                     <div className="text-center pt-2 border-t border-gray-200">
                       <p className="text-xs text-gray-600">
-                        {finalBalance > 0 
+                        {finalBalance > 0
                           ? t('amountOwedByCustomer')
                           : t('amountOwedToCustomer')
                         }

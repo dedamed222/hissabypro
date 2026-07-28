@@ -14,6 +14,8 @@ import { CurrencyForm } from "@/components/settings/CurrencyForm";
 import { PaymentMethodForm } from "@/components/settings/PaymentMethodForm";
 import { BackupManager } from "@/components/settings/BackupManager";
 import { CloudMigration } from "@/components/settings/CloudMigration";
+import { AccountSettings } from "@/components/settings/AccountSettings";
+import { CompanyProfile } from "@/components/settings/CompanyProfile";
 
 export default function Settings() {
   const { currency, locale, updateSettings } = useSettings();
@@ -42,10 +44,12 @@ export default function Settings() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <h1 className="text-2xl font-bold mb-6">{t.settings}</h1>
-      
+
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="general">الإعدادات العامة</TabsTrigger>
+          <TabsTrigger value="account">الحساب</TabsTrigger>
+          <TabsTrigger value="company">الشركة</TabsTrigger>
           <TabsTrigger value="currencies">العملات</TabsTrigger>
           <TabsTrigger value="payments">طرق الدفع</TabsTrigger>
           <TabsTrigger value="backup">النسخ الاحتياطية</TabsTrigger>
@@ -81,6 +85,14 @@ export default function Settings() {
               <Button onClick={handleSaveSettings}>حفظ الإعدادات</Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="account">
+          <AccountSettings />
+        </TabsContent>
+
+        <TabsContent value="company">
+          <CompanyProfile />
         </TabsContent>
 
         <TabsContent value="currencies">
