@@ -53,33 +53,37 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
       className={`professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans w-[210mm] min-h-[297mm] relative overflow-hidden shadow-xl`}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Watermark */}
+      {/* Letterhead / Background Logo */}
+      {storeInfo.photoUrl && (
+        <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center">
+          <img
+            src={storeInfo.photoUrl}
+            alt="Letterhead Background"
+            className="w-full h-full object-cover opacity-100 print:opacity-100"
+          />
+        </div>
+      )}
+
+      {/* Status Watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.03] print:opacity-[0.05]">
         <div className="transform -rotate-45 text-[150px] font-black tracking-widest text-gray-900 whitespace-nowrap">
           {statusConfig.watermark}
         </div>
       </div>
 
-      <div className="relative z-10 p-12 print:p-8 flex flex-col h-full">
+      <div className="relative z-10 p-12 print:p-8 flex flex-col h-full bg-white/80 print:bg-transparent">
         {/* Header Section */}
         <div className="flex justify-between items-start mb-8">
           {/* Company Info */}
           <div className="flex flex-col gap-4 max-w-[50%]">
-            {storeInfo.photoUrl ? (
-              <img src={storeInfo.photoUrl} alt="Store Logo" className="w-32 h-auto max-h-24 object-contain" />
-            ) : (
-              <div className="w-20 h-20 bg-primary-600 rounded-lg flex items-center justify-center text-white text-3xl font-bold">
-                {storeInfo.name.charAt(0)}
-              </div>
-            )}
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">{storeInfo.name}</h1>
-              <div className="text-sm text-gray-600 space-y-1">
+              <h1 className="text-3xl font-black text-gray-900 mb-2 drop-shadow-sm">{storeInfo.name}</h1>
+              <div className="text-sm text-gray-800 font-medium space-y-1 bg-white/50 p-2 rounded-lg backdrop-blur-sm print:bg-transparent print:p-0">
                 {storeInfo.address && <p>{storeInfo.address}</p>}
                 {storeInfo.phone && <p dir="ltr" className={isRTL ? "text-right" : ""}>{storeInfo.phone}</p>}
                 {storeInfo.email && <p dir="ltr" className={isRTL ? "text-right" : ""}>{storeInfo.email}</p>}
                 {storeInfo.commercialRegister && (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-gray-600">
                     {t('commercialRegister')}: {storeInfo.commercialRegister}
                   </p>
                 )}
