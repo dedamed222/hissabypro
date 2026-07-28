@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -8,8 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Loader2, Upload, Store } from "lucide-react";
+import { Loader2, Upload, Store, X, FileText, Image as ImageIcon } from "lucide-react";
 import { loadStoreData, saveStoreData } from "@/utils/localStorage";
+import { useDropzone } from "react-dropzone";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.mjs`;
 
 const companySchema = z.object({
     name: z.string().min(2, { message: "اسم الشركة يجب أن يكون حرفين على الأقل" }),
@@ -18,6 +23,7 @@ const companySchema = z.object({
 
 export function CompanyProfile() {
     const [isUpdating, setIsUpdating] = useState(false);
+    const [isProcessingFile, setIsProcessingFile] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string>("");
 
     const form = useForm<z.infer<typeof companySchema>>({
@@ -39,27 +45,100 @@ export function CompanyProfile() {
         }
     }, [form]);
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+    const processPDF = async (file: File): Promise<string> => {
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const page = await pdf.getPage(1);
+
+            const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better quality
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+
+            if (!context) throw new Error("Could not create canvas context");
+
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            await page.render({
+                canvasContext: context,
+                viewport: viewport
+            }).promise;
+
+            return canvas.toDataURL('image/png');
+        } catch (error) {
+            console.error("Error processing PDF:", error);
+            throw new Error("فشل في معالجة ملف PDF");
+        }
+    };
+
+    const onDrop = useCallback(async (acceptedFiles: File[]) => {
+        const file = acceptedFiles[0];
         if (!file) return;
 
-        // Check file size (limit to 2MB)
-        if (file.size > 2 * 1024 * 1024) {
+        // Check file size (limit to 5MB)
+        if (file.size > 5 * 1024 * 1024) {
             toast({
-                title: "حجم الصورة كبير جداً",
-                description: "يرجى اختيار صورة بحجم أقل من 2 ميغابايت",
+                title: "حجم الملف كبير جداً",
+                description: "يرجى اختيار ملف بحجم أقل من 5 ميغابايت",
                 variant: "destructive",
             });
             return;
         }
 
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const base64String = reader.result as string;
+        setIsProcessingFile(true);
+
+        try {
+            let base64String = "";
+
+            if (file.type === "application/pdf") {
+                base64String = await processPDF(file);
+            } else if (file.type.startsWith("image/")) {
+                base64String = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            } else {
+                throw new Error("نوع الملف غير مدعوم");
+            }
+
             setPreviewUrl(base64String);
             form.setValue("photoUrl", base64String);
-        };
-        reader.readAsDataURL(file);
+
+            toast({
+                title: "تم رفع الملف بنجاح",
+                description: "يمكنك الآن حفظ التغييرات.",
+            });
+        } catch (error: any) {
+            toast({
+                title: "خطأ في الرفع",
+                description: error.message || "حدث خطأ أثناء معالجة الملف.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsProcessingFile(false);
+        }
+    }, [form]);
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            'image/*': ['.png', '.jpg', '.jpeg', '.svg'],
+            'application/pdf': ['.pdf']
+        },
+        maxFiles: 1,
+        multiple: false
+    });
+
+    const handleRemoveLogo = () => {
+        setPreviewUrl("");
+        form.setValue("photoUrl", "");
+        toast({
+            title: "تم إزالة الشعار",
+            description: "تمت إزالة الشعار. لا تنس حفظ التغييرات.",
+        });
     };
 
     const onSubmit = async (values: z.infer<typeof companySchema>) => {
@@ -93,34 +172,67 @@ export function CompanyProfile() {
         <Card>
             <CardHeader>
                 <CardTitle>ملف الشركة</CardTitle>
-                <CardDescription>قم بتحديث اسم وشعار الشركة ليظهرا في الفواتير.</CardDescription>
+                <CardDescription>قم بتحديث اسم وشعار الشركة ليظهرا في الفواتير. يمكنك رفع صورة أو ملف PDF.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
-                        <div className="flex flex-col items-center justify-center space-y-4 mb-6">
-                            <div className="relative w-32 h-32 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
-                                {previewUrl ? (
-                                    <img src={previewUrl} alt="Company Logo" className="w-full h-full object-cover" />
-                                ) : (
-                                    <Store className="w-12 h-12 text-gray-400" />
-                                )}
-                            </div>
-                            <div className="flex items-center justify-center w-full">
-                                <Label htmlFor="logo-upload" className="cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-                                    <Upload className="w-4 h-4 mr-2" />
-                                    رفع الشعار
-                                </Label>
-                                <Input
-                                    id="logo-upload"
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={handleImageUpload}
-                                />
-                            </div>
-                            <p className="text-xs text-gray-500">الحد الأقصى للحجم: 2MB (يفضل صورة مربعة)</p>
+                        <div className="flex flex-col space-y-4 mb-6">
+                            <FormLabel>شعار الشركة / الترويسة</FormLabel>
+
+                            {previewUrl ? (
+                                <div className="relative w-full max-w-md mx-auto border rounded-lg p-4 bg-gray-50 flex flex-col items-center justify-center">
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute top-2 right-2 rounded-full w-8 h-8"
+                                        onClick={handleRemoveLogo}
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </Button>
+                                    <img src={previewUrl} alt="Company Logo Preview" className="max-h-48 object-contain" />
+                                    <p className="text-xs text-gray-500 mt-4 text-center">
+                                        هذه هي المعاينة الحالية للشعار. سيتم عرضها في أعلى الفواتير.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div
+                                    {...getRootProps()}
+                                    className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors flex flex-col items-center justify-center min-h-[200px]
+                    ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/50 hover:bg-gray-50'}
+                    ${isProcessingFile ? 'opacity-50 pointer-events-none' : ''}
+                  `}
+                                >
+                                    <input {...getInputProps()} />
+
+                                    {isProcessingFile ? (
+                                        <div className="flex flex-col items-center text-primary">
+                                            <Loader2 className="w-10 h-10 animate-spin mb-4" />
+                                            <p className="font-medium">جاري معالجة الملف...</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex gap-4 mb-4 text-gray-400">
+                                                <ImageIcon className="w-10 h-10" />
+                                                <FileText className="w-10 h-10" />
+                                            </div>
+                                            <p className="text-lg font-medium text-gray-700 mb-1">
+                                                {isDragActive ? 'أفلت الملف هنا...' : 'اسحب وأفلت الشعار هنا، أو انقر للاختيار'}
+                                            </p>
+                                            <p className="text-sm text-gray-500 mb-4">
+                                                يدعم الصور (PNG, JPG, SVG) وملفات PDF (سيتم استخراج الصفحة الأولى)
+                                            </p>
+                                            <Button type="button" variant="outline" className="pointer-events-none">
+                                                <Upload className="w-4 h-4 mr-2" />
+                                                تصفح الملفات
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            <p className="text-xs text-gray-500">الحد الأقصى للحجم: 5MB</p>
                         </div>
 
                         <FormField
@@ -137,7 +249,7 @@ export function CompanyProfile() {
                             )}
                         />
 
-                        <Button type="submit" disabled={isUpdating} className="w-full md:w-auto">
+                        <Button type="submit" disabled={isUpdating || isProcessingFile} className="w-full md:w-auto">
                             {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             حفظ التغييرات
                         </Button>
