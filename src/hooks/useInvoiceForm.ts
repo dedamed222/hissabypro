@@ -27,13 +27,13 @@ export const useInvoiceForm = () => {
   const [success, setSuccess] = useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [paymentStatus, setPaymentStatus] = useState<"paid" | "pending" | "partial">("paid");
-  
+
   const [invoiceType, setInvoiceType] = useState<"sales" | "quotation" | "debt">("sales");
   const [dueDate, setDueDate] = useState<string>("");
   const [debtType, setDebtType] = useState<"debtor" | "creditor">("debtor");
   const [discount, setDiscount] = useState<number>(0);
   const [taxRate, setTaxRate] = useState<number>(0);
-  
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -44,7 +44,7 @@ export const useInvoiceForm = () => {
           getCustomers(),
           getInvoices()
         ]);
-        
+
         const mappedProducts: Product[] = productsData.map(p => ({
           id: p.id,
           code: p.code,
@@ -83,13 +83,13 @@ export const useInvoiceForm = () => {
         // Check if we are converting a quote
         const urlParams = new URLSearchParams(window.location.search);
         const quoteId = urlParams.get('quoteId');
-        
+
         if (quoteId) {
           const quote = invoicesData.find((inv: any) => inv.id === quoteId);
           if (quote) {
             setInvoiceType('sales');
             const quoteItems = quote.invoice_items || [];
-            
+
             setInvoiceItems(quoteItems.map((item: any) => {
               const product = mappedProducts.find(p => p.id === item.product_id);
               return {
@@ -101,7 +101,7 @@ export const useInvoiceForm = () => {
                 total: item.total
               };
             }));
-            
+
             const customer = mappedCustomers.find(c => c.name === quote.customer_name);
             if (customer) setSelectedCustomer(customer);
             setNotes(`محولة من عرض السعر رقم: ${quote.invoice_number}`);
@@ -116,64 +116,64 @@ export const useInvoiceForm = () => {
     };
 
     fetchData();
-    
+
     const newInvoiceNumber = generateInvoiceNumber("INV");
     setInvoiceNumber(newInvoiceNumber);
   }, []);
-  
+
   const subtotal = invoiceItems.reduce((acc, item) => acc + item.total, 0);
   const taxAmount = (subtotal - discount) * (taxRate / 100);
   const total = subtotal - discount + taxAmount;
 
   const filteredProducts = searchTerm.trim() === ""
     ? products
-    : products.filter(product => 
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.category || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.barcode || "").toLowerCase().includes(searchTerm.toLowerCase())
-      );
-  
+    : products.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.category || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.barcode || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
   const handleAddProduct = () => {
     if (!selectedProduct) {
       setError("يرجى اختيار منتج أولاً");
       return;
     }
-    
+
     const finalQuantity = manualQuantity !== null ? manualQuantity : quantity;
-    
+
     if (finalQuantity <= 0) {
       setError("يجب أن تكون الكمية أكبر من صفر");
       return;
     }
-    
+
     if (invoiceType !== 'quotation' && finalQuantity > selectedProduct.quantity) {
       setError(`الكمية المتاحة (${selectedProduct.quantity}) غير كافية`);
       return;
     }
-    
+
     setError("");
-    
+
     const existingItemIndex = invoiceItems.findIndex(
       item => item.productId === selectedProduct.id
     );
-    
+
     if (existingItemIndex !== -1) {
       const updatedItems = [...invoiceItems];
       const existingItem = updatedItems[existingItemIndex];
       const newQuantity = existingItem.quantity + finalQuantity;
-      
+
       if (newQuantity > selectedProduct.quantity) {
         setError(`الكمية المتاحة (${selectedProduct.quantity}) غير كافية`);
         return;
       }
-      
+
       updatedItems[existingItemIndex] = {
         ...existingItem,
         quantity: newQuantity,
         total: selectedProduct.price * newQuantity,
       };
-      
+
       setInvoiceItems(updatedItems);
     } else {
       const newItem: InvoiceItem = {
@@ -184,18 +184,18 @@ export const useInvoiceForm = () => {
         price: selectedProduct.price,
         total: selectedProduct.price * finalQuantity,
       };
-      
+
       setInvoiceItems([...invoiceItems, newItem]);
     }
-    
+
     updateMostRecentProducts(selectedProduct.id);
-    
+
     setSelectedProduct(null);
     setQuantity(1);
     setManualQuantity(null);
     setSearchTerm("");
   };
-  
+
   const handleRemoveItem = (index: number) => {
     const updatedItems = [...invoiceItems];
     updatedItems.splice(index, 1);
@@ -203,31 +203,46 @@ export const useInvoiceForm = () => {
   };
 
   const handleCustomerChange = (customerId: string) => {
-    const customer = customers.find(c => c.id === customerId);
-    setSelectedCustomer(customer || null);
+    if (customerId.startsWith('manual:')) {
+      const manualName = customerId.replace('manual:', '');
+      setSelectedCustomer({
+        id: `manual-${Date.now()}`,
+        name: manualName,
+        phone: '',
+        email: '',
+        address: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    } else if (customerId === "") {
+      setSelectedCustomer(null);
+    } else {
+      const customer = customers.find(c => c.id === customerId);
+      setSelectedCustomer(customer || null);
+    }
   };
-  
+
   const handleSaveInvoice = async () => {
     if (!selectedCustomer) {
       setError("يرجى اختيار عميل");
       return;
     }
-    
+
     if (invoiceItems.length === 0) {
       setError("يجب إضافة منتج واحد على الأقل للفاتورة");
       return;
     }
-    
+
     setError("");
     setLoading(true);
-    
+
     try {
       const now = currentDate.toISOString();
-      
+
       // Save invoice and items to Supabase
       const invData = {
         invoice_number: invoiceNumber,
-        customer_id: selectedCustomer.id,
+        customer_id: selectedCustomer.id.startsWith('manual-') ? undefined : selectedCustomer.id,
         customer_name: selectedCustomer.name,
         total: total,
         subtotal: subtotal,
@@ -249,7 +264,7 @@ export const useInvoiceForm = () => {
       }));
 
       await upsertInvoice(invData, itemRows);
-      
+
       // Update inventory in Supabase for sales and debtor invoices
       if (invoiceType === "sales" || (invoiceType === "debt" && debtType === "debtor")) {
         // We do this sequentially to avoid race conditions, but in a real app logic should be in a transaction or RPC
@@ -278,12 +293,12 @@ export const useInvoiceForm = () => {
           }
         }
       }
-      
+
       // Record debt in Supabase if applicable
       if (invoiceType === "debt") {
         const storeData = loadStoreData();
         const currentNowStr = new Date().toISOString();
-        
+
         if (debtType === "debtor") {
           const { upsertDebtor } = await import("@/lib/database");
           await upsertDebtor({
@@ -293,7 +308,7 @@ export const useInvoiceForm = () => {
             notes: `فاتورة دين رقم: ${invoiceNumber}`,
             date: now.split('T')[0]
           });
-          
+
           // Save to localStorage so it appears in the Debtors page
           const newDebtor = {
             id: generateId(),
@@ -321,7 +336,7 @@ export const useInvoiceForm = () => {
           };
           storeData.debtors = [...(storeData.debtors || []), newDebtor];
           saveStoreData(storeData);
-          
+
         } else {
           const { upsertCreditor } = await import("@/lib/database");
           await upsertCreditor({
@@ -332,7 +347,7 @@ export const useInvoiceForm = () => {
             date: now.split('T')[0],
             address: selectedCustomer.address || ""
           });
-          
+
           // Save to localStorage so it appears in the Creditors page
           const newCreditor = {
             id: generateId(),
@@ -355,7 +370,7 @@ export const useInvoiceForm = () => {
           saveStoreData(storeData);
         }
       }
-      
+
       setSuccess("تم حفظ الفاتورة بنجاح في السحابة");
       setInvoiceItems([]);
       setSelectedCustomer(null);
@@ -368,7 +383,7 @@ export const useInvoiceForm = () => {
       setDiscount(0);
       setTaxRate(0);
       setInvoiceNumber(generateInvoiceNumber("INV"));
-      
+
       // Refresh products from database to get updated quantities
       const productsData = await getProducts();
       const mappedProducts: Product[] = productsData.map(p => ({
@@ -390,9 +405,9 @@ export const useInvoiceForm = () => {
         updatedAt: p.updated_at
       }));
       setProducts(mappedProducts);
-      
+
       setCurrentDate(new Date());
-      
+
       setTimeout(() => {
         setSuccess("");
       }, 3000);
@@ -403,11 +418,11 @@ export const useInvoiceForm = () => {
       setLoading(false);
     }
   };
-  
+
   const handlePrintInvoice = () => {
     window.print();
   };
-  
+
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value) || 0;
     setManualQuantity(value);
