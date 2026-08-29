@@ -3,9 +3,13 @@ import { Outlet, Navigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useApp } from "@/contexts/AppContext";
+import { useAutoSync } from "@/hooks/useAutoSync";
 
 export default function Layout() {
   const { isAuthenticated } = useAuth();
+
+  // Run auto-sync globally
+  useAutoSync();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

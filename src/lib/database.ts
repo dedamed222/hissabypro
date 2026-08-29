@@ -304,6 +304,30 @@ export async function insertDailySale(sale: {
   return data;
 }
 
+export async function upsertDailySale(sale: {
+  id?: string;
+  date: string;
+  total_sales: number;
+  product_id?: string;
+  product_name?: string;
+  product_code?: string;
+  quantity?: number;
+  total?: number;
+  unit_price?: number;
+  payment_method?: string;
+  remaining_quantity?: number;
+}) {
+  const user = await getAuthenticatedUser();
+
+  const { data, error } = await supabase
+    .from("daily_sales")
+    .upsert({ ...sale, user_id: user.id }, { onConflict: "id" })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteDailySale(id: string) {
   const { error } = await supabase.from("daily_sales").delete().eq("id", id);
   if (error) throw error;
