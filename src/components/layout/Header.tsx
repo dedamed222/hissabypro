@@ -53,7 +53,7 @@ export default function Header() {
   const t = translations[locale];
 
   return (
-    <header className="bg-white/90 backdrop-blur-md border-b border-gray-200/50 h-16 px-3 sm:px-4 md:px-6 flex items-center justify-between z-30 shadow-sm print:hidden flex-shrink-0">
+    <header className="bg-white/90 backdrop-blur-md border-b border-gray-200/50 min-h-[4rem] pt-safe px-3 sm:px-4 md:px-6 flex items-center justify-between z-30 shadow-sm print:hidden flex-shrink-0">
       {/* Left: Hamburger + Brand */}
       <div className="flex items-center gap-2">
         <button
