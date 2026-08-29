@@ -573,15 +573,21 @@
     input[type="search"],
     input[type="tel"],
     select,
-    textarea,
     .h-10,
     .h-11,
     .h-12 {
-      min-height: 38px !important;
-      height: 38px !important;
-      padding-top: 0.35rem !important;
-      padding-bottom: 0.35rem !important;
-      font-size: 0.85rem !important;
+      min-height: 32px !important;
+      height: 32px !important;
+      padding-top: 0.25rem !important;
+      padding-bottom: 0.25rem !important;
+      font-size: 0.8rem !important;
+    }
+
+    textarea {
+      min-height: 60px !important;
+      padding-top: 0.25rem !important;
+      padding-bottom: 0.25rem !important;
+      font-size: 0.8rem !important;
     }
 
     /* Reduce icon sizes */
