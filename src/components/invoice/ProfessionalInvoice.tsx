@@ -50,7 +50,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
 
   return (
     <div
-      className={`professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans w-[210mm] min-h-[297mm] relative overflow-hidden shadow-xl`}
+      className={`professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans w-full max-w-[210mm] min-h-[297mm] print:max-w-none print:min-h-0 relative overflow-hidden shadow-xl`}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Letterhead / Background Logo */}
@@ -59,7 +59,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
           <img
             src={storeInfo.photoUrl}
             alt="Letterhead Background"
-            className="w-full h-full object-cover opacity-100 print:opacity-100"
+            className="letterhead-bg w-full h-full object-cover opacity-100 print:opacity-100"
           />
         </div>
       )}
@@ -247,7 +247,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
       <style>{`
         @media print {
           @page {
-            size: A4;
+            size: auto;
             margin: 0;
           }
           body {
@@ -260,8 +260,13 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
             border: none !important;
             margin: 0 !important;
             width: 100% !important;
-            height: 100% !important;
+            height: auto !important;
+            min-height: 100vh !important;
             page-break-after: always;
+          }
+          .letterhead-bg {
+            object-fit: contain !important;
+            object-position: top center !important;
           }
         }
       `}</style>
