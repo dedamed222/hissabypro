@@ -22,11 +22,12 @@ import { Invoice, StoreInfo } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getInvoices } from "@/lib/database";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export default function Archive() {
   const { t } = useLocale();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const [year, setYear] = useState<number>(0); // 0 means All Years
   const [filterType, setFilterType] = useState<string>("all");
@@ -91,6 +92,9 @@ export default function Archive() {
   useEffect(() => {
     loadAllData();
   }, [loadAllData]);
+
+  // Real-time sync: reload when invoices change on any device
+  useRealtimeSync(['invoices', 'invoice_items'], loadAllData, user?.id);
 
   const filteredInvoices = invoices
     .filter(invoice => {
@@ -232,8 +236,8 @@ export default function Archive() {
                         <div className="flex flex-col gap-1 items-end md:items-start">
                           <span>{invoice.invoiceNumber}</span>
                           <span className={`text-[10px] px-2 py-0.5 rounded w-fit ${(invoice.type || 'sales') === 'sales' ? 'bg-green-100 text-green-800' :
-                              invoice.type === 'quotation' ? 'bg-blue-100 text-blue-800' :
-                                'bg-orange-100 text-orange-800'
+                            invoice.type === 'quotation' ? 'bg-blue-100 text-blue-800' :
+                              'bg-orange-100 text-orange-800'
                             }`}>
                             {(invoice.type || 'sales') === 'sales' ? (t('salesInvoice') || 'فاتورة بيع') :
                               invoice.type === 'quotation' ? (t('quotationInvoice') || 'عرض سعر') :

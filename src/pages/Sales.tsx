@@ -14,6 +14,7 @@ import { SalesFilters } from "@/components/sales/SalesFilters";
 import { SalesTable } from "@/components/sales/SalesTable";
 import { SalesDeleteDialog } from "@/components/sales/SalesDeleteDialog";
 import type { DailySale, Product } from "@/types";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export default function Sales() {
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
@@ -22,12 +23,15 @@ export default function Sales() {
   const [saleToDelete, setSaleToDelete] = useState<DailySale | null>(null);
   const { products, loadProducts } = useProducts();
   const { toast } = useToast();
-  
+
   // The callback function will be called after a successful form submission
   const refreshData = () => {
     loadProducts();
   };
-  
+
+  // Real-time sync: reload products when any device changes product data
+  useRealtimeSync(['products', 'daily_sales'], loadProducts);
+
   const salesFormData = useSalesForm(dateFilter, refreshData);
 
   const {
@@ -66,7 +70,7 @@ export default function Sales() {
 
   const data = loadStoreData();
   const allDailySales = (data.dailySales || []);
-  
+
   // Filter sales by date and payment method
   const filteredSales = allDailySales.filter(sale => {
     const matchesDate = sale.date.startsWith(dateFilter);
@@ -76,10 +80,10 @@ export default function Sales() {
 
   // Calculate totals
   const totalSales = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
-  
+
   // Get unique payment methods
   const paymentMethods = [...new Set(allDailySales.map(sale => sale.paymentMethod))].filter(Boolean);
-  
+
   // Calculate totals by payment method
   const getPaymentMethodTotal = (method: string) => {
     return filteredSales
@@ -93,12 +97,12 @@ export default function Sales() {
     <div className="space-y-6 p-6" dir="rtl">
       <SalesHeader totalSales={totalSales} />
 
-      <PaymentMethodCards 
+      <PaymentMethodCards
         totalSales={totalSales}
         paymentMethods={paymentMethods}
         getPaymentMethodTotal={getPaymentMethodTotal}
       />
-      
+
       <SalesFilters
         dateFilter={dateFilter}
         setDateFilter={setDateFilter}
@@ -133,10 +137,10 @@ export default function Sales() {
         onEdit={salesFormData.handleEdit}
         onDelete={handleDelete}
       />
-      
-      <InventoryTransaction 
+
+      <InventoryTransaction
         transactions={filteredSales}
-        products={products} 
+        products={products}
       />
 
       <SalesDeleteDialog

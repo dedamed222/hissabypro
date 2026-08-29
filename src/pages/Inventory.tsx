@@ -6,12 +6,13 @@ import InventoryTabs from "@/components/inventory/InventoryTabs";
 import WarehouseManager from "@/components/inventory/WarehouseManager";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export default function Inventory() {
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [showWarehouseManager, setShowWarehouseManager] = useState(false);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   // Load products and warehouses on component mount
   useEffect(() => {
@@ -71,15 +72,18 @@ export default function Inventory() {
     }
   };
 
+  // Real-time sync: reload when products change on any device
+  useRealtimeSync(['products'], loadData, user?.id);
+
   return <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6 mx-[30px]">
-        <h1 className="text-2xl font-bold">المخزون</h1>
-        <Button variant="outline" onClick={() => setShowWarehouseManager(!showWarehouseManager)}>
-          <Settings className="w-4 h-4 mr-2" />
-          {showWarehouseManager ? "عرض المخزون" : "إدارة المخازن"}
-        </Button>
-      </div>
-      
-      {showWarehouseManager ? <WarehouseManager /> : <InventoryTabs products={products} warehouses={warehouses} onDataChange={loadData} />}
-    </div>;
+    <div className="flex items-center justify-between mb-6 mx-[30px]">
+      <h1 className="text-2xl font-bold">المخزون</h1>
+      <Button variant="outline" onClick={() => setShowWarehouseManager(!showWarehouseManager)}>
+        <Settings className="w-4 h-4 mr-2" />
+        {showWarehouseManager ? "عرض المخزون" : "إدارة المخازن"}
+      </Button>
+    </div>
+
+    {showWarehouseManager ? <WarehouseManager /> : <InventoryTabs products={products} warehouses={warehouses} onDataChange={loadData} />}
+  </div>;
 }

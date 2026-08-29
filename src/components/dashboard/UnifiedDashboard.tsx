@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { FormattedStat, Product, DailySale } from "@/types";
-import { 
+import {
   formatCurrency, calculatePercentageChange
 } from "@/utils/formatters";
-import { 
+import {
   getTodaySales, getYesterdaySales,
   getTodayExpenses, getYesterdayExpenses,
   getLowStockProducts, getMostRecentProductsList,
@@ -18,27 +18,28 @@ import { SalesChart } from "./SalesChart";
 import { QuickActions } from "./QuickActions";
 import { RecentActivity } from "./RecentActivity";
 import { useLocale } from "@/hooks/useLocale";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export function UnifiedDashboard() {
   const { t, locale } = useLocale();
-  
-  const [salesStat, setSalesStat] = useState<FormattedStat>({ 
-    value: formatCurrency(0), 
-    change: 0, 
+
+  const [salesStat, setSalesStat] = useState<FormattedStat>({
+    value: formatCurrency(0),
+    change: 0,
     isPositive: true,
     label: t('totalSalesToday'),
   });
-  
-  const [expensesStat, setExpensesStat] = useState<FormattedStat>({ 
-    value: formatCurrency(0), 
-    change: 0, 
+
+  const [expensesStat, setExpensesStat] = useState<FormattedStat>({
+    value: formatCurrency(0),
+    change: 0,
     isPositive: false,
     label: t('totalExpenses'),
   });
-  
-  const [inventoryStat, setInventoryStat] = useState<FormattedStat>({ 
-    value: "0", 
-    change: 0, 
+
+  const [inventoryStat, setInventoryStat] = useState<FormattedStat>({
+    value: "0",
+    change: 0,
     isPositive: true,
     label: t('productsInStock'),
   });
@@ -50,49 +51,48 @@ export function UnifiedDashboard() {
     totalAmount: number;
   }>>([]);
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
-  
-  useEffect(() => {
+
+  const loadDashboard = useCallback(() => {
     const todaySales = getTodaySales();
     const yesterdaySales = getYesterdaySales();
     const salesChange = calculatePercentageChange(todaySales, yesterdaySales);
-    
+
     setSalesStat({
       value: formatCurrency(todaySales),
       change: Math.abs(salesChange),
       isPositive: salesChange >= 0,
       label: t('totalSalesToday'),
     });
-    
+
     const todayExpenses = getTodayExpenses();
     const yesterdayExpenses = getYesterdayExpenses();
     const expensesChange = calculatePercentageChange(todayExpenses, yesterdayExpenses);
-    
+
     setExpensesStat({
       value: formatCurrency(todayExpenses),
       change: Math.abs(expensesChange),
       isPositive: expensesChange <= 0,
       label: t('totalExpenses'),
     });
-    
+
     const storeData = loadStoreData();
-    const lowStockCount = getLowStockProducts();
-    
+
     setInventoryStat({
       value: `${storeData.products.length} ${t('product')}`,
       change: 0,
       isPositive: true,
       label: t('productsInStock'),
     });
-    
+
     const mruIds = getMostRecentProductsList();
     const mruProducts = mruIds.map(
       id => storeData.products.find(p => p.id === id)
     ).filter(Boolean) as Product[];
-    
+
     setRecentProducts(mruProducts.slice(0, 5));
-    
+
     const today = new Date().toISOString().split('T')[0];
-    const todaySalesFiltered = storeData.dailySales.filter(sale => 
+    const todaySalesFiltered = storeData.dailySales.filter(sale =>
       sale.date.startsWith(today)
     );
     setTodaySalesData(todaySalesFiltered);
@@ -120,7 +120,14 @@ export function UnifiedDashboard() {
       salesByProduct.sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 5)
     );
   }, [t]);
-  
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  // Real-time sync across devices
+  useRealtimeSync(['invoices', 'daily_sales', 'products'], loadDashboard);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50">
       {/* Header Section */}
@@ -143,7 +150,7 @@ export function UnifiedDashboard() {
 
       <div className="w-full px-4 md:px-6 space-y-6 md:space-y-8 py-4 md:py-6">
         {/* Stats Cards */}
-        <StatCards 
+        <StatCards
           salesStat={salesStat}
           expensesStat={expensesStat}
           inventoryStat={inventoryStat}
@@ -158,7 +165,7 @@ export function UnifiedDashboard() {
             <TodaySales sales={todaySalesData} />
             <TopSellingProducts products={topSellingProducts} />
           </div>
-          
+
           <div className="space-y-6">
             <SalesChart />
             <RecentActivity />
