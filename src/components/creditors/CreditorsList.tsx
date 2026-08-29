@@ -5,16 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { 
-  Edit, 
-  Trash2, 
-  User, 
-  Package, 
-  ChevronDown, 
-  ChevronUp, 
-  ExternalLink, 
-  CheckCircle2, 
-  Clock 
+import {
+  Edit,
+  Trash2,
+  User,
+  Package,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  CheckCircle2,
+  Clock
 } from "lucide-react";
 import { Creditor, Customer } from "@/types";
 import CustomerSelector from "@/components/invoice/CustomerSelector";
@@ -72,18 +72,18 @@ const CreditorsList = ({
     { key: 'productCode', header: 'رمز المنتج' },
     { key: 'productName', header: 'اسم المنتج' },
     { key: 'quantity', header: 'الكمية' },
-    { 
-      key: 'status', 
+    {
+      key: 'status',
       header: 'الحالة',
       render: (creditor: Creditor) => creditor.status === 'paid' ? 'تم التسديد' : 'قيد الانتظار'
     },
-    { 
-      key: 'date', 
+    {
+      key: 'date',
       header: 'التاريخ',
       render: (creditor: Creditor) => formatDate(creditor.date)
     },
-    { 
-      key: 'price', 
+    {
+      key: 'price',
       header: 'السعر',
       render: (creditor: Creditor) => formatCurrency(creditor.price || 0)
     }
@@ -122,7 +122,7 @@ const CreditorsList = ({
     } else {
       acc[key].totalAmount += amount;
     }
-    
+
     // Keep the most recent date
     if (new Date(creditor.date || 0) > new Date(acc[key].date || 0)) {
       acc[key].date = creditor.date;
@@ -173,7 +173,7 @@ const CreditorsList = ({
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 
+                          <h3
                             className="text-xl font-bold text-foreground hover:text-primary cursor-pointer transition-colors"
                             onClick={() => navigate(`/creditors/${encodeURIComponent(creditor.name)}`)}
                           >
@@ -195,7 +195,7 @@ const CreditorsList = ({
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-center md:text-right">
                       <div className="bg-white/70 rounded-lg p-3 border">
                         <p className="text-xs text-muted-foreground mb-1">عدد المنتجات</p>
@@ -204,34 +204,34 @@ const CreditorsList = ({
                           <span className="text-lg font-bold">{creditor.products.length}</span>
                         </div>
                       </div>
-                      
+
                       <div className="bg-white/70 rounded-lg p-3 border">
                         <p className="text-xs text-muted-foreground mb-1">المبلغ المتبقي</p>
                         <p className={`text-lg font-bold ${creditor.totalAmount > 0 ? 'text-destructive' : 'text-green-600'}`}>
                           {formatCurrency(creditor.totalAmount)}
                         </p>
                       </div>
-                      
+
                       <div className="bg-white/70 rounded-lg p-3 border">
                         <p className="text-xs text-muted-foreground mb-1">آخر تاريخ</p>
                         <p className="text-sm font-medium">{formatDate(creditor.date)}</p>
                       </div>
-                      
+
                       <div className="bg-white/70 rounded-lg p-3 border flex items-center justify-center gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => onEdit(creditor)} 
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onEdit(creditor)}
                           disabled={creditor.totalAmount === 0}
                           title="تعديل"
                           className="h-8"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => setDeleteId(creditor.id)} 
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setDeleteId(creditor.id)}
                           title="حذف"
                           className="h-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                         >
@@ -240,15 +240,15 @@ const CreditorsList = ({
                       </div>
                     </div>
                   </div>
-                  
+
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => toggleRowExpansion(creditor.id)}
                     className="shrink-0"
                   >
-                    {expandedRows.has(creditor.id) ? 
-                      <ChevronUp className="w-5 h-5" /> : 
+                    {expandedRows.has(creditor.id) ?
+                      <ChevronUp className="w-5 h-5" /> :
                       <ChevronDown className="w-5 h-5" />
                     }
                   </Button>
@@ -262,9 +262,9 @@ const CreditorsList = ({
                       <Package className="w-4 h-4" />
                       تفاصيل المنتجات والنشاطات
                     </h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
+                    <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
+                      <table className="w-full text-sm block md:table">
+                        <thead className="hidden md:table-header-group">
                           <tr className="bg-background">
                             <th className="text-right p-3 font-medium border">الحالة</th>
                             <th className="text-right p-3 font-medium border">رمز المنتج</th>
@@ -275,10 +275,10 @@ const CreditorsList = ({
                             <th className="text-center p-3 font-medium border">إجراءات</th>
                           </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="block md:table-row-group">
                           {creditor.products.map((product: any, index: number) => (
-                            <tr key={product.id || index} className={`bg-background hover:bg-muted/50 transition-colors ${product.status === 'paid' ? 'opacity-70 bg-green-50/20' : ''}`}>
-                              <td className="p-3 border text-center">
+                            <tr key={product.id || index} className={`mobile-card-row bg-background hover:bg-muted/50 transition-colors ${product.status === 'paid' ? 'opacity-70 bg-green-50/20' : ''}`}>
+                              <td data-label="الحالة" className="p-3 border md:border-t-0 text-center">
                                 {product.status === 'paid' ? (
                                   <Badge className="bg-green-100 text-green-700 border-green-200">
                                     <CheckCircle2 className="w-3 h-3 ml-1" /> تم التسديد
@@ -289,29 +289,29 @@ const CreditorsList = ({
                                   </Badge>
                                 )}
                               </td>
-                              <td className={`p-3 border font-medium ${product.status === 'paid' ? 'text-muted-foreground' : 'text-primary'}`}>
+                              <td data-label="رمز المنتج" className={`p-3 border md:border-t-0 font-medium ${product.status === 'paid' ? 'text-muted-foreground' : 'text-primary'}`}>
                                 {product.productCode}
                               </td>
-                              <td className={`p-3 border ${product.status === 'paid' ? 'text-muted-foreground italic' : 'text-foreground'}`}>
+                              <td data-label="اسم المنتج" className={`p-3 border md:border-t-0 ${product.status === 'paid' ? 'text-muted-foreground italic' : 'text-foreground'}`}>
                                 {product.productName}
                               </td>
-                              <td className="p-3 border text-center">
+                              <td data-label="الكمية" className="p-3 border md:border-t-0 text-center">
                                 <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full text-xs font-medium ${product.status === 'paid' ? 'bg-gray-100 text-gray-500' : 'bg-primary/10 text-primary'}`}>
                                   {product.quantity}
                                 </span>
                               </td>
-                              <td className={`p-3 border text-center font-bold ${product.status === 'paid' ? 'text-green-600' : 'text-destructive'}`}>
+                              <td data-label="إجمالي المبلغ" className={`p-3 border md:border-t-0 text-center font-bold ${product.status === 'paid' ? 'text-green-600' : 'text-destructive'}`}>
                                 {formatCurrency(product.total)}
                               </td>
-                              <td className="p-3 border text-center text-muted-foreground text-xs">
+                              <td data-label="التاريخ" className="p-3 border md:border-t-0 text-center text-muted-foreground text-xs">
                                 {formatDate(product.date)}
                               </td>
-                              <td className="p-2 border text-center">
+                              <td data-label="إجراءات" className="p-2 border md:border-t-0 text-center">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => onToggleStatus && onToggleStatus(product.id, product.status)}
-                                  className={`h-7 px-2 text-[10px] ${product.status === 'paid' ? 'text-amber-600' : 'text-green-600'}`}
+                                  className={`h-10 px-4 text-xs ${product.status === 'paid' ? 'text-amber-600' : 'text-green-600'}`}
                                 >
                                   {product.status === 'paid' ? 'إلغاء' : 'تسديد'}
                                 </Button>
@@ -319,18 +319,19 @@ const CreditorsList = ({
                             </tr>
                           ))}
                         </tbody>
-                        <tfoot>
-                          <tr className="bg-primary/5">
-                            <td colSpan={4} className="p-3 border font-bold text-right text-xs">
+                        <tfoot className="block md:table-footer-group">
+                          <tr className="bg-primary/5 flex flex-col md:table-row">
+                            <td colSpan={4} className="p-3 border font-bold text-right text-xs hidden md:table-cell">
                               المبلغ المتبقي / المبلغ المدفوع:
                             </td>
-                            <td className="p-3 border text-center font-bold text-lg">
-                              <div className="flex flex-col">
+                            <td className="p-3 border text-center font-bold text-lg flex justify-between md:table-cell">
+                              <span className="md:hidden text-xs text-gray-500">المبلغ المتبقي / المدفوع:</span>
+                              <div className="flex flex-col items-end md:items-center">
                                 <span className="text-destructive">{formatCurrency(creditor.totalAmount)}</span>
                                 <span className="text-xs text-green-600 mt-1">مدفوع: {formatCurrency(creditor.totalPaid)}</span>
                               </div>
                             </td>
-                            <td colSpan={2} className="p-3 border"></td>
+                            <td colSpan={2} className="p-3 border hidden md:table-cell"></td>
                           </tr>
                         </tfoot>
                       </table>
@@ -353,8 +354,8 @@ const CreditorsList = ({
                         هل أنت متأكد من حذف الدائن <strong>{creditor.name}</strong> وجميع نشاطاته؟
                       </p>
                       <div className="flex gap-3 justify-end">
-                        <Button 
-                          variant="destructive" 
+                        <Button
+                          variant="destructive"
                           onClick={() => onDelete(creditor.id)}
                         >
                           <Trash2 className="w-4 h-4 ml-2" />

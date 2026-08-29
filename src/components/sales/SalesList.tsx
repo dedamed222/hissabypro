@@ -29,11 +29,11 @@ export const SalesList = ({ sales, onEdit, onDelete }: SalesListProps) => {
     if (methodLower === 'cash' || method === 'نقدي') return t('cash');
     if (methodLower === 'bank' || method === 'تحويل بنكي') return t('bankTransfer');
     if (methodLower === 'electronic' || method === 'دفع إلكتروني') return t('electronicPayment');
-    
+
     // Check if it's a known key in our translations
     const keys: TranslationKey[] = ['cash', 'card', 'transfer', 'bankTransfer', 'electronicPayment', 'creditPayment'];
     if (keys.includes(methodLower as TranslationKey)) return t(methodLower as TranslationKey);
-    
+
     return method;
   };
 
@@ -45,10 +45,10 @@ export const SalesList = ({ sales, onEdit, onDelete }: SalesListProps) => {
   const getTransactionTypeBadge = (key: TranslationKey) => {
     const styles: Record<string, string> = {
       "normalSale": "bg-blue-100 text-blue-800",
-      "transactionDebt": "bg-red-100 text-red-800", 
+      "transactionDebt": "bg-red-100 text-red-800",
       "transactionCredit": "bg-green-100 text-green-800"
     };
-    
+
     return (
       <span className={`px-2 py-1 rounded-full text-xs ${styles[key] || styles["normalSale"]}`}>
         {t(key)}
@@ -62,9 +62,9 @@ export const SalesList = ({ sales, onEdit, onDelete }: SalesListProps) => {
         <CardTitle>{t('salesList')}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
+        <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
+          <Table className="block md:table">
+            <TableHeader className="hidden md:table-header-group">
               <TableRow>
                 <TableHead className="text-right">{t('transactionType')}</TableHead>
                 <TableHead className="text-right">{t('productCode')}</TableHead>
@@ -78,38 +78,40 @@ export const SalesList = ({ sales, onEdit, onDelete }: SalesListProps) => {
                 <TableHead className="text-left">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="block md:table-row-group">
               {sales.length > 0 ? (
                 sales.map((sale) => (
-                  <TableRow key={sale.id}>
-                    <TableCell>
+                  <TableRow key={sale.id} className="mobile-card-row">
+                    <TableCell data-label={t('transactionType')}>
                       {getTransactionTypeBadge(getTransactionTypeKey(sale.paymentMethod || ""))}
                     </TableCell>
-                    <TableCell>{sale.productCode}</TableCell>
-                    <TableCell>{sale.productName}</TableCell>
-                    <TableCell>{formatCurrency(sale.unitPrice)}</TableCell>
-                    <TableCell>{sale.quantity}</TableCell>
-                    <TableCell>{formatCurrency(sale.total)}</TableCell>
-                    <TableCell>{translateMethod(sale.paymentMethod || "")}</TableCell>
-                    <TableCell>{formatDate(sale.date)}</TableCell>
-                    <TableCell>
+                    <TableCell data-label={t('productCode')}>{sale.productCode}</TableCell>
+                    <TableCell data-label={t('productName')}>{sale.productName}</TableCell>
+                    <TableCell data-label={t('unitPrice')}>{formatCurrency(sale.unitPrice)}</TableCell>
+                    <TableCell data-label={t('quantity')}>{sale.quantity}</TableCell>
+                    <TableCell data-label={t('total')}>{formatCurrency(sale.total)}</TableCell>
+                    <TableCell data-label={t('paymentMethod')}>{translateMethod(sale.paymentMethod || "")}</TableCell>
+                    <TableCell data-label={t('date')}>{formatDate(sale.date)}</TableCell>
+                    <TableCell data-label={t('remainingQuantityColumn')}>
                       <span className={sale.remainingQuantity !== undefined && sale.remainingQuantity < 10 ? "text-red-500 font-bold" : ""}>
                         {sale.remainingQuantity !== undefined ? sale.remainingQuantity : t('notAvailable')}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
+                    <TableCell data-label={t('actions')}>
+                      <div className="flex gap-2 justify-end md:justify-start">
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => onEdit(sale)}
+                          className="h-10 w-10"
                         >
                           <Edit size={16} />
                         </Button>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => onDelete(sale)}
+                          className="h-10 w-10 text-red-500 hover:text-red-700"
                         >
                           <Trash size={16} />
                         </Button>
@@ -118,8 +120,8 @@ export const SalesList = ({ sales, onEdit, onDelete }: SalesListProps) => {
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center py-4">
+                <TableRow className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
+                  <TableCell colSpan={10} className="text-center py-4 block md:table-cell">
                     {t('noSalesToday')}
                   </TableCell>
                 </TableRow>

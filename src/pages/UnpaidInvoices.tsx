@@ -19,10 +19,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import type { Invoice } from "@/types";
 import { useLocale } from "@/hooks/useLocale";
-import { 
-  CreditCard, 
-  Search, 
-  Filter, 
+import {
+  CreditCard,
+  Search,
+  Filter,
   AlertCircle,
   Calendar,
   User,
@@ -48,14 +48,14 @@ export default function UnpaidInvoices() {
 
   const getFilteredInvoices = () => {
     return invoices.filter(invoice => {
-      const matchesSearch = 
+      const matchesSearch =
         invoice.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesPaymentMethod = paymentMethodFilter === "all" || invoice.paymentMethod === paymentMethodFilter;
-      
+
       const matchesDate = dateFilter === "all" || invoice.date === dateFilter;
-      
+
       return matchesSearch && matchesPaymentMethod && matchesDate;
     });
   };
@@ -78,9 +78,9 @@ export default function UnpaidInvoices() {
           }
           return product;
         });
-        
+
         storeData.products = updatedProducts;
-        
+
         return {
           ...invoice,
           status: "paid" as const,
@@ -89,14 +89,14 @@ export default function UnpaidInvoices() {
       }
       return invoice;
     });
-    
+
     storeData.invoices = updatedInvoices;
     saveStoreData(storeData);
-    
-    setInvoices(prevInvoices => 
+
+    setInvoices(prevInvoices =>
       prevInvoices.filter(invoice => invoice.id !== invoiceId)
     );
-    
+
     toast({
       title: t('invoiceUpdated'),
       description: t('invoicePaidStockDeducted'),
@@ -179,7 +179,7 @@ export default function UnpaidInvoices() {
                 title={t('searchInvoicesPlaceholder')}
               />
             </div>
-            
+
             <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
               <SelectTrigger title={t('paymentMethod')}>
                 <SelectValue placeholder={t('paymentMethod')} />
@@ -202,8 +202,8 @@ export default function UnpaidInvoices() {
               title={t('date')}
             />
 
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setSearchTerm("");
                 setPaymentMethodFilter("all");
@@ -225,9 +225,9 @@ export default function UnpaidInvoices() {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
+          <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
+            <Table className="block md:table">
+              <TableHeader className="hidden md:table-header-group">
                 <TableRow className="bg-gray-100">
                   <TableHead className={`${isRTL ? 'text-right' : 'text-left'} font-semibold`}>{t('invoiceNumber')}</TableHead>
                   <TableHead className={`${isRTL ? 'text-right' : 'text-left'} font-semibold`}>{t('customerName')}</TableHead>
@@ -239,76 +239,65 @@ export default function UnpaidInvoices() {
                   <TableHead className="text-center font-semibold">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className="block md:table-row-group">
                 {filteredInvoices.length > 0 ? (
                   filteredInvoices.map((invoice) => {
                     const daysOverdue = getDaysOverdue(invoice.date);
                     return (
-                      <TableRow key={invoice.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">
+                      <TableRow key={invoice.id} className="hover:bg-gray-50 mobile-card-row">
+                        <TableCell data-label={t('invoiceNumber')} className="font-medium">
                           <Badge variant="outline" className="font-mono">
                             {invoice.invoiceNumber}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+                        <TableCell data-label={t('customerName')}>
+                          <div className="flex items-center gap-2 justify-end md:justify-start">
                             <User className="w-4 h-4 text-gray-500" />
                             {invoice.customerName}
                           </div>
                         </TableCell>
-                        <TableCell className="font-bold text-red-600">
+                        <TableCell data-label={t('amount')} className="font-bold text-red-600">
                           {formatCurrency(invoice.total)}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+                        <TableCell data-label={t('paymentMethod')}>
+                          <div className="flex items-center gap-2 justify-end md:justify-start">
                             <CreditCard className="w-4 h-4" />
                             {t(invoice.paymentMethod as any)}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+                        <TableCell data-label={t('invoiceDate')}>
+                          <div className="flex items-center gap-2 justify-end md:justify-start">
                             <Calendar className="w-4 h-4 text-gray-500" />
                             {invoice.date}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={daysOverdue > 30 ? "destructive" : daysOverdue > 7 ? "secondary" : "outline"}
-                            className={
-                              daysOverdue > 30 
-                                ? "bg-red-100 text-red-800" 
-                                : daysOverdue > 7 
-                                ? "bg-orange-100 text-orange-800" 
-                                : "bg-gray-100 text-gray-800"
-                            }
-                          >
+                        <TableCell data-label={t('daysOverdue')}>
+                          <Badge className="bg-red-100 text-red-800">
                             {daysOverdue} {t('daysLabel')}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-sm text-gray-600 max-w-xs truncate">
-                          {invoice.notes || t('noNotes')}
+                        <TableCell data-label={t('notes')} className="text-sm text-gray-600">
+                          {invoice.notes || "-"}
                         </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex gap-2 justify-center">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-green-600 hover:text-green-700"
+                        <TableCell data-label={t('actions')} className="text-center">
+                          <div className="flex items-center justify-end md:justify-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-green-600 hover:text-green-700 h-10 px-3"
                               onClick={() => handleMarkAsPaid(invoice.id)}
-                              title={t('convertToPaid')}
                             >
-                              <CheckCircle className={`w-4 h-4 ${isRTL ? 'ml-1' : 'mr-1'}`} />
-                              {t('convertToPaid')}
+                              <CheckCircle className="w-4 h-4 ml-1" />
+                              <span className="hidden sm:inline">{t('convertToPaid')}</span>
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-orange-600 hover:text-orange-700"
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-orange-600 hover:text-orange-700 h-10 px-3"
                               onClick={() => sendReminder(invoice)}
-                              title={t('sendReminder')}
                             >
-                              <Bell className={`w-4 h-4 ${isRTL ? 'ml-1' : 'mr-1'}`} />
-                              {t('sendReminder')}
+                              <Bell className="w-4 h-4 ml-1" />
+                              <span className="hidden sm:inline">{t('sendReminder')}</span>
                             </Button>
                           </div>
                         </TableCell>
@@ -316,9 +305,9 @@ export default function UnpaidInvoices() {
                     );
                   })
                 ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                      {searchTerm || paymentMethodFilter !== "all" || dateFilter !== "all" 
+                  <TableRow className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500 block md:table-cell">
+                      {searchTerm || paymentMethodFilter !== "all" || dateFilter !== "all"
                         ? t('noInvoicesMatchCriteria')
                         : t('noUnpaidInvoices')}
                     </TableCell>

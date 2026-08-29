@@ -46,15 +46,17 @@ export default function Settings() {
       <h1 className="text-2xl font-bold mb-6">{t.settings}</h1>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="general">الإعدادات العامة</TabsTrigger>
-          <TabsTrigger value="account">الحساب</TabsTrigger>
-          <TabsTrigger value="company">الشركة</TabsTrigger>
-          <TabsTrigger value="currencies">العملات</TabsTrigger>
-          <TabsTrigger value="payments">طرق الدفع</TabsTrigger>
-          <TabsTrigger value="backup">النسخ الاحتياطية</TabsTrigger>
-          <TabsTrigger value="cloud">السحابة</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible">
+          <TabsList className="flex w-max min-w-full md:grid md:grid-cols-7 h-auto p-1">
+            <TabsTrigger value="general" className="px-4 py-2">الإعدادات العامة</TabsTrigger>
+            <TabsTrigger value="account" className="px-4 py-2">الحساب</TabsTrigger>
+            <TabsTrigger value="company" className="px-4 py-2">الشركة</TabsTrigger>
+            <TabsTrigger value="currencies" className="px-4 py-2">العملات</TabsTrigger>
+            <TabsTrigger value="payments" className="px-4 py-2">طرق الدفع</TabsTrigger>
+            <TabsTrigger value="backup" className="px-4 py-2">النسخ الاحتياطية</TabsTrigger>
+            <TabsTrigger value="cloud" className="px-4 py-2">السحابة</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="general">
           <Card>

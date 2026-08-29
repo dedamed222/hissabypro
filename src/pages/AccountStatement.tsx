@@ -517,9 +517,9 @@ export default function AccountStatement() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="overflow-x-auto">
-              <table className="w-full arab-table">
-                <thead>
+            <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
+              <table className="w-full arab-table block md:table">
+                <thead className="hidden md:table-header-group">
                   <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
                     <th className={`text-${isRTL ? 'right' : 'left'} p-3 font-bold text-gray-800`}>{t('date')}</th>
                     <th className={`text-${isRTL ? 'right' : 'left'} p-3 font-bold text-gray-800`}>{t('description')}</th>
@@ -530,14 +530,14 @@ export default function AccountStatement() {
                     <th className={`text-${isRTL ? 'right' : 'left'} p-3 font-bold text-gray-800`}>{t('runningBalance')}</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="block md:table-row-group">
                   {startDate && filteredTransactions.length > 0 && openingBalance !== 0 && (
-                    <tr className="border-b bg-blue-50/30">
-                      <td className="p-3 text-gray-700 font-medium" colSpan={4}>{t('openingBalance') || 'الرصيد الافتتاحي'}</td>
-                      <td className="p-3 font-bold text-red-700">{openingBalance > 0 ? formatCurrency(openingBalance) : '-'}</td>
-                      <td className="p-3 font-bold text-green-700">{openingBalance < 0 ? formatCurrency(Math.abs(openingBalance)) : '-'}</td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
+                    <tr className="border-b bg-blue-50/30 mobile-card-row">
+                      <td data-label={t('date')} className="p-3 text-gray-700 font-medium md:col-span-4">{t('openingBalance') || 'الرصيد الافتتاحي'}</td>
+                      <td data-label={t('debit')} className="p-3 font-bold text-red-700">{openingBalance > 0 ? formatCurrency(openingBalance) : '-'}</td>
+                      <td data-label={t('credit')} className="p-3 font-bold text-green-700">{openingBalance < 0 ? formatCurrency(Math.abs(openingBalance)) : '-'}</td>
+                      <td data-label={t('runningBalance')} className="p-3">
+                        <div className="flex items-center gap-2 justify-end md:justify-start">
                           <span className={`font-bold text-lg ${openingBalance > 0 ? "text-red-700" : "text-green-700"}`}>
                             {formatCurrency(Math.abs(openingBalance))}
                           </span>
@@ -557,14 +557,14 @@ export default function AccountStatement() {
                     return (
                       <tr
                         key={transaction.id}
-                        className={`border-b transition-colors ${isDebitTransaction
-                            ? 'bg-red-50/50 hover:bg-red-50'
-                            : 'bg-green-50/50 hover:bg-green-50'
+                        className={`mobile-card-row border-b transition-colors ${isDebitTransaction
+                          ? 'bg-red-50/50 hover:bg-red-50'
+                          : 'bg-green-50/50 hover:bg-green-50'
                           }`}
                       >
-                        <td className="p-3 text-gray-700">{formatDate(transaction.date)}</td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
+                        <td data-label={t('date')} className="p-3 text-gray-700">{formatDate(transaction.date)}</td>
+                        <td data-label={t('description')} className="p-3">
+                          <div className="flex items-center gap-2 justify-end md:justify-start">
                             {transaction.type === 'invoice' && <TrendingUp className="w-4 h-4 text-red-600" />}
                             {transaction.type === 'return' && <TrendingDown className="w-4 h-4 text-blue-600" />}
                             {transaction.type === 'creditor' && <DollarSign className="w-4 h-4 text-green-600" />}
@@ -583,22 +583,22 @@ export default function AccountStatement() {
                             )}
                           </div>
                         </td>
-                        <td className="p-3 text-center font-mono text-sm">
+                        <td data-label={t('productCode')} className="p-3 text-center font-mono text-sm">
                           {transaction.productCode ? (
                             <Badge variant="outline" className="text-xs">
                               {transaction.productCode}
                             </Badge>
                           ) : '-'}
                         </td>
-                        <td className="p-3 text-center font-medium">{transaction.quantity || 0}</td>
-                        <td className="p-3 font-bold text-red-700">
+                        <td data-label={t('quantity')} className="p-3 text-center font-medium">{transaction.quantity || 0}</td>
+                        <td data-label={t('debit')} className="p-3 font-bold text-red-700">
                           {transaction.debit > 0 ? formatCurrency(transaction.debit) : '-'}
                         </td>
-                        <td className="p-3 font-bold text-green-700">
+                        <td data-label={t('credit')} className="p-3 font-bold text-green-700">
                           {transaction.credit > 0 ? formatCurrency(transaction.credit) : '-'}
                         </td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
+                        <td data-label={t('runningBalance')} className="p-3">
+                          <div className="flex items-center gap-2 justify-end md:justify-start">
                             <span className={`font-bold text-lg ${transaction.balance! > 0 ? "text-red-700" : "text-green-700"}`}>
                               {formatCurrency(Math.abs(transaction.balance!))}
                             </span>
@@ -614,14 +614,24 @@ export default function AccountStatement() {
                     );
                   })}
                 </tbody>
-                <tfoot className="bg-gradient-to-r from-gray-100 to-gray-200">
-                  <tr className="border-t-2 border-gray-400">
-                    <td className="p-4 font-bold text-lg" colSpan={3}>{t('total')}</td>
-                    <td className="p-4 font-bold text-center text-blue-700 text-lg">{totalQuantity}</td>
-                    <td className="p-4 font-bold text-red-700 text-lg bg-red-50">{formatCurrency(totalDebit)}</td>
-                    <td className="p-4 font-bold text-green-700 text-lg bg-green-50">{formatCurrency(totalCredit)}</td>
-                    <td className="p-4">
-                      <div className="flex flex-col items-center gap-2">
+                <tfoot className="bg-gradient-to-r from-gray-100 to-gray-200 block md:table-footer-group">
+                  <tr className="border-t-2 border-gray-400 flex flex-col md:table-row">
+                    <td className="p-4 font-bold text-lg hidden md:table-cell" colSpan={3}>{t('total')}</td>
+                    <td className="p-4 font-bold text-center text-blue-700 text-lg flex justify-between md:table-cell">
+                      <span className="md:hidden text-gray-500 text-sm">{t('quantity')}</span>
+                      {totalQuantity}
+                    </td>
+                    <td className="p-4 font-bold text-red-700 text-lg bg-red-50 flex justify-between md:table-cell">
+                      <span className="md:hidden text-gray-500 text-sm">{t('debit')}</span>
+                      {formatCurrency(totalDebit)}
+                    </td>
+                    <td className="p-4 font-bold text-green-700 text-lg bg-green-50 flex justify-between md:table-cell">
+                      <span className="md:hidden text-gray-500 text-sm">{t('credit')}</span>
+                      {formatCurrency(totalCredit)}
+                    </td>
+                    <td className="p-4 flex justify-between md:table-cell items-center">
+                      <span className="md:hidden text-gray-500 text-sm font-bold">{t('runningBalance')}</span>
+                      <div className="flex flex-col items-end md:items-center gap-2">
                         <span className={`font-bold text-xl ${finalBalance > 0 ? "text-red-700" : finalBalance < 0 ? "text-green-700" : "text-gray-700"}`}>
                           {formatCurrency(Math.abs(finalBalance))}
                         </span>
@@ -629,8 +639,8 @@ export default function AccountStatement() {
                           <Badge
                             variant={finalBalance > 0 ? "destructive" : "default"}
                             className={`text-sm px-3 ${finalBalance > 0
-                                ? "bg-red-600 hover:bg-red-700"
-                                : "bg-green-600 hover:bg-green-700"
+                              ? "bg-red-600 hover:bg-red-700"
+                              : "bg-green-600 hover:bg-green-700"
                               }`}
                           >
                             {finalBalance > 0 ? t('debtorLabel') : t('creditorLabel')}
@@ -693,8 +703,8 @@ export default function AccountStatement() {
               </Card>
 
               <Card className={`bg-gradient-to-br shadow-lg ${finalBalance > 0
-                  ? "from-red-50 to-red-100 border-red-300"
-                  : "from-green-50 to-green-100 border-green-300"
+                ? "from-red-50 to-red-100 border-red-300"
+                : "from-green-50 to-green-100 border-green-300"
                 }`}>
                 <CardContent className="p-6">
                   <div className="space-y-4">
@@ -709,8 +719,8 @@ export default function AccountStatement() {
                         <Badge
                           variant={finalBalance > 0 ? "destructive" : "default"}
                           className={`text-base px-4 py-2 ${finalBalance > 0
-                              ? "bg-red-600 hover:bg-red-700"
-                              : "bg-green-600 hover:bg-green-700"
+                            ? "bg-red-600 hover:bg-red-700"
+                            : "bg-green-600 hover:bg-green-700"
                             }`}
                         >
                           {finalBalance > 0 ? t('clientIsDebtor') : t('clientIsCreditor')}

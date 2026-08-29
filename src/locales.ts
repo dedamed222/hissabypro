@@ -18,7 +18,7 @@ export const translations = {
     storePhonePlaceholder: "أدخل رقم الهاتف",
     storeEmailPlaceholder: "أدخل البريد الإلكتروني",
     storeManagementSystem: "نظام إدارة المتجر",
-    
+
     // Login
     loginTitle: "نظام إدارة الأعمال",
     loginSubtitle: "يرجى تسجيل الدخول للمتابعة",
@@ -34,7 +34,7 @@ export const translations = {
     saveCredentials: "حفظ اسم المستخدم",
     savedCredentials: "تم حفظ اسم المستخدم",
     rights: "© {year} نظام إدارة الأعمال العربي",
-    
+
     // Register
     registerTitle: "إنشاء حساب جديد",
     registerSubtitle: "يرجى إدخال بياناتك لإنشاء حساب",
@@ -47,14 +47,14 @@ export const translations = {
     confirmPasswordPlaceholder: "أكد كلمة المرور",
     alreadyHaveAccount: "لديك حساب بالفعل؟",
     loginLink: "تسجيل الدخول",
-    
+
     // NotFound
     notFoundTitle: "الصفحة غير موجودة",
     notFoundDesc: "عذراً، الصفحة التي تبحث عنها غير موجودة أو تم نقلها.",
     backToDashboard: "العودة إلى لوحة التحكم",
     backToLogin: "العودة إلى تسجيل الدخول",
     fourOhFour: "٤٠٤",
-    
+
     // Settings
     systemSettings: "إعدادات النظام",
     localeCardTitle: "اللغة والتوطين",
@@ -88,21 +88,21 @@ export const translations = {
     paymentMethodNameRequired: "اسم طريقة الدفع مطلوب",
     paymentMethodAdded: "تمت إضافة طريقة الدفع بنجاح",
     paymentMethodRemoved: "تمت إزالة طريقة الدفع",
-    
+
     // Languages
     ar: "العربية",
     fr: "الفرنسية",
-    
+
     // Currencies
     MRU: "أوقية موريتانية",
     USD: "دولار أمريكي",
     EUR: "يورو",
     GBP: "جنيه إسترليني",
-    
+
     // Download
     downloadDesktop: "تحميل نسخة سطح المكتب",
     downloadDesc: "قم بتحميل النسخة المحلية للتطبيق",
-    
+
     // Inventory
     inventoryTransactions: "حركة المخزون",
     noTransactions: "لا توجد حركات مخزون",
@@ -111,10 +111,10 @@ export const translations = {
     lowStock: "منخفض",
     outOfStock: "نفذ",
     inStock: "متوفر",
-    
+
     // Preview Settings
     previewSettings: "معاينة الإعدادات الحالية",
-    
+
     // Navigation & Layout
     dashboard: "لوحة التحكم",
     home: "الرئيسية",
@@ -152,11 +152,11 @@ export const translations = {
     systemVersion: "نظام إدارة المتجر v2.0",
     logoutSuccess: "تم تسجيل الخروج",
     logoutSuccessDesc: "تم تسجيل خروجك بنجاح",
-    
+
     // User roles
     admin: "مدير النظام",
     user: "مستخدم",
-    
+
     // Account Statement
     accountStatementTitle: "كشف حساب",
     filterAccountStatement: "فلترة كشف الحساب",
@@ -171,6 +171,7 @@ export const translations = {
     credit: "دائن",
     total: "المجموع",
     finalBalance: "الرصيد النهائي",
+    openingBalance: "الرصيد الافتتاحي",
     creditBalance: "رصيد دائن",
     debitBalance: "رصيد مدين",
     totalQuantity: "إجمالي الكمية",
@@ -199,7 +200,7 @@ export const translations = {
     returnNoDescription: "مرتجع رقم {number}",
     paymentReceivedDescription: "دفعة مستلمة - {product}",
     debtToPayDescription: "دين مستحق - {product}",
-    
+
     // Quick Actions
     quickActions: "الإجراءات السريعة",
     addProduct: "إضافة منتج",
@@ -209,7 +210,7 @@ export const translations = {
     manageCustomers: "إدارة العملاء",
     recordExpenses: "تسجيل المصاريف",
     createNewInvoice: "إنشاء فاتورة جديدة",
-    
+
     // Common
     search: "بحث",
     searchPlaceholder: "البحث عن منتجات أو وظائف...",
@@ -252,7 +253,7 @@ export const translations = {
     available: "متوفر",
     notAvailable: "غير متوفر",
     amount: "المبلغ",
-    
+
     // Products
     productName: "اسم المنتج",
     productPrice: "السعر",
@@ -290,7 +291,7 @@ export const translations = {
     quantityDesc: "الكمية (تنازلي)",
     soldAsc: "المبيعات (تصاعدي)",
     soldDesc: "المبيعات (تنازلي)",
-    
+
     // Invoices
     invoiceNumber: "رقم الفاتورة",
     invoiceDate: "تاريخ الفاتورة",
@@ -319,13 +320,15 @@ export const translations = {
     unpaidStatus: "غير مدفوعة",
     cancelledStatus: "ملغية",
     pendingStatus: "قيد الانتظار",
-    
+    partial: "جزئي",
+    cancelled: "ملغية",
+
     invoiceTypeLabel: "نوع الفاتورة",
     salesInvoice: "فاتورة بيع",
     quotationInvoice: "عرض سعر",
     debtInvoice: "فاتورة دين",
     debtTypeLabel: "نوع الدين",
-    
+
     invoiceItems: "عناصر الفاتورة",
     paymentMethod: "طريقة الدفع",
     paymentStatus: "حالة الدفع",
@@ -383,7 +386,7 @@ export const translations = {
     deleteSalesConfirmDesc: "هل أنت متأكد أنك تريد حذف هذه المبيعات؟",
     units: "وحدة",
     returnToStockMsg: "سيتم إعادة الكمية المباعة إلى المخزون.",
-    
+
     // Unpaid Invoices
     unpaidInvoicesList: "قائمة المستحقات غير المدفوعة",
     totalUnpaidAmountLabel: "إجمالي المبالغ المستحقة",
@@ -402,7 +405,7 @@ export const translations = {
     reminderSentDesc: "تم إرسال تذكير دفع للعميل {name}",
     noInvoicesMatchCriteria: "لا توجد فواتير تطابق معايير البحث",
     noUnpaidInvoices: "لا توجد فواتير غير مدفوعة",
-    
+
     // Dashboard
     todaySales: "مبيعات اليوم",
     totalSales: "إجمالي المبيعات",
@@ -438,19 +441,19 @@ export const translations = {
     totalExpenses: "إجمالي المصروفات",
     productsInStock: "المنتجات في المخزن",
     product: "منتج",
-    
+
     // Debtors & Creditors
     debtorName: "اسم المدين",
     creditorName: "اسم الدائن",
     totalDebt: "إجمالي الدين",
     totalAmount: "المبلغ الإجمالي",
-    
+
     // Expenses
     expenseType: "نوع المصروف",
     expenseAmount: "المبلغ",
     expenseDate: "التاريخ",
     expenseDescription: "الوصف",
-    
+
     // Messages
     confirmDelete: "هل أنت متأكد من الحذف؟",
     deleteSuccess: "تم الحذف بنجاح",
@@ -459,20 +462,20 @@ export const translations = {
     operationFailed: "فشلت العملية",
     invalidData: "بيانات غير صالحة",
     insufficientStock: "الكمية غير كافية في المخزون",
-    
+
     // Backup
     backupData: "النسخ الاحتياطي",
     restoreData: "استعادة البيانات",
     backupSuccess: "تم النسخ الاحتياطي بنجاح",
     restoreSuccess: "تم استعادة البيانات بنجاح",
-    
+
     // Time
     today: "اليوم",
     yesterday: "أمس",
     thisWeek: "هذا الأسبوع",
     thisMonth: "هذا الشهر",
     thisYear: "هذه السنة",
-    
+
     // Offline/PWA
     offlineMode: "أنت غير متصل بالإنترنت - التطبيق يعمل في وضع عدم الاتصال",
     backOnline: "تم استعادة الاتصال",
@@ -503,7 +506,7 @@ export const translations = {
     storePhonePlaceholder: "Entrez le numéro de téléphone",
     storeEmailPlaceholder: "Entrez l'adresse e-mail",
     storeManagementSystem: "Système de gestion du magasin",
-    
+
     // Login
     loginTitle: "Gestion d'entreprise",
     loginSubtitle: "Veuillez vous connecter pour continuer",
@@ -520,7 +523,7 @@ export const translations = {
     saveCredentials: "Enregistrer le nom d'utilisateur",
     savedCredentials: "Nom d'utilisateur enregistré",
     rights: "© {year} Système de gestion d'entreprise",
-    
+
     // Register
     registerTitle: "Créer un nouveau compte",
     registerSubtitle: "Veuillez entrer vos informations",
@@ -533,14 +536,14 @@ export const translations = {
     confirmPasswordPlaceholder: "Confirmez le mot de passe",
     alreadyHaveAccount: "Vous avez déjà un compte?",
     loginLink: "Se connecter",
-    
+
     // NotFound
     notFoundTitle: "Page non trouvée",
     notFoundDesc: "Désolé, la page recherchée n'existe pas.",
     backToDashboard: "Retour au tableau de bord",
     backToLogin: "Retour à la connexion",
     fourOhFour: "404",
-    
+
     // Settings
     systemSettings: "Paramètres du système",
     localeCardTitle: "Langue et localisation",
@@ -574,21 +577,21 @@ export const translations = {
     paymentMethodNameRequired: "Nom requis",
     paymentMethodAdded: "Mode de paiement ajouté",
     paymentMethodRemoved: "Mode de paiement supprimé",
-    
+
     // Languages
     ar: "Arabe",
     fr: "Français",
-    
+
     // Currencies
     MRU: "Ouguiya mauritanienne",
     USD: "Dollar américain",
     EUR: "Euro",
     GBP: "Livre sterling",
-    
+
     // Download
     downloadDesktop: "Télécharger version bureau",
     downloadDesc: "Téléchargez l'application locale",
-    
+
     // Inventory
     inventoryTransactions: "Mouvements de stock",
     noTransactions: "Pas de mouvements",
@@ -597,10 +600,10 @@ export const translations = {
     lowStock: "Faible",
     outOfStock: "Épuisé",
     inStock: "Disponible",
-    
+
     // Preview Settings
     previewSettings: "Aperçu des paramètres",
-    
+
     // Navigation & Layout
     dashboard: "Tableau de bord",
     home: "Accueil",
@@ -638,11 +641,11 @@ export const translations = {
     systemVersion: "Système de gestion v2.0",
     logoutSuccess: "Déconnexion réussie",
     logoutSuccessDesc: "Vous avez été déconnecté avec succès",
-    
+
     // User roles
     admin: "Administrateur",
     user: "Utilisateur",
-    
+
     // Account Statement
     accountStatementTitle: "Relevé de compte",
     filterAccountStatement: "Filtrer le relevé",
@@ -657,6 +660,7 @@ export const translations = {
     credit: "Crédit",
     total: "Total",
     finalBalance: "Solde final",
+    openingBalance: "Solde d'ouverture",
     creditBalance: "Solde créditeur",
     debitBalance: "Solde débiteur",
     totalQuantity: "Quantité totale",
@@ -685,7 +689,7 @@ export const translations = {
     returnNoDescription: "Retour N° {number}",
     paymentReceivedDescription: "Paiement reçu - {product}",
     debtToPayDescription: "Dette à payer - {product}",
-    
+
     // Quick Actions
     quickActions: "Actions rapides",
     addProduct: "Ajouter un produit",
@@ -695,7 +699,7 @@ export const translations = {
     manageCustomers: "Gérer les clients",
     recordExpenses: "Enregistrer les dépenses",
     createNewInvoice: "Créer une nouvelle facture",
-    
+
     // Common
     search: "Rechercher",
     searchPlaceholder: "Rechercher produits ou fonctions...",
@@ -738,7 +742,7 @@ export const translations = {
     available: "Disponible",
     notAvailable: "Non disponible",
     amount: "Montant",
-    
+
     // Products
     productName: "Nom du produit",
     productPrice: "Prix",
@@ -776,7 +780,7 @@ export const translations = {
     quantityDesc: "Quantité (Décroissant)",
     soldAsc: "Ventes (Croissant)",
     soldDesc: "Ventes (Décroissant)",
-    
+
     // Invoices
     invoiceNumber: "N° de facture",
     invoiceDate: "Date de facture",
@@ -805,13 +809,15 @@ export const translations = {
     unpaidStatus: "Non payée",
     cancelledStatus: "Annulée",
     pendingStatus: "En attente",
-    
+    partial: "Partiel",
+    cancelled: "Annulée",
+
     invoiceTypeLabel: "Type de facture",
     salesInvoice: "Facture de vente",
     quotationInvoice: "Devis",
     debtInvoice: "Facture de dette",
     debtTypeLabel: "Type de dette",
-    
+
     invoiceItems: "Articles de la facture",
     paymentMethod: "Mode de paiement",
     paymentStatus: "Statut du paiement",
@@ -870,7 +876,7 @@ export const translations = {
     deleteSalesConfirmDesc: "Êtes-vous sûr de vouloir supprimer ces ventes ?",
     units: "unité",
     returnToStockMsg: "La quantité vendue sera renvoyée au stock.",
-    
+
     // Unpaid Invoices
     unpaidInvoicesList: "Liste des factures impayées",
     totalUnpaidAmountLabel: "Total des montants dus",
@@ -889,7 +895,7 @@ export const translations = {
     reminderSentDesc: "Rappel de paiement envoyé au client {name}",
     noInvoicesMatchCriteria: "Aucune facture ne correspond aux critères",
     noUnpaidInvoices: "Aucune facture impayée",
-    
+
     // Dashboard
     todaySales: "Ventes du jour",
     totalSales: "Ventes totales",
@@ -925,19 +931,19 @@ export const translations = {
     totalExpenses: "Total des dépenses",
     productsInStock: "Produits en stock",
     product: "produit",
-    
+
     // Debtors & Creditors
     debtorName: "Nom du débiteur",
     creditorName: "Nom du créditeur",
     totalDebt: "Dette totale",
     totalAmount: "Montant total",
-    
+
     // Expenses
     expenseType: "Type de dépense",
     expenseAmount: "Montant",
     expenseDate: "Date",
     expenseDescription: "Description",
-    
+
     // Messages
     confirmDelete: "Confirmer la suppression?",
     deleteSuccess: "Supprimé avec succès",
@@ -947,20 +953,20 @@ export const translations = {
     invalidData: "Données invalides",
     requiredField: "Champ requis",
     insufficientStock: "Stock insuffisant",
-    
+
     // Backup
     backupData: "Sauvegarde",
     restoreData: "Restaurer",
     backupSuccess: "Sauvegarde réussie",
     restoreSuccess: "Restauration réussie",
-    
+
     // Time
     today: "Aujourd'hui",
     yesterday: "Hier",
     thisWeek: "Cette semaine",
     thisMonth: "Ce mois",
     thisYear: "Cette année",
-    
+
     // Offline/PWA
     offlineMode: "Vous êtes hors ligne - L'application fonctionne en mode hors ligne",
     backOnline: "Connexion rétablie",

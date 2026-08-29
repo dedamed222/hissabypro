@@ -12,13 +12,13 @@ export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -28,7 +28,7 @@ export default function Customers() {
     address: "",
     notes: "",
   });
-  
+
   // Load customers on component mount
   const loadData = async () => {
     setLoading(true);
@@ -92,14 +92,14 @@ export default function Customers() {
       setLoading(false);
     }
   };
-  
+
   // Filter customers when search query changes
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredCustomers(customers);
       return;
     }
-    
+
     const normalized = searchQuery.trim().toLowerCase();
     const filtered = customers.filter(
       (customer) =>
@@ -108,10 +108,10 @@ export default function Customers() {
         customer.phone.includes(normalized) ||
         customer.email.toLowerCase().includes(normalized)
     );
-    
+
     setFilteredCustomers(filtered);
   }, [searchQuery, customers]);
-  
+
   // Reset form data
   const resetForm = () => {
     setFormData({
@@ -124,13 +124,13 @@ export default function Customers() {
     });
     setError("");
   };
-  
+
   // Open add modal
   const handleAddNew = () => {
     resetForm();
     setIsModalOpen(true);
   };
-  
+
   // Open edit modal
   const handleEdit = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -144,13 +144,13 @@ export default function Customers() {
     });
     setIsModalOpen(true);
   };
-  
+
   // Open delete confirmation modal
   const handleDeleteClick = (customer: Customer) => {
     setSelectedCustomer(customer);
     setIsDeleteModalOpen(true);
   };
-  
+
   // Form input change handler
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -161,23 +161,23 @@ export default function Customers() {
       [name]: value,
     }));
   };
-  
+
   // Save customer (add or edit)
   const handleSaveCustomer = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    
+
     // Validate form
     if (!formData.name.trim()) {
       setError("يرجى إدخال اسم العميل");
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const now = new Date().toISOString();
-      
+
       const payload = {
         id: selectedCustomer?.id,
         name: formData.name,
@@ -189,10 +189,10 @@ export default function Customers() {
       };
 
       await upsertCustomer(payload);
-      
+
       // Reload from Supabase
       await loadData();
-      
+
       // Close modal and reset form
       setIsModalOpen(false);
       resetForm();
@@ -204,17 +204,17 @@ export default function Customers() {
       setLoading(false);
     }
   };
-  
+
   // Delete customer
   const handleDeleteConfirm = async () => {
     if (!selectedCustomer) return;
-    
+
     setLoading(true);
-    
+
     try {
       await deleteCustomer(selectedCustomer.id);
       await loadData();
-      
+
       // Close modal and reset selection
       setIsDeleteModalOpen(false);
       setSelectedCustomer(null);
@@ -225,12 +225,12 @@ export default function Customers() {
       setLoading(false);
     }
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">إدارة العملاء</h1>
-        
+
         <div className="flex items-center gap-3">
           <button
             onClick={handleMigrate}
@@ -248,7 +248,7 @@ export default function Customers() {
           </button>
         </div>
       </div>
-      
+
       {/* Search */}
       <div className="relative">
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -260,11 +260,11 @@ export default function Customers() {
           className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-arab-blue bg-white"
         />
       </div>
-      
+
       {/* Customers table */}
-      <div className="overflow-x-auto bg-white rounded-lg shadow">
-        <table className="arab-table">
-          <thead className="bg-gray-50">
+      <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow">
+        <table className="arab-table block md:table">
+          <thead className="bg-gray-50 hidden md:table-header-group">
             <tr>
               <th className="font-medium">الاسم</th>
               <th className="font-medium">الشركة</th>
@@ -274,27 +274,37 @@ export default function Customers() {
               <th className="font-medium">الإجراءات</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="block md:table-row-group">
             {filteredCustomers.length > 0 ? (
               filteredCustomers.map((customer) => (
-                <tr key={customer.id}>
-                  <td>{customer.name}</td>
-                  <td>{customer.company || "-"}</td>
-                  <td>{customer.phone || "-"}</td>
-                  <td>{customer.email || "-"}</td>
-                  <td>{formatShortDate(customer.updatedAt)}</td>
-                  <td>
-                    <div className="flex items-center gap-2">
+                <tr key={customer.id} className="mobile-card-row">
+                  <td data-label="الاسم">
+                    <div className="font-bold md:font-normal text-gray-900 md:text-gray-700">{customer.name}</div>
+                  </td>
+                  <td data-label="الشركة">
+                    <div>{customer.company || "-"}</div>
+                  </td>
+                  <td data-label="رقم الهاتف">
+                    <div dir="ltr" className="text-right">{customer.phone || "-"}</div>
+                  </td>
+                  <td data-label="البريد الإلكتروني">
+                    <div>{customer.email || "-"}</div>
+                  </td>
+                  <td data-label="آخر تحديث">
+                    <div>{formatShortDate(customer.updatedAt)}</div>
+                  </td>
+                  <td data-label="الإجراءات">
+                    <div className="flex items-center gap-2 justify-end">
                       <button
                         onClick={() => handleEdit(customer)}
-                        className="text-blue-600 hover:text-blue-800"
+                        className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
                         title="تعديل"
                       >
                         <Edit size={18} />
                       </button>
                       <button
                         onClick={() => handleDeleteClick(customer)}
-                        className="text-red-600 hover:text-red-800"
+                        className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
                         title="حذف"
                       >
                         <Trash2 size={18} />
@@ -304,8 +314,8 @@ export default function Customers() {
                 </tr>
               ))
             ) : (
-              <tr>
-                <td colSpan={6} className="text-center py-4 text-gray-500">
+              <tr className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
+                <td colSpan={6} className="text-center py-8 text-gray-500 block md:table-cell">
                   {searchQuery
                     ? "لا يوجد عملاء مطابقين لبحثك"
                     : "لا يوجد عملاء مسجلين بعد"}
@@ -315,7 +325,7 @@ export default function Customers() {
           </tbody>
         </table>
       </div>
-      
+
       {/* Add/Edit Customer Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -336,7 +346,7 @@ export default function Customers() {
                 <X size={20} />
               </button>
             </div>
-            
+
             <form onSubmit={handleSaveCustomer}>
               <div className="p-4 space-y-4">
                 {error && (
@@ -345,7 +355,7 @@ export default function Customers() {
                     <span>{error}</span>
                   </div>
                 )}
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="arab-form-group">
                     <label htmlFor="name" className="arab-label">
@@ -361,7 +371,7 @@ export default function Customers() {
                       required
                     />
                   </div>
-                  
+
                   <div className="arab-form-group">
                     <label htmlFor="company" className="arab-label">
                       الشركة
@@ -376,7 +386,7 @@ export default function Customers() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="arab-form-group">
                     <label htmlFor="phone" className="arab-label">
@@ -392,7 +402,7 @@ export default function Customers() {
                       dir="ltr"
                     />
                   </div>
-                  
+
                   <div className="arab-form-group">
                     <label htmlFor="email" className="arab-label">
                       البريد الإلكتروني
@@ -408,7 +418,7 @@ export default function Customers() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="arab-form-group">
                   <label htmlFor="address" className="arab-label">
                     العنوان
@@ -422,7 +432,7 @@ export default function Customers() {
                     className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-arab-blue"
                   />
                 </div>
-                
+
                 <div className="arab-form-group">
                   <label htmlFor="notes" className="arab-label">
                     ملاحظات
@@ -437,7 +447,7 @@ export default function Customers() {
                   ></textarea>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-end gap-3 p-4 border-t">
                 <button
                   type="button"
@@ -472,7 +482,7 @@ export default function Customers() {
           </div>
         </div>
       )}
-      
+
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && selectedCustomer && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -480,13 +490,13 @@ export default function Customers() {
             <div className="p-4 border-b">
               <h3 className="font-medium text-lg">تأكيد الحذف</h3>
             </div>
-            
+
             <div className="p-4">
               <div className="flex items-center gap-3 text-amber-600 mb-4">
                 <AlertCircle size={24} />
                 <p>هل أنت متأكد من حذف هذا العميل؟</p>
               </div>
-              
+
               <p className="mb-2">
                 <strong>الاسم:</strong> {selectedCustomer.name}
               </p>
@@ -500,12 +510,12 @@ export default function Customers() {
                   <strong>رقم الهاتف:</strong> {selectedCustomer.phone}
                 </p>
               )}
-              
+
               <p className="mt-4 text-red-600 text-sm">
                 لا يمكن التراجع عن هذا الإجراء.
               </p>
             </div>
-            
+
             <div className="flex items-center justify-end gap-3 p-4 border-t">
               <button
                 onClick={() => {

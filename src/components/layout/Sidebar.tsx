@@ -24,12 +24,14 @@ import {
   AlertCircle,
   Warehouse,
   LogOut,
-  LogIn
+  LogIn,
+  X,
+  Menu
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const Sidebar = () => {
-  const { sidebarOpen, closeSidebar, sidebarCollapsed, toggleCollapse } = useApp();
+  const { sidebarOpen, closeSidebar, sidebarCollapsed, toggleCollapse, toggleSidebar } = useApp();
   const { logout, isAuthenticated, user, profile } = useAuth();
   const { locale } = useLocale();
   const t = translations[locale];
@@ -157,21 +159,22 @@ const Sidebar = () => {
         />
       )}
 
+      {/* Desktop/Tablet Sidebar (Slide-in on mobile) */}
       <div className={cn(
         "bg-white/95 backdrop-blur-md shadow-lg border-e border-gray-200/50 transition-all duration-300 print:hidden",
-        "fixed inset-y-0 start-0 z-50 h-full lg:relative lg:transform-none",
+        "fixed inset-y-0 start-0 z-50 h-full lg:relative lg:transform-none lg:translate-x-0 rtl:lg:translate-x-0",
         sidebarCollapsed ? "w-20" : "w-64",
         sidebarOpen
           ? "translate-x-0"
           : "-translate-x-full rtl:translate-x-full"
       )}>
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full pb-16 lg:pb-0">
           {/* Sidebar Header */}
           <div className="p-6 border-b border-gray-200/50 bg-gradient-to-r from-blue-50 to-indigo-50">
             <div className="flex items-center justify-between mb-2">
               <button
                 onClick={toggleCollapse}
-                className="p-2 rounded-lg hover:bg-white/50 transition-colors"
+                className="p-2 rounded-lg hover:bg-white/50 transition-colors hidden lg:block"
                 aria-label={sidebarCollapsed ? t.expandMenu : t.collapseMenu}
                 title={sidebarCollapsed ? t.expandMenu : t.collapseMenu}
               >
@@ -184,6 +187,14 @@ const Sidebar = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                 </svg>
               </button>
+              {/* Close button for mobile inside sidebar */}
+              <button
+                onClick={closeSidebar}
+                className="p-2 rounded-lg hover:bg-white/50 transition-colors lg:hidden"
+                aria-label={t.closeMenu}
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
             </div>
             {!sidebarCollapsed && (
               <div>
@@ -191,12 +202,6 @@ const Sidebar = () => {
                   {t.mainMenu}
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">{t.comprehensiveSystem}</p>
-                {isAuthenticated && user && (
-                  <div className="mt-3 p-2 bg-white/50 rounded-lg">
-                    <p className="text-xs text-gray-600">{t.welcome}</p>
-                    <p className="text-sm font-semibold text-gray-800">{profile?.name || user?.email}</p>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -207,9 +212,14 @@ const Sidebar = () => {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={() => {
+                  if (window.innerWidth < 1024) {
+                    closeSidebar();
+                  }
+                }}
                 className={({ isActive }) =>
                   cn(
-                    "group flex items-center gap-4 p-3 rounded-xl transition-all duration-200 text-sm font-medium relative overflow-hidden",
+                    "group flex items-center gap-4 p-3 rounded-xl transition-all duration-200 text-sm font-medium relative overflow-hidden min-h-[44px]",
                     sidebarCollapsed && "justify-center",
                     isActive
                       ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-md border border-blue-200/50 scale-105"
@@ -242,7 +252,7 @@ const Sidebar = () => {
               <button
                 onClick={handleLogout}
                 className={cn(
-                  "w-full group flex items-center gap-4 p-3 rounded-xl transition-all duration-200 text-sm font-medium bg-gradient-to-r from-red-50 to-rose-50 text-red-700 hover:shadow-md border border-red-200/50 hover:scale-105",
+                  "w-full group flex items-center gap-4 p-3 rounded-xl transition-all duration-200 text-sm font-medium bg-gradient-to-r from-red-50 to-rose-50 text-red-700 hover:shadow-md border border-red-200/50 hover:scale-105 min-h-[44px]",
                   sidebarCollapsed && "justify-center"
                 )}
                 title={sidebarCollapsed ? t.logout : undefined}
@@ -256,7 +266,7 @@ const Sidebar = () => {
               <button
                 onClick={handleLogin}
                 className={cn(
-                  "w-full group flex items-center gap-4 p-3 rounded-xl transition-all duration-200 text-sm font-medium bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 hover:shadow-md border border-green-200/50 hover:scale-105",
+                  "w-full group flex items-center gap-4 p-3 rounded-xl transition-all duration-200 text-sm font-medium bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 hover:shadow-md border border-green-200/50 hover:scale-105 min-h-[44px]",
                   sidebarCollapsed && "justify-center"
                 )}
                 title={sidebarCollapsed ? t.login : undefined}
@@ -280,6 +290,70 @@ const Sidebar = () => {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] print:hidden">
+        <div className="flex justify-around items-center h-16 px-2">
+          {/* Dashboard */}
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) => cn(
+              "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors",
+              isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <LayoutDashboard className="w-6 h-6" />
+            <span className="text-[10px] font-medium truncate w-full text-center">{t.home}</span>
+          </NavLink>
+
+          {/* Products */}
+          <NavLink
+            to="/products"
+            className={({ isActive }) => cn(
+              "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors",
+              isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <Package className="w-6 h-6" />
+            <span className="text-[10px] font-medium truncate w-full text-center">{t.products}</span>
+          </NavLink>
+
+          {/* Create Invoice (Prominent Center Button) */}
+          <NavLink
+            to="/create-invoice"
+            className="flex flex-col items-center justify-center w-full h-full -mt-5"
+          >
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all">
+              <FileText className="w-6 h-6" />
+            </div>
+            <span className="text-[10px] font-medium text-blue-600 mt-1 truncate w-full text-center">{t.createInvoice}</span>
+          </NavLink>
+
+          {/* Sales */}
+          <NavLink
+            to="/sales"
+            className={({ isActive }) => cn(
+              "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors",
+              isActive ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <ShoppingCart className="w-6 h-6" />
+            <span className="text-[10px] font-medium truncate w-full text-center">{t.sales}</span>
+          </NavLink>
+
+          {/* More Menu */}
+          <button
+            onClick={toggleSidebar}
+            className={cn(
+              "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors",
+              sidebarOpen ? "text-blue-600" : "text-gray-500 hover:text-gray-900"
+            )}
+          >
+            <Menu className="w-6 h-6" />
+            <span className="text-[10px] font-medium truncate w-full text-center">{t.mainMenu}</span>
+          </button>
         </div>
       </div>
     </>

@@ -20,12 +20,12 @@ import { loadStoreData } from "@/utils/localStorage";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import type { Invoice } from "@/types";
-import { 
-  CreditCard, 
-  Search, 
-  Filter, 
-  Eye, 
-  Bell, 
+import {
+  CreditCard,
+  Search,
+  Filter,
+  Eye,
+  Bell,
   Plus,
   Clock,
   CheckCircle,
@@ -52,28 +52,28 @@ export default function Payments() {
   // Filter invoices based on search and filters
   const getFilteredInvoices = (status: string) => {
     return invoices.filter(invoice => {
-      const matchesSearch = 
+      const matchesSearch =
         invoice.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
       const matchesPaymentMethod = paymentMethodFilter === "all" || invoice.paymentMethod === paymentMethodFilter;
       const matchesInvoiceStatus = status === "all" || invoice.status === status;
-      
+
       return matchesSearch && matchesStatus && matchesPaymentMethod && matchesInvoiceStatus;
     });
   };
 
   // Get paid invoices
   const paidInvoices = getFilteredInvoices("paid");
-  
+
   // Get unpaid invoices
   const unpaidInvoices = getFilteredInvoices("pending");
-  
+
   // Get pending invoices (waiting for payment)
-  const pendingInvoices = invoices.filter(invoice => 
-    invoice.status === "pending" && 
-    invoice.notes?.includes("دفع متأخر") || 
+  const pendingInvoices = invoices.filter(invoice =>
+    invoice.status === "pending" &&
+    invoice.notes?.includes("دفع متأخر") ||
     invoice.notes?.includes("جدول زمني")
   );
 
@@ -136,7 +136,7 @@ export default function Payments() {
                 className="pr-10"
               />
             </div>
-            
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="فلترة حسب الحالة" />
@@ -200,9 +200,9 @@ export default function Payments() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
+              <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
+                <Table className="block md:table">
+                  <TableHeader className="hidden md:table-header-group">
                     <TableRow className="bg-gray-100">
                       <TableHead className="text-right font-semibold">رقم الفاتورة</TableHead>
                       <TableHead className="text-right font-semibold">اسم العميل</TableHead>
@@ -213,39 +213,43 @@ export default function Payments() {
                       <TableHead className="text-center font-semibold">الإجراءات</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody className="block md:table-row-group">
                     {paidInvoices.length > 0 ? (
                       paidInvoices.map((invoice) => (
-                        <TableRow key={invoice.id} className="hover:bg-gray-50">
-                          <TableCell className="font-medium">
+                        <TableRow key={invoice.id} className="hover:bg-gray-50 mobile-card-row">
+                          <TableCell data-label="رقم الفاتورة" className="font-medium">
                             <Badge variant="outline" className="font-mono">
                               {invoice.invoiceNumber}
                             </Badge>
                           </TableCell>
-                          <TableCell className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-gray-500" />
-                            {invoice.customerName}
+                          <TableCell data-label="اسم العميل">
+                            <div className="flex items-center gap-2 justify-end md:justify-start">
+                              <User className="w-4 h-4 text-gray-500" />
+                              {invoice.customerName}
+                            </div>
                           </TableCell>
-                          <TableCell className="font-bold text-green-600">
+                          <TableCell data-label="المبلغ" className="font-bold text-green-600">
                             {formatCurrency(invoice.total)}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell data-label="طريقة الدفع">
+                            <div className="flex items-center gap-2 justify-end md:justify-start">
                               <CreditCard className="w-4 h-4" />
                               {invoice.paymentMethod}
                             </div>
                           </TableCell>
-                          <TableCell className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-500" />
-                            {invoice.date}
+                          <TableCell data-label="التاريخ">
+                            <div className="flex items-center gap-2 justify-end md:justify-start">
+                              <Calendar className="w-4 h-4 text-gray-500" />
+                              {invoice.date}
+                            </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell data-label="الحالة">
                             <Badge className="bg-green-100 text-green-800">
                               {invoice.status === "paid" ? "مسددة" : invoice.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-center">
-                            <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
+                          <TableCell data-label="الإجراءات" className="text-center">
+                            <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 h-10 px-4">
                               <Eye className="w-4 h-4 ml-1" />
                               عرض التفاصيل
                             </Button>
@@ -253,8 +257,8 @@ export default function Payments() {
                         </TableRow>
                       ))
                     ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableRow className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
+                        <TableCell colSpan={7} className="text-center py-8 text-gray-500 block md:table-cell">
                           لا توجد فواتير مسددة
                         </TableCell>
                       </TableRow>
@@ -317,9 +321,9 @@ export default function Payments() {
                               {invoice.date}
                             </TableCell>
                             <TableCell className="text-center">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 className="text-orange-600 hover:text-orange-700"
                                 onClick={() => sendReminder(invoice)}
                               >
@@ -373,7 +377,7 @@ export default function Payments() {
                         const firstPayment = invoice.total * 0.3; // 30% as first payment
                         const remaining = invoice.total - firstPayment;
                         const nextPaymentDate = getNextPaymentDate(invoice);
-                        
+
                         return (
                           <TableRow key={invoice.id} className="hover:bg-gray-50">
                             <TableCell className="font-medium">

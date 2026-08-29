@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap');
 
@@ -113,7 +112,21 @@
   }
 
   /* Arabic text alignment and styles */
-  h1, h2, h3, h4, h5, h6, p, span, div, button, a, label, input, textarea, select {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  span,
+  div,
+  button,
+  a,
+  label,
+  input,
+  textarea,
+  select {
     @apply font-sans;
   }
 
@@ -157,12 +170,12 @@
   .arab-icon-bg {
     @apply p-2 rounded-full bg-opacity-20;
   }
-  
+
   /* Dashboard stats */
   .stat-value {
     @apply text-2xl font-bold my-1;
   }
-  
+
   .stat-label {
     @apply text-sm text-gray-500;
   }
@@ -171,15 +184,15 @@
   .arab-sidebar {
     @apply bg-arab-blue text-white h-screen fixed top-0 right-0 w-64 overflow-y-auto border-l border-arab-blue-dark;
   }
-  
+
   .arab-sidebar-link {
     @apply flex items-center gap-3 px-4 py-3 text-white hover:bg-arab-blue-light transition-colors;
   }
-  
+
   .arab-sidebar-link.active {
     @apply bg-arab-blue-dark font-semibold;
   }
-  
+
   /* ===== Professional Form Fields ===== */
   input[type="text"],
   input[type="number"],
@@ -200,6 +213,8 @@
     box-shadow: 0 1px 2px hsl(214 32% 85% / 0.5);
     width: 100%;
     outline: none;
+    /* Ensure minimum touch target size on mobile */
+    min-height: 44px;
   }
 
   input[type="text"]:focus,
@@ -224,13 +239,32 @@
     border-color: hsl(214, 32%, 90%);
   }
 
+  /* ===== Mobile Card Row for Tables ===== */
+  .mobile-card-row {
+    @apply block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 mb-4 p-4 md:p-0 md:mb-0 md:border-0 md:shadow-none md:rounded-none;
+  }
+
+  .mobile-card-row>td {
+    @apply flex md:table-cell justify-between items-center py-2 md:py-3 border-b border-gray-50 md:border-b last:border-0 md:last:border-b;
+  }
+
+  .mobile-card-row>td::before {
+    /* The data-label attribute will be used to show column headers on mobile */
+    content: attr(data-label);
+    @apply md:hidden font-semibold text-gray-500 text-xs uppercase tracking-wider ml-4;
+  }
+
+  .mobile-card-row>td>div {
+    @apply text-left md:text-right;
+  }
+
   /* ===== Table styles ===== */
   .arab-table {
     @apply w-full text-sm;
     border-collapse: separate;
     border-spacing: 0;
   }
-  
+
   .arab-table th {
     padding: 0.75rem 0.875rem;
     font-weight: 600;
@@ -242,7 +276,7 @@
     border-bottom: 1.5px solid hsl(214, 32%, 88%);
     text-align: right;
   }
-  
+
   .arab-table td {
     padding: 0.75rem 0.875rem;
     border-bottom: 1px solid hsl(214, 32%, 93%);
@@ -263,7 +297,7 @@
   .arab-form-group {
     margin-bottom: 1.1rem;
   }
-  
+
   .arab-label {
     display: block;
     font-size: 0.8rem;
@@ -280,7 +314,7 @@
     color: hsl(215, 25%, 38%);
     margin-bottom: 0.35rem;
   }
-  
+
   /* New colored cards */
   .card-blue {
     @apply bg-arab-blue/10 border-arab-blue/30;
@@ -501,20 +535,96 @@
   .bg-gradient-luxury {
     @apply bg-arab-luxury-gradient;
   }
-  
+
   /* Print-specific styles */
   @media print {
     .no-print {
       display: none !important;
     }
-    
+
     .print-only {
       display: block !important;
     }
-    
+
     body {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      background-image: none !important;
+    }
+  }
+
+  /* ===== Mobile Compactness Optimization ===== */
+  @media (max-width: 768px) {
+
+    /* Reduce input and button heights */
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="password"],
+    input[type="date"],
+    input[type="search"],
+    input[type="tel"],
+    select,
+    textarea,
+    .h-10,
+    .h-11,
+    .h-12 {
+      min-height: 38px !important;
+      height: 38px !important;
+      padding-top: 0.35rem !important;
+      padding-bottom: 0.35rem !important;
+      font-size: 0.85rem !important;
+    }
+
+    /* Reduce icon sizes */
+    svg.w-5.h-5,
+    svg.w-6.h-6,
+    svg.w-8.h-8 {
+      width: 1.1rem !important;
+      height: 1.1rem !important;
+    }
+
+    /* Reduce text sizes */
+    .text-sm {
+      font-size: 0.75rem !important;
+    }
+
+    .text-base {
+      font-size: 0.85rem !important;
+    }
+
+    .text-lg {
+      font-size: 0.95rem !important;
+    }
+
+    .text-xl {
+      font-size: 1.1rem !important;
+    }
+
+    .text-2xl {
+      font-size: 1.25rem !important;
+    }
+
+    .text-3xl {
+      font-size: 1.5rem !important;
+    }
+
+    /* Reduce padding in cards and tables */
+    .p-4,
+    .p-6 {
+      padding: 0.75rem !important;
+    }
+
+    .mobile-card-row>td {
+      padding-top: 0.4rem !important;
+      padding-bottom: 0.4rem !important;
+    }
+
+    /* Make badges smaller */
+    .px-2.py-1,
+    .px-3.py-1 {
+      padding: 0.15rem 0.4rem !important;
+      font-size: 0.7rem !important;
     }
   }
 }

@@ -27,7 +27,7 @@ export default function Archive() {
   const { t } = useLocale();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  
+
   const [year, setYear] = useState<number>(0); // 0 means All Years
   const [filterType, setFilterType] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -91,19 +91,19 @@ export default function Archive() {
   useEffect(() => {
     loadAllData();
   }, [loadAllData]);
-  
+
   const filteredInvoices = invoices
     .filter(invoice => {
       const invoiceType = invoice.type || 'sales';
       const invoiceYear = new Date(invoice.createdAt).getFullYear();
-      
+
       const matchesYear = year === 0 || invoiceYear === year;
       const matchesType = filterType === "all" || invoiceType === filterType;
       // Removed matchesArchiveCondition (paid/partial only) to show ALL invoices as requested
-      
-      const matchesSearch = searchTerm === "" || 
+
+      const matchesSearch = searchTerm === "" ||
         invoice.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.items.some(item => 
+        invoice.items.some(item =>
           item.productName.toLowerCase().includes(searchTerm.toLowerCase())
         );
       return matchesYear && matchesType && matchesSearch;
@@ -115,7 +115,7 @@ export default function Archive() {
       header: "رقم الفاتورة",
     },
     {
-      key: "customerName", 
+      key: "customerName",
       header: "العميل",
     },
     {
@@ -161,8 +161,8 @@ export default function Archive() {
             columns={exportColumns}
             totals={totals}
           />
-          <select 
-            value={filterType} 
+          <select
+            value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="border rounded p-2"
             title={t('invoiceTypeLabel') || 'نوع الفاتورة'}
@@ -182,8 +182,8 @@ export default function Archive() {
               className="pl-4 pr-10"
             />
           </div>
-          <select 
-            value={year} 
+          <select
+            value={year}
             onChange={(e) => setYear(Number(e.target.value))}
             className="border rounded p-2"
             title={t('filter') || 'فلترة بالعام'}
@@ -195,7 +195,7 @@ export default function Archive() {
           </select>
         </div>
       </div>
-      
+
       <Card className="print:hidden">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -206,9 +206,9 @@ export default function Archive() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
+          <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
+            <Table className="block md:table">
+              <TableHeader className="hidden md:table-header-group">
                 <TableRow>
                   <TableHead className="text-right">رقم الفاتورة</TableHead>
                   <TableHead className="text-right">العميل</TableHead>
@@ -218,58 +218,57 @@ export default function Archive() {
                   <TableHead className="text-right">الإجراءات</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className="block md:table-row-group">
                 {filteredInvoices.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  <TableRow className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500 block md:table-cell">
                       لا توجد فواتير مؤرشفة في هذا النطاق
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredInvoices.map(invoice => (
-                    <TableRow key={invoice.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex flex-col gap-1">
+                    <TableRow key={invoice.id} className="mobile-card-row">
+                      <TableCell data-label="رقم الفاتورة" className="font-medium">
+                        <div className="flex flex-col gap-1 items-end md:items-start">
                           <span>{invoice.invoiceNumber}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded w-fit ${
-                            (invoice.type || 'sales') === 'sales' ? 'bg-green-100 text-green-800' :
-                            invoice.type === 'quotation' ? 'bg-blue-100 text-blue-800' :
-                            'bg-orange-100 text-orange-800'
-                          }`}>
+                          <span className={`text-[10px] px-2 py-0.5 rounded w-fit ${(invoice.type || 'sales') === 'sales' ? 'bg-green-100 text-green-800' :
+                              invoice.type === 'quotation' ? 'bg-blue-100 text-blue-800' :
+                                'bg-orange-100 text-orange-800'
+                            }`}>
                             {(invoice.type || 'sales') === 'sales' ? (t('salesInvoice') || 'فاتورة بيع') :
-                             invoice.type === 'quotation' ? (t('quotationInvoice') || 'عرض سعر') :
-                             (t('debtInvoice') || 'فاتورة دين')}
+                              invoice.type === 'quotation' ? (t('quotationInvoice') || 'عرض سعر') :
+                                (t('debtInvoice') || 'فاتورة دين')}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>{invoice.customerName}</TableCell>
-                      <TableCell>
-                        <div className="max-w-xs truncate" title={invoice.items.map(item => item.productName).join(", ")}>
+                      <TableCell data-label="العميل">{invoice.customerName}</TableCell>
+                      <TableCell data-label="المنتجات">
+                        <div className="max-w-xs truncate text-left md:text-right" title={invoice.items.map(item => item.productName).join(", ")}>
                           {invoice.items.map(item => item.productName).join(", ")}
                         </div>
                       </TableCell>
-                      <TableCell>{formatDate(invoice.createdAt)}</TableCell>
-                      <TableCell className="font-medium text-green-600">
+                      <TableCell data-label="التاريخ">{formatDate(invoice.createdAt)}</TableCell>
+                      <TableCell data-label="المبلغ" className="font-medium text-green-600">
                         {formatCurrency(invoice.total)}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 px-2 flex gap-1 items-center text-primary-600 hover:text-primary-700 hover:bg-primary-50"
+                      <TableCell data-label="الإجراءات">
+                        <div className="flex items-center justify-end md:justify-start gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-10 px-3 flex gap-1 items-center text-primary-600 hover:text-primary-700 hover:bg-primary-50"
                             onClick={() => {
                               setSelectedInvoice(invoice);
                               setTimeout(() => window.print(), 100);
                             }}
                           >
                             <Printer size={16} />
-                            طباعة
+                            <span className="hidden sm:inline">طباعة</span>
                           </Button>
                           {invoice.type === 'quotation' && (
-                            <button 
+                            <button
                               onClick={() => navigate(`/create-invoice?quoteId=${invoice.id}`)}
-                              className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded hover:bg-indigo-100 transition-colors"
+                              className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 px-3 py-2 rounded hover:bg-indigo-100 transition-colors h-10 flex items-center"
                             >
                               تحويل لبيع
                             </button>
@@ -286,7 +285,7 @@ export default function Archive() {
       </Card>
 
       {selectedInvoice && storeInfo && (
-        <ProfessionalInvoice 
+        <ProfessionalInvoice
           invoice={selectedInvoice}
           storeInfo={storeInfo}
         />

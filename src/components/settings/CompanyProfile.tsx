@@ -62,7 +62,8 @@ export function CompanyProfile() {
 
             await page.render({
                 canvasContext: context,
-                viewport: viewport
+                viewport: viewport,
+                canvas: canvas
             }).promise;
 
             return canvas.toDataURL('image/png');

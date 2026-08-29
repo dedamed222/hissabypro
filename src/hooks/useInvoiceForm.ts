@@ -413,7 +413,12 @@ export const useInvoiceForm = () => {
       }, 3000);
     } catch (err: any) {
       console.error("Error saving invoice:", err);
-      setError(`حدث خطأ أثناء حفظ الفاتورة: ${err.message || JSON.stringify(err)}`);
+
+      if (err?.name === 'AuthenticationError' || err?.message?.includes('Not authenticated')) {
+        setError("انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى لحفظ الفاتورة.");
+      } else {
+        setError(`حدث خطأ أثناء حفظ الفاتورة: ${err.message || JSON.stringify(err)}`);
+      }
     } finally {
       setLoading(false);
     }

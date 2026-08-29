@@ -14,7 +14,7 @@ export default function Suppliers() {
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -100,17 +100,17 @@ export default function Suppliers() {
 
   const handleDelete = async (supplier: any) => {
     if (!window.confirm("هل أنت متأكد من حذف هذا المورد؟")) return;
-    
+
     setLoading(true);
     try {
       // Delete from Supabase
       await deleteSupplier(supplier.id);
-      
+
       // Update local state
       const updated = suppliers.filter((s: any) => s.id !== supplier.id);
       setSuppliers(updated);
       setFilteredSuppliers(updated);
-      
+
       // Also update localStorage for consistency
       const storeData = loadStoreData();
       storeData.suppliers = storeData.suppliers.filter((s: any) => s.id !== supplier.id);
@@ -126,14 +126,14 @@ export default function Suppliers() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    
+
     if (!formData.name.trim()) {
       setError("يرجى إدخال اسم المورد");
       return;
     }
 
     setLoading(true);
-    
+
     try {
       const payload = {
         id: selectedSupplier?.id,
@@ -165,7 +165,7 @@ export default function Suppliers() {
       setFilteredSuppliers(suppliers);
       return;
     }
-    
+
     const filtered = suppliers.filter((supplier: any) =>
       supplier.name.toLowerCase().includes(query.toLowerCase()) ||
       supplier.phone?.includes(query) ||
@@ -189,7 +189,7 @@ export default function Suppliers() {
           </Button>
         </div>
       </div>
-      
+
       <div className="relative">
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
         <input
@@ -206,9 +206,9 @@ export default function Suppliers() {
           <CardTitle>قائمة الموردين</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full arab-table">
-              <thead>
+          <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
+            <table className="w-full arab-table block md:table">
+              <thead className="hidden md:table-header-group">
                 <tr>
                   <th>اسم المورد</th>
                   <th>رقم الهاتف</th>
@@ -218,21 +218,31 @@ export default function Suppliers() {
                   <th>الإجراءات</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="block md:table-row-group">
                 {filteredSuppliers.length > 0 ? (
                   filteredSuppliers.map((supplier: any) => (
-                    <tr key={supplier.id}>
-                      <td>{supplier.name}</td>
-                      <td>{supplier.phone || "-"}</td>
-                      <td>{supplier.email || "-"}</td>
-                      <td>{supplier.address || "-"}</td>
-                      <td>{formatDate(supplier.updatedAt)}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(supplier)}>
+                    <tr key={supplier.id} className="mobile-card-row">
+                      <td data-label="اسم المورد">
+                        <div className="font-bold md:font-normal text-gray-900 md:text-gray-700">{supplier.name}</div>
+                      </td>
+                      <td data-label="رقم الهاتف">
+                        <div dir="ltr" className="text-right">{supplier.phone || "-"}</div>
+                      </td>
+                      <td data-label="البريد الإلكتروني">
+                        <div>{supplier.email || "-"}</div>
+                      </td>
+                      <td data-label="العنوان">
+                        <div>{supplier.address || "-"}</div>
+                      </td>
+                      <td data-label="آخر تحديث">
+                        <div>{formatDate(supplier.updatedAt)}</div>
+                      </td>
+                      <td data-label="الإجراءات">
+                        <div className="flex items-center gap-2 justify-end">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(supplier)} className="h-10 w-10 p-0">
                             <Edit size={18} />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(supplier)} className="text-red-600">
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(supplier)} className="text-red-600 h-10 w-10 p-0">
                             <Trash2 size={18} />
                           </Button>
                         </div>
@@ -240,8 +250,8 @@ export default function Suppliers() {
                     </tr>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan={6} className="text-center py-4">
+                  <tr className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
+                    <td colSpan={6} className="text-center py-8 text-gray-500 block md:table-cell">
                       {searchQuery ? "لا توجد نتائج للبحث" : "لا يوجد موردين"}
                     </td>
                   </tr>

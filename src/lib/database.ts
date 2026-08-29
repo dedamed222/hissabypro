@@ -17,6 +17,59 @@ export const isValidUUID = (id: string | null | undefined): boolean => {
 type SnakeToCamelString<S extends string> =
   S extends `${infer T}_${infer U}` ? `${T}${Capitalize<SnakeToCamelString<U>>}` : S;
 
+export class AuthenticationError extends Error {
+  code: string;
+  constructor(message: string, code: string = 'NOT_AUTHENTICATED') {
+    super(message);
+    this.name = 'AuthenticationError';
+    this.code = code;
+  }
+}
+
+/**
+ * Resilient helper to get the authenticated user.
+ * Tries local session first, refreshes if needed, and falls back to network.
+ */
+export async function getAuthenticatedUser() {
+  try {
+    // 1. Try fast local session check
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      // Check if token is close to expiry (e.g., within 60 seconds)
+      const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+      const isExpiredOrClose = expiresAt > 0 && Date.now() > expiresAt - 60000;
+
+      if (isExpiredOrClose) {
+        // Token is expired or close to expiry, force refresh
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshedSession?.user) {
+          return refreshedSession.user;
+        }
+        if (refreshError) {
+          console.warn("Session refresh failed:", refreshError);
+        }
+      } else {
+        // Session is valid and not expiring soon
+        return session.user;
+      }
+    }
+
+    // 2. Fallback to network call if session is missing or refresh failed
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (user) return user;
+
+    // 3. If both fail, throw specific error
+    throw new AuthenticationError(
+      "Not authenticated. Please log in again.",
+      sessionError || userError ? "SESSION_EXPIRED" : "NOT_AUTHENTICATED"
+    );
+  } catch (err: any) {
+    if (err instanceof AuthenticationError) throw err;
+    throw new AuthenticationError(err.message || "Authentication failed");
+  }
+}
+
 // ─── PRODUCTS ────────────────────────────────────────────────────────────────
 
 export async function getProducts() {
@@ -44,11 +97,10 @@ export async function upsertProduct(product: {
   barcode?: string;
   sold?: number;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
-  const payload: any = { 
-    ...product, 
+  const payload: any = {
+    ...product,
     user_id: user.id,
     warehouse_id: isValidUUID(product.warehouse_id) ? product.warehouse_id : null,
     supplier_id: isValidUUID(product.supplier_id) ? product.supplier_id : null,
@@ -57,7 +109,7 @@ export async function upsertProduct(product: {
     photo_url: product.photo_url && product.photo_url.trim() !== "" ? product.photo_url : null,
     barcode: product.barcode && product.barcode.trim() !== "" ? product.barcode : null,
   };
-  
+
   if (!payload.id) {
     // منتج جديد - استخدم insert لضمان توليد المعرف
     delete payload.id;
@@ -96,8 +148,7 @@ export async function insertProducts(products: {
   barcode?: string;
   sold?: number;
 }[]) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   // Remove undefined IDs to allow Supabase to auto-generate UUIDs
   const payload = products.map((p) => {
@@ -107,7 +158,7 @@ export async function insertProducts(products: {
     }
     return item;
   });
-  
+
   const { data, error } = await supabase
     .from("products")
     .insert(payload)
@@ -142,8 +193,7 @@ export async function upsertCustomer(customer: {
   photo_url?: string;
   notes?: string;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   const payload = { ...customer, user_id: user.id };
   const { data, error } = await supabase
@@ -195,8 +245,7 @@ export async function upsertInvoice(invoice: {
   price: number;
   total: number;
 }>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   const { data: inv, error: invErr } = await supabase
     .from("invoices")
@@ -244,8 +293,7 @@ export async function insertDailySale(sale: {
   payment_method?: string;
   remaining_quantity?: number;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   const { data, error } = await supabase
     .from("daily_sales")
@@ -282,8 +330,7 @@ export async function upsertExpense(expense: {
   payment_method?: string;
   reference?: string;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   const { data, error } = await supabase
     .from("expenses")
@@ -319,8 +366,7 @@ export async function upsertSupplier(supplier: {
   photo_url?: string;
   notes?: string;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   const { data, error } = await supabase
     .from("suppliers")
@@ -364,8 +410,7 @@ export async function upsertCreditor(creditor: {
   date?: string;
   status?: 'pending' | 'paid';
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   const payload: any = {
     name: creditor.name,
@@ -392,7 +437,7 @@ export async function upsertCreditor(creditor: {
     .upsert(payload, { onConflict: "id" })
     .select()
     .single();
-    
+
   if (error) {
     console.error("Upsert Creditor Error:", error);
     throw error;
@@ -401,8 +446,7 @@ export async function upsertCreditor(creditor: {
 }
 
 export async function updateCreditorStatus(id: string, status: 'pending' | 'paid') {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   const { data, error } = await supabase
     .from("creditors")
@@ -411,7 +455,7 @@ export async function updateCreditorStatus(id: string, status: 'pending' | 'paid
     .eq("user_id", user.id)
     .select()
     .single();
-    
+
   if (error) {
     console.error("Update Creditor Status Error:", error);
     throw error;
@@ -446,8 +490,7 @@ export async function upsertDebtor(debtor: {
   date?: string;
   status?: 'pending' | 'paid';
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   const payload: any = {
     name: debtor.name,
@@ -480,8 +523,7 @@ export async function upsertDebtor(debtor: {
 }
 
 export async function updateDebtorStatus(id: string, status: 'pending' | 'paid') {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   const { data, error } = await supabase
     .from("debtors")
@@ -490,7 +532,7 @@ export async function updateDebtorStatus(id: string, status: 'pending' | 'paid')
     .eq("user_id", user.id)
     .select()
     .single();
-    
+
   if (error) {
     console.error("Update Debtor Status Error:", error);
     throw error;
@@ -528,8 +570,7 @@ export async function upsertReturn(ret: {
   date?: string;
   invoice_number?: string;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from("returns") as any)
@@ -563,8 +604,7 @@ export async function upsertWarehouse(wh: {
   description?: string;
   is_active?: boolean;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   const { data, error } = await supabase
     .from("warehouses")
@@ -602,8 +642,7 @@ export async function upsertStoreSettings(settings: {
   custom_currencies?: unknown;
   custom_payment_methods?: unknown;
 }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await getAuthenticatedUser();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from("store_settings") as any)
