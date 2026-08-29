@@ -21,9 +21,9 @@ export default function Layout() {
         <Header />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-white/95 via-blue-50/20 to-indigo-50/30 backdrop-blur-sm">
-          {/* pb-24 leaves room for the mobile bottom nav bar and safe area */}
-          <div className="w-full h-full pb-24 lg:pb-0">
-            <div className="animate-fade-in h-full">
+          {/* pb-32 leaves room for the mobile bottom nav bar and safe area */}
+          <div className="w-full min-h-full pb-32 lg:pb-6">
+            <div className="animate-fade-in min-h-full">
               <Outlet />
             </div>
           </div>
