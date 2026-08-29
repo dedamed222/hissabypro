@@ -55,7 +55,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
     >
       {/* Letterhead / Background Logo */}
       {storeInfo.photoUrl && (
-        <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center">
+        <div className="print-bg-container absolute inset-0 z-0 pointer-events-none flex items-center justify-center">
           <img
             src={storeInfo.photoUrl}
             alt="Letterhead Background"
@@ -73,9 +73,20 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
         </div>
       )}
 
-      <div className="relative z-10 p-8 print:p-6 flex flex-col h-full bg-white/80 print:bg-transparent">
-        {/* Header Section */}
-        <div className="flex justify-between items-start mb-6 mt-32 print:mt-36">
+      <table className="w-full relative z-10 border-collapse">
+        <thead>
+          <tr>
+            <td>
+              {/* Spacer for header */}
+              <div className="h-32 print:h-40"></div>
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="px-8 pb-8 print:px-10 print:pb-0 bg-white/80 print:bg-transparent align-top">
+              {/* Header Section */}
+              <div className="flex justify-between items-start mb-6">
           {/* Company Info */}
           <div className="flex flex-col gap-2 max-w-[50%]">
             <div>
@@ -242,7 +253,19 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
             </div>
           </div>
         </div>
-      </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td>
+              {/* Spacer for footer */}
+              <div className="h-10 print:h-32"></div>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
 
       <style>{`
         @media print {
@@ -264,13 +287,22 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
             min-height: 100vh !important;
             page-break-after: always;
           }
+          .print-bg-container {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: -1 !important;
+          }
           .letterhead-bg {
-            object-fit: contain !important;
-            object-position: top center !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: fill !important;
           }
         }
       `}</style>
-    </div>
+    </div >
   );
 };
 
