@@ -12,7 +12,8 @@ import {
     upsertCreditor,
     upsertDebtor,
     upsertWarehouse,
-    upsertReturn
+    upsertReturn,
+    upsertStoreSettings
 } from "@/lib/database";
 
 export function useAutoSync() {
@@ -221,6 +222,20 @@ export function useAutoSync() {
                         invoice_number: r.invoiceNumber
                     }))
                 );
+
+                // 11. Sync Settings & Company Profile
+                if (storeData.storeInfo || storeData.settings) {
+                    await upsertStoreSettings({
+                        store_name: storeData.storeInfo?.name,
+                        store_phone: storeData.storeInfo?.phone,
+                        store_email: storeData.storeInfo?.email,
+                        store_photo_url: storeData.storeInfo?.photoUrl,
+                        currency: storeData.settings?.currency,
+                        locale: storeData.settings?.locale,
+                        custom_currencies: storeData.settings?.customCurrencies,
+                        custom_payment_methods: storeData.settings?.customPaymentMethods,
+                    });
+                }
 
                 toast({
                     title: "اكتملت المزامنة",

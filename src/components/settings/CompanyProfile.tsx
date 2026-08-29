@@ -12,6 +12,9 @@ import { Loader2, Upload, Store, X, FileText, Image as ImageIcon } from "lucide-
 import { loadStoreData, saveStoreData } from "@/utils/localStorage";
 import { useDropzone } from "react-dropzone";
 import * as pdfjsLib from "pdfjs-dist";
+import { getStoreSettings, upsertStoreSettings } from "@/lib/database";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.mjs`;
@@ -34,16 +37,42 @@ export function CompanyProfile() {
         },
     });
 
-    useEffect(() => {
-        const data = loadStoreData();
-        if (data.storeInfo) {
-            form.reset({
-                name: data.storeInfo.name || "",
-                photoUrl: data.storeInfo.photoUrl || "",
-            });
-            setPreviewUrl(data.storeInfo.photoUrl || "");
+    const { isAuthenticated, user } = useAuth();
+
+    const loadCompanyInfo = useCallback(async () => {
+        try {
+            const data = loadStoreData();
+
+            // Default to local storage
+            let name = data.storeInfo?.name || "";
+            let photoUrl = data.storeInfo?.photoUrl || "";
+
+            // Override with Supabase if authenticated
+            if (isAuthenticated) {
+                const dbSettings = await getStoreSettings();
+                if (dbSettings) {
+                    name = dbSettings.store_name || name;
+                    photoUrl = dbSettings.store_photo_url || photoUrl;
+
+                    // Update local storage
+                    data.storeInfo = { ...data.storeInfo, name, photoUrl };
+                    saveStoreData(data);
+                }
+            }
+
+            form.reset({ name, photoUrl });
+            setPreviewUrl(photoUrl);
+        } catch (error) {
+            console.error("Error loading company info:", error);
         }
-    }, [form]);
+    }, [isAuthenticated, form]);
+
+    useEffect(() => {
+        loadCompanyInfo();
+    }, [loadCompanyInfo]);
+
+    // Real-time sync: reload company info when changed on another device
+    useRealtimeSync(['store_settings'], loadCompanyInfo, user?.id);
 
     const processPDF = async (file: File): Promise<string> => {
         try {
@@ -153,6 +182,13 @@ export function CompanyProfile() {
                 photoUrl: values.photoUrl || "",
             };
             saveStoreData(data);
+
+            if (isAuthenticated) {
+                await upsertStoreSettings({
+                    store_name: values.name,
+                    store_photo_url: values.photoUrl || "",
+                });
+            }
 
             toast({
                 title: "تم التحديث بنجاح",
