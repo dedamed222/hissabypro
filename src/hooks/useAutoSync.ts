@@ -335,6 +335,13 @@ export function useAutoSync() {
                             quantity: item.quantity,
                             price: item.price,
                             total: item.total
+                        })) || [],
+                        products: inv.invoice_items?.map((item: any) => ({
+                            productId: item.product_id,
+                            productName: item.product_name,
+                            quantity: item.quantity,
+                            price: item.price,
+                            total: item.total
                         })) || []
                     });
 
@@ -464,12 +471,12 @@ export function useAutoSync() {
                         newStoreData.settings = {
                             currency: dbSettings.currency || "MRU",
                             locale: (dbSettings.locale as "ar" | "fr") || "ar",
-                            customCurrencies: dbSettings.custom_currencies || [],
-                            customPaymentMethods: dbSettings.custom_payment_methods || [],
+                            customCurrencies: (dbSettings.custom_currencies as any[]) || [],
+                            customPaymentMethods: (dbSettings.custom_payment_methods as any[]) || [],
                         };
                     }
 
-                    saveStoreData(newStoreData);
+                    saveStoreData(newStoreData as any);
 
                     // Trigger a storage event to update UI components that rely on localStorage
                     window.dispatchEvent(new Event('storage'));
@@ -478,6 +485,8 @@ export function useAutoSync() {
                         title: "اكتملت المزامنة",
                         description: "تم تحديث البيانات بنجاح.",
                     });
+
+                } // end if (hasData)
 
                 } catch (error) {
                     console.error("Auto sync failed:", error);

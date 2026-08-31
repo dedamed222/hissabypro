@@ -1,0 +1,103 @@
+
+> vite_react_shadcn_ts@0.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 3776 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mregisterSW.js                           [39m[1m[2m  0.13 kB[22m[1m[22m
+[2mdist/[22m[32mmanifest.webmanifest                    [39m[1m[2m  0.35 kB[22m[1m[22m
+[2mdist/[22m[32mindex.html                              [39m[1m[2m  2.11 kB[22m[1m[22m[2m │ gzip:   0.86 kB[22m
+[2mdist/[22m[35massets/index-BS3WUMwF.css               [39m[1m[2m115.22 kB[22m[1m[22m[2m │ gzip:  18.97 kB[22m
+[2mdist/[22m[36massets/index-BdQq_4o_.js                [39m[1m[2m  0.06 kB[22m[1m[22m[2m │ gzip:   0.08 kB[22m
+[2mdist/[22m[36massets/index-CRlE7Y7f.js                [39m[1m[2m  0.23 kB[22m[1m[22m[2m │ gzip:   0.17 kB[22m
+[2mdist/[22m[36massets/chevron-up-vSV6nPq2.js           [39m[1m[2m  0.30 kB[22m[1m[22m[2m │ gzip:   0.25 kB[22m
+[2mdist/[22m[36massets/chevron-down-DdbHJVnz.js         [39m[1m[2m  0.30 kB[22m[1m[22m[2m │ gzip:   0.24 kB[22m
+[2mdist/[22m[36massets/chevron-left-D3bDT4uH.js         [39m[1m[2m  0.30 kB[22m[1m[22m[2m │ gzip:   0.25 kB[22m
+[2mdist/[22m[36massets/loader-circle-BPMgm6KH.js        [39m[1m[2m  0.31 kB[22m[1m[22m[2m │ gzip:   0.26 kB[22m
+[2mdist/[22m[36massets/plus-BqCxvlsv.js                 [39m[1m[2m  0.32 kB[22m[1m[22m[2m │ gzip:   0.25 kB[22m
+[2mdist/[22m[36massets/filter-Brx3G4Z8.js               [39m[1m[2m  0.33 kB[22m[1m[22m[2m │ gzip:   0.26 kB[22m
+[2mdist/[22m[36massets/arrow-right-DceFxF0n.js          [39m[1m[2m  0.33 kB[22m[1m[22m[2m │ gzip:   0.26 kB[22m
+[2mdist/[22m[36massets/circle-check-Ch5wxJbC.js         [39m[1m[2m  0.34 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2mdist/[22m[36massets/clock-CALHcfX8.js                [39m[1m[2m  0.35 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2mdist/[22m[36massets/circle-check-big-DMFMJITk.js     [39m[1m[2m  0.36 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2mdist/[22m[36massets/user-mZ8ckm0Y.js                 [39m[1m[2m  0.37 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2mdist/[22m[36massets/rotate-ccw-C0ghK_vU.js           [39m[1m[2m  0.37 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+[2mdist/[22m[36massets/trending-up-Dt82deV5.js          [39m[1m[2m  0.37 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2mdist/[22m[36massets/trending-down-CRd4KnmR.js        [39m[1m[2m  0.38 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2mdist/[22m[36massets/trash-B861XF58.js                [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2mdist/[22m[36massets/chart-column-DqAYuEA-.js         [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+[2mdist/[22m[36massets/eye-DtO0X-th.js                  [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2mdist/[22m[36massets/upload-nTREiOJW.js               [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2mdist/[22m[36massets/calendar-BpYCCQJ6.js             [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2mdist/[22m[36massets/download-IQIQ3o9F.js             [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2mdist/[22m[36massets/triangle-alert-VHFHjYMS.js       [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2mdist/[22m[36massets/hash-D1MXmOE5.js                 [39m[1m[2m  0.47 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2mdist/[22m[36massets/square-pen-DYUc3zFH.js           [39m[1m[2m  0.49 kB[22m[1m[22m[2m │ gzip:   0.34 kB[22m
+[2mdist/[22m[36massets/printer-DR0lPnyG.js              [39m[1m[2m  0.49 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2mdist/[22m[36massets/save-Cj_31KH7.js                 [39m[1m[2m  0.50 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2mdist/[22m[36massets/trash-2-NjMiKB_5.js              [39m[1m[2m  0.53 kB[22m[1m[22m[2m │ gzip:   0.35 kB[22m
+[2mdist/[22m[36massets/label-DXUabDGo.js                [39m[1m[2m  0.55 kB[22m[1m[22m[2m │ gzip:   0.37 kB[22m
+[2mdist/[22m[36massets/phone-C5dIsUXm.js                [39m[1m[2m  0.56 kB[22m[1m[22m[2m │ gzip:   0.36 kB[22m
+[2mdist/[22m[36massets/input-BospT8zO.js                [39m[1m[2m  0.58 kB[22m[1m[22m[2m │ gzip:   0.35 kB[22m
+[2mdist/[22m[36massets/eye-off-DSFtyza8.js              [39m[1m[2m  0.60 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mdist/[22m[36massets/badge-C0EnVgVo.js                [39m[1m[2m  0.71 kB[22m[1m[22m[2m │ gzip:   0.37 kB[22m
+[2mdist/[22m[36massets/NotFound-tbsRfWLm.js             [39m[1m[2m  0.74 kB[22m[1m[22m[2m │ gzip:   0.43 kB[22m
+[2mdist/[22m[36massets/CustomerSelector-DnSwu0Oe.js     [39m[1m[2m  0.97 kB[22m[1m[22m[2m │ gzip:   0.60 kB[22m
+[2mdist/[22m[36massets/card-CSBKv24u.js                 [39m[1m[2m  0.99 kB[22m[1m[22m[2m │ gzip:   0.37 kB[22m
+[2mdist/[22m[36massets/formatters-dSOwRYns.js           [39m[1m[2m  1.00 kB[22m[1m[22m[2m │ gzip:   0.46 kB[22m
+[2mdist/[22m[36massets/table-PrC01wYp.js                [39m[1m[2m  1.49 kB[22m[1m[22m[2m │ gzip:   0.51 kB[22m
+[2mdist/[22m[36massets/ProductSearch-CIETmEY7.js        [39m[1m[2m  1.97 kB[22m[1m[22m[2m │ gzip:   0.95 kB[22m
+[2mdist/[22m[36massets/backupManager-D_35nDG5.js        [39m[1m[2m  2.83 kB[22m[1m[22m[2m │ gzip:   1.32 kB[22m
+[2mdist/[22m[36massets/progress-CdW0MKFN.js             [39m[1m[2m  2.88 kB[22m[1m[22m[2m │ gzip:   1.35 kB[22m
+[2mdist/[22m[36massets/tabs-C4hUrZiZ.js                 [39m[1m[2m  3.18 kB[22m[1m[22m[2m │ gzip:   1.34 kB[22m
+[2mdist/[22m[36massets/Login-DK6iqpjZ.js                [39m[1m[2m  4.27 kB[22m[1m[22m[2m │ gzip:   1.92 kB[22m
+[2mdist/[22m[36massets/NewProductForm-D8FN77ns.js       [39m[1m[2m  4.28 kB[22m[1m[22m[2m │ gzip:   1.51 kB[22m
+[2mdist/[22m[36massets/useProducts-Hh9qG2lI.js          [39m[1m[2m  4.68 kB[22m[1m[22m[2m │ gzip:   1.83 kB[22m
+[2mdist/[22m[36massets/alert-dialog-CrrVG0KZ.js         [39m[1m[2m  4.73 kB[22m[1m[22m[2m │ gzip:   1.73 kB[22m
+[2mdist/[22m[36massets/Home-Cg5NRb7Z.js                 [39m[1m[2m  4.81 kB[22m[1m[22m[2m │ gzip:   2.13 kB[22m
+[2mdist/[22m[36massets/ExportActions-DVmgoMDp.js        [39m[1m[2m  6.76 kB[22m[1m[22m[2m │ gzip:   2.41 kB[22m
+[2mdist/[22m[36massets/Archive-C5fICJDh.js              [39m[1m[2m  6.84 kB[22m[1m[22m[2m │ gzip:   2.73 kB[22m
+[2mdist/[22m[36massets/dialog-CT7cMOm0.js               [39m[1m[2m  7.23 kB[22m[1m[22m[2m │ gzip:   2.66 kB[22m
+[2mdist/[22m[36massets/Register-BFb_EsUI.js             [39m[1m[2m  7.31 kB[22m[1m[22m[2m │ gzip:   2.62 kB[22m
+[2mdist/[22m[36massets/Suppliers-DU0SU6dp.js            [39m[1m[2m  7.71 kB[22m[1m[22m[2m │ gzip:   2.74 kB[22m
+[2mdist/[22m[36massets/CreditorsOverview-BVcfL4_L.js    [39m[1m[2m  9.25 kB[22m[1m[22m[2m │ gzip:   2.95 kB[22m
+[2mdist/[22m[36massets/DebtorsOverview-o_dc2XL9.js      [39m[1m[2m  9.34 kB[22m[1m[22m[2m │ gzip:   3.19 kB[22m
+[2mdist/[22m[36massets/UnpaidInvoices-DjM_FK2y.js       [39m[1m[2m  9.44 kB[22m[1m[22m[2m │ gzip:   2.74 kB[22m
+[2mdist/[22m[36massets/Expenses--X40RZRJ.js             [39m[1m[2m 10.05 kB[22m[1m[22m[2m │ gzip:   3.10 kB[22m
+[2mdist/[22m[36massets/Customers-DJ1JfbdT.js            [39m[1m[2m 10.98 kB[22m[1m[22m[2m │ gzip:   3.15 kB[22m
+[2mdist/[22m[36massets/Payments-D-HZYhJd.js             [39m[1m[2m 12.34 kB[22m[1m[22m[2m │ gzip:   3.13 kB[22m
+[2mdist/[22m[36massets/Dashboard-BkHO1vlQ.js            [39m[1m[2m 15.66 kB[22m[1m[22m[2m │ gzip:   4.38 kB[22m
+[2mdist/[22m[36massets/Inventory-Bh4_Fvn_.js            [39m[1m[2m 17.49 kB[22m[1m[22m[2m │ gzip:   5.79 kB[22m
+[2mdist/[22m[36massets/Creditors-BRisx9mn.js            [39m[1m[2m 19.00 kB[22m[1m[22m[2m │ gzip:   5.91 kB[22m
+[2mdist/[22m[36massets/CreditorDetails-B3R41hXd.js      [39m[1m[2m 19.31 kB[22m[1m[22m[2m │ gzip:   5.53 kB[22m
+[2mdist/[22m[36massets/AccountStatement-C9s71vmW.js     [39m[1m[2m 19.46 kB[22m[1m[22m[2m │ gzip:   4.91 kB[22m
+[2mdist/[22m[36massets/select-6Kd2qmp6.js               [39m[1m[2m 21.02 kB[22m[1m[22m[2m │ gzip:   7.30 kB[22m
+[2mdist/[22m[36massets/PieChart-8M3_ucoD.js             [39m[1m[2m 25.95 kB[22m[1m[22m[2m │ gzip:   7.03 kB[22m
+[2mdist/[22m[36massets/Products-DxkE4AHG.js             [39m[1m[2m 27.76 kB[22m[1m[22m[2m │ gzip:   7.86 kB[22m
+[2mdist/[22m[36massets/Debtors-BN6NW_1b.js              [39m[1m[2m 28.60 kB[22m[1m[22m[2m │ gzip:   8.05 kB[22m
+[2mdist/[22m[36massets/CreateInvoice-hhg1vLBs.js        [39m[1m[2m 29.96 kB[22m[1m[22m[2m │ gzip:   8.79 kB[22m
+[2mdist/[22m[36massets/Returns-Bfm30ZpS.js              [39m[1m[2m 30.14 kB[22m[1m[22m[2m │ gzip:   9.35 kB[22m
+[2mdist/[22m[36massets/Sales-BKPjUy33.js                [39m[1m[2m 39.96 kB[22m[1m[22m[2m │ gzip:   9.75 kB[22m
+[2mdist/[22m[36massets/types-B9wejLtr.js                [39m[1m[2m 53.35 kB[22m[1m[22m[2m │ gzip:  12.16 kB[22m
+[2mdist/[22m[36massets/popover-DSLuLyAJ.js              [39m[1m[2m 60.59 kB[22m[1m[22m[2m │ gzip:  18.04 kB[22m
+[2mdist/[22m[36massets/ProfessionalInvoice-CBuwy20P.js  [39m[1m[2m 93.32 kB[22m[1m[22m[2m │ gzip:  22.30 kB[22m
+[2mdist/[22m[36massets/BarChart-pr33OntP.js             [39m[1m[2m372.74 kB[22m[1m[22m[2m │ gzip: 102.99 kB[22m
+[2mdist/[22m[36massets/xlsx-CKN5doRT.js                 [39m[1m[2m424.23 kB[22m[1m[22m[2m │ gzip: 141.75 kB[22m
+[2mdist/[22m[36massets/Settings-CX9AGmNK.js             [39m[1m[33m555.89 kB[39m[22m[2m │ gzip: 169.30 kB[22m
+[2mdist/[22m[36massets/index-C8cbxj2v.js                [39m[1m[33m714.90 kB[39m[22m[2m │ gzip: 220.74 kB[22m
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[32m✓ built in 26.88s[39m
+
+PWA v1.3.0
+mode      generateSW
+precache  85 entries (2823.14 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-835c8c05.js

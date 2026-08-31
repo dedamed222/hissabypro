@@ -117,6 +117,7 @@ export default function Sales() {
         error={salesFormData.error}
         isEditing={salesFormData.isEditing}
         handleSubmit={salesFormData.handleSubmit}
+        submitCart={salesFormData.submitCart}
         resetForm={salesFormData.resetForm}
         showProductSearch={showProductSearch}
         setShowProductSearch={setShowProductSearch}
@@ -124,6 +125,10 @@ export default function Sales() {
         setSearchTerm={setSearchTerm}
         filteredProducts={filteredProducts}
         onProductSelect={handleProductSelect}
+        cartItems={salesFormData.cartItems}
+        addToCart={salesFormData.addToCart}
+        removeFromCart={salesFormData.removeFromCart}
+        cartTotal={salesFormData.cartTotal}
       />
 
       <SalesTable

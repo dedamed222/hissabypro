@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/SettingsContext";
 import { getProducts, deleteDailySale } from "@/lib/database";
-import { loadStoreData, saveStoreData, generateId, updateInventoryForSale } from "@/utils/localStorage";
+import { loadStoreData, saveStoreData, generateId } from "@/utils/localStorage";
 import { Product, DailySales, Debtor, Creditor } from "@/types";
 import { useState, useEffect } from "react";
 
@@ -18,6 +18,16 @@ interface SalesFormData {
   customerName: string;
   customerPhone: string;
   customerId?: string;
+  date: string;
+}
+
+export interface CartItem {
+  productId: string;
+  productName: string;
+  productCode: string;
+  unitPrice: number;
+  quantity: number;
+  total: number;
 }
 
 export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void) => {
@@ -33,7 +43,10 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
   const [successfulSale, setSuccessfulSale] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
-  
+
+  // Cart state
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
   const { getAvailablePaymentMethods } = useSettings();
   const { toast } = useToast();
   const { isAuthenticated } = useAuth();
@@ -49,9 +62,10 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
     transactionType: "sale",
     customerName: "",
     customerPhone: "",
-    customerId: ""
+    customerId: "",
+    date: new Date().toISOString().split('T')[0]
   });
-  
+
   useEffect(() => {
     loadProducts();
     loadSales();
@@ -61,7 +75,6 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
     try {
       let mapped: Product[] = [];
       if (isAuthenticated) {
-        // Fetch fresh data from Supabase (single source of truth)
         const rows = await getProducts();
         mapped = rows.map((r: any) => ({
           id: r.id,
@@ -86,9 +99,8 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
         mapped = storeData.products || [];
       }
 
-      setProducts(mapped); // No more filtering zero-quantity products
+      setProducts(mapped);
 
-      // Sync back to localStorage so the rest of the app is consistent
       const storeDataByAfterFetch = loadStoreData();
       storeDataByAfterFetch.products = mapped;
       saveStoreData(storeDataByAfterFetch);
@@ -107,18 +119,20 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
 
   const filteredProducts = searchTerm.trim() === ""
     ? products
-    : products.filter(product => 
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        (product.code && product.code.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+    : products.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.code && product.code.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
-  const handleSubmit = async () => {
+  // ─── CART LOGIC ──────────────────────────────────────────────────
+
+  /** Validate current form product fields and add a CartItem */
+  const addToCart = () => {
     if (!formData.productId) {
       setError("يرجى اختيار منتج أولاً");
       return;
     }
 
-    // Find current product data
     const selectedProd = products.find(p => p.id === formData.productId);
     if (!selectedProd) {
       setError("المنتج غير موجود");
@@ -128,6 +142,63 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
     const qty = parseInt(formData.quantity);
     if (isNaN(qty) || qty <= 0) {
       setError("يجب أن تكون الكمية أكبر من صفر");
+      return;
+    }
+
+    const unitPrice = parseFloat(formData.unitPrice);
+    if (isNaN(unitPrice) || unitPrice < 0) {
+      setError("يرجى إدخال سعر صحيح");
+      return;
+    }
+
+    // Calculate already-in-cart quantity for same product
+    const alreadyInCart = cartItems
+      .filter(i => i.productId === formData.productId)
+      .reduce((sum, i) => sum + i.quantity, 0);
+
+    if (qty + alreadyInCart > selectedProd.quantity) {
+      setError(`الكمية المتاحة (${selectedProd.quantity}) غير كافية، لديك بالفعل ${alreadyInCart} في السلة`);
+      return;
+    }
+
+    setError("");
+
+    const newItem: CartItem = {
+      productId: formData.productId,
+      productName: formData.productName,
+      productCode: formData.productCode,
+      unitPrice,
+      quantity: qty,
+      total: unitPrice * qty,
+    };
+
+    setCartItems(prev => [...prev, newItem]);
+
+    // Clear only product fields — keep transaction settings
+    setFormData(prev => ({
+      ...prev,
+      productId: "",
+      productName: "",
+      productCode: "",
+      unitPrice: "",
+      quantity: "1",
+    }));
+    setSearchTerm("");
+  };
+
+  /** Remove a cart item by index */
+  const removeFromCart = (index: number) => {
+    setCartItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  /** Computed cart total */
+  const cartTotal = cartItems.reduce((sum, item) => sum + item.total, 0);
+
+  // ─── SUBMIT CART ──────────────────────────────────────────────────
+
+  const submitCart = async () => {
+    if (cartItems.length === 0) {
+      setError("السلة فارغة، يرجى إضافة منتج أولاً");
       return;
     }
 
@@ -143,37 +214,234 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
       }
     }
 
-    // Only check quantity limits for new sales, not when editing
-    if (!isEditing && qty > selectedProd.quantity) {
-      setError(`الكمية المتاحة (${selectedProd.quantity}) غير كافية`);
-      return;
-    }
-
     setError("");
-    
+
     try {
       const storeData = loadStoreData();
       const now = new Date();
-      const dateStr = now.toISOString().split('T')[0];
-      
+      const dateStr = formData.date || now.toISOString().split('T')[0];
+
+      // Process each cart item
+      for (const item of cartItems) {
+        const productIndex = storeData.products.findIndex(p => p.id === item.productId);
+        if (productIndex === -1) continue;
+
+        // Deduct inventory for sales and debts
+        if (formData.transactionType === 'sale' || formData.transactionType === 'debt') {
+          storeData.products[productIndex].quantity -= item.quantity;
+          storeData.products[productIndex].sold = (storeData.products[productIndex].sold || 0) + item.quantity;
+        }
+        storeData.products[productIndex].updatedAt = now.toISOString();
+
+        const newSale: DailySales = {
+          id: generateId(),
+          productId: item.productId,
+          productCode: item.productCode,
+          productName: item.productName,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+          remainingQuantity: storeData.products[productIndex].quantity,
+          total: item.total,
+          paymentMethod: formData.paymentMethod,
+          date: dateStr,
+          totalSales: item.total,
+          createdAt: now.toISOString(),
+        };
+
+        storeData.dailySales = [...storeData.dailySales, newSale];
+
+        // Sync product inventory to Supabase
+        if (formData.transactionType === 'sale' || formData.transactionType === 'debt') {
+          try {
+            const { upsertProduct } = await import("@/lib/database");
+            const currentProduct = storeData.products[productIndex];
+            await upsertProduct({
+              id: currentProduct.id?.length === 36 ? currentProduct.id : undefined,
+              code: currentProduct.code,
+              name: currentProduct.name,
+              description: currentProduct.description || undefined,
+              price: currentProduct.price,
+              cost: currentProduct.cost,
+              quantity: currentProduct.quantity,
+              low_stock_threshold: currentProduct.lowStockThreshold || 0,
+              category: currentProduct.category || undefined,
+              supplier_id: currentProduct.supplierId || undefined,
+              warehouse_id: currentProduct.warehouseId || undefined,
+              photo_url: currentProduct.photoUrl || undefined,
+              barcode: currentProduct.barcode || undefined,
+              sold: currentProduct.sold || 0
+            });
+          } catch (err) {
+            console.error("Failed to sync inventory to DB during sale", err);
+          }
+        }
+      }
+
+      // Create a single Debtor or Creditor record for the whole cart
+      if (formData.transactionType === 'debt') {
+        const productsList = cartItems.map(i => ({
+          productCode: i.productCode,
+          productName: i.productName,
+          quantity: i.quantity,
+          price: i.unitPrice,
+          total: i.total,
+        }));
+
+        const newDebtor: Debtor = {
+          id: generateId(),
+          name: formData.customerName,
+          customer_id: formData.customerId,
+          phone: formData.customerPhone,
+          totalAmount: cartTotal,
+          date: dateStr,
+          createdAt: now.toISOString(),
+          productCode: cartItems.map(i => i.productCode).join(', '),
+          productName: cartItems.map(i => i.productName).join(', '),
+          quantity: cartItems.reduce((s, i) => s + i.quantity, 0),
+          productPrice: cartTotal,
+        };
+        storeData.debtors = [...(storeData.debtors || []), newDebtor];
+
+        try {
+          const { upsertDebtor } = await import("@/lib/database");
+          await upsertDebtor({
+            id: newDebtor.id.length === 36 ? newDebtor.id : undefined,
+            name: newDebtor.name,
+            customer_id: newDebtor.customer_id,
+            phone: newDebtor.phone,
+            total_amount: newDebtor.totalAmount,
+            date: newDebtor.date,
+            notes: `بيع: ${cartItems.map(i => i.productName).join(' + ')}`,
+            products: productsList,
+          });
+        } catch (err) {
+          console.error("Failed to sync debtor to DB", err);
+        }
+
+      } else if (formData.transactionType === 'credit') {
+        const newCreditor: Creditor = {
+          id: generateId(),
+          name: formData.customerName,
+          customer_id: formData.customerId,
+          phone: formData.customerPhone,
+          amount: cartTotal,
+          date: dateStr,
+          createdAt: now.toISOString(),
+          productCode: cartItems.map(i => i.productCode).join(', '),
+          productName: cartItems.map(i => i.productName).join(', '),
+          quantity: cartItems.reduce((s, i) => s + i.quantity, 0),
+          price: cartTotal,
+          total: cartTotal,
+        };
+        storeData.creditors = [...(storeData.creditors || []), newCreditor];
+
+        try {
+          const { upsertCreditor } = await import("@/lib/database");
+          await upsertCreditor({
+            id: newCreditor.id.length === 36 ? newCreditor.id : undefined,
+            name: newCreditor.name,
+            customer_id: newCreditor.customer_id,
+            phone: newCreditor.phone,
+            amount: newCreditor.amount,
+            date: newCreditor.date,
+            product_code: newCreditor.productCode,
+            product_name: newCreditor.productName,
+            quantity: newCreditor.quantity,
+            price: newCreditor.price,
+            total: newCreditor.total,
+          });
+        } catch (err) {
+          console.error("Failed to sync creditor to DB", err);
+        }
+      }
+
+      saveStoreData(storeData);
+
+      const transactionTypes = {
+        sale: "بيع",
+        debt: "مديونية",
+        credit: "دائنية"
+      };
+
+      toast({
+        title: `تم تسجيل ${transactionTypes[formData.transactionType as keyof typeof transactionTypes]} بنجاح`,
+        description: `تم تسجيل ${cartItems.length} منتج بمجموع ${cartTotal.toFixed(2)}`
+      });
+
+      setCartItems([]);
+      resetForm();
+      setSuccessfulSale(true);
+      setSuccess(`تم تسجيل ${transactionTypes[formData.transactionType as keyof typeof transactionTypes]} بنجاح`);
+      setTimeout(() => {
+        setSuccess("");
+        setSuccessfulSale(false);
+      }, 3000);
+
+      loadProducts();
+      loadSales();
+      if (onSuccessCallback) {
+        onSuccessCallback();
+      }
+    } catch (err) {
+      console.error("Error recording transaction:", err);
+      setError("حدث خطأ أثناء تسجيل العملية");
+    }
+  };
+
+  // ─── SINGLE-ITEM SUBMIT (kept for edit mode) ─────────────────────
+
+  const handleSubmit = async () => {
+    if (!formData.productId) {
+      setError("يرجى اختيار منتج أولاً");
+      return;
+    }
+
+    const selectedProd = products.find(p => p.id === formData.productId);
+    if (!selectedProd) {
+      setError("المنتج غير موجود");
+      return;
+    }
+
+    const qty = parseInt(formData.quantity);
+    if (isNaN(qty) || qty <= 0) {
+      setError("يجب أن تكون الكمية أكبر من صفر");
+      return;
+    }
+
+    if (formData.transactionType !== 'sale') {
+      if (!formData.customerName.trim()) {
+        setError("يرجى إدخال اسم العميل");
+        return;
+      }
+      if (!formData.customerPhone.trim()) {
+        setError("يرجى إدخال رقم الهاتف");
+        return;
+      }
+    }
+
+    setError("");
+
+    try {
+      const storeData = loadStoreData();
+      const now = new Date();
+      const dateStr = formData.date || now.toISOString().split('T')[0];
+
       const unitPrice = parseFloat(formData.unitPrice);
-      
-      // For editing, we need to restore the previous quantity first
+
       if (isEditing && editingSaleId) {
-        // ... keep existing code (editing logic)
         const oldSale = storeData.dailySales.find(sale => sale.id === editingSaleId);
         if (oldSale) {
           const productIndex = storeData.products.findIndex(p => p.id === oldSale.productId);
           if (productIndex !== -1) {
             storeData.products[productIndex].quantity += oldSale.quantity || 0;
-            
+
             if (qty > storeData.products[productIndex].quantity) {
               setError(`الكمية المتاحة (${storeData.products[productIndex].quantity}) غير كافية بعد التعديل`);
               return;
             }
             storeData.products[productIndex].quantity -= qty;
             storeData.products[productIndex].updatedAt = now.toISOString();
-            
+
             const updatedSales = storeData.dailySales.map(sale => {
               if (sale.id === editingSaleId) {
                 return {
@@ -186,14 +454,15 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
                   remainingQuantity: storeData.products[productIndex].quantity,
                   total: unitPrice * qty,
                   paymentMethod: formData.paymentMethod,
+                  date: dateStr,
                 };
               }
               return sale;
             });
-            
+
             storeData.dailySales = updatedSales;
             saveStoreData(storeData);
-            
+
             try {
               const { upsertProduct } = await import("@/lib/database");
               const currentProduct = storeData.products[productIndex];
@@ -216,195 +485,32 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
             } catch (err) {
               console.error("Failed to sync inventory to DB during edit", err);
             }
-            
+
             toast({
               title: "تم التحديث بنجاح",
               description: `تم تعديل بيانات البيع بنجاح`
             });
-            
+
             resetForm();
             loadProducts();
             loadSales();
             if (onSuccessCallback) {
               onSuccessCallback();
             }
-            return;
           }
-        }
-      } else {
-        // This is a new transaction
-        const productIndex = storeData.products.findIndex(p => p.id === formData.productId);
-        if (productIndex !== -1) {
-          // Only update inventory for sales and debts, not credits
-          if (formData.transactionType === 'sale' || formData.transactionType === 'debt') {
-            storeData.products[productIndex].quantity -= qty;
-            storeData.products[productIndex].sold = (storeData.products[productIndex].sold || 0) + qty;
-          }
-          storeData.products[productIndex].updatedAt = now.toISOString();
-          
-          // Create the new daily sale record
-          const newSale: DailySales = {
-            id: generateId(),
-            productId: formData.productId,
-            productCode: formData.productCode,
-            productName: formData.productName,
-            unitPrice: unitPrice,
-            quantity: qty,
-            remainingQuantity: storeData.products[productIndex].quantity,
-            total: unitPrice * qty,
-            paymentMethod: formData.paymentMethod,
-            date: dateStr,
-            totalSales: unitPrice * qty,
-            createdAt: now.toISOString(),
-          };
-
-          storeData.dailySales = [...storeData.dailySales, newSale];
-
-          // Handle debt/credit records
-          if (formData.transactionType === 'debt') {
-            const newDebtor: Debtor = {
-              id: generateId(),
-              name: formData.customerName,
-              customer_id: formData.customerId,
-              phone: formData.customerPhone,
-              totalAmount: unitPrice * qty,
-              date: dateStr,
-              createdAt: now.toISOString(),
-              productCode: formData.productCode,
-              productName: formData.productName,
-              quantity: qty,
-              productPrice: unitPrice
-            };
-            storeData.debtors = [...(storeData.debtors || []), newDebtor];
-
-            // ⚡ Sync Debtor to Supabase
-            try {
-              const { upsertDebtor } = await import("@/lib/database");
-              await upsertDebtor({
-                id: newDebtor.id.length === 36 ? newDebtor.id : undefined,
-                name: newDebtor.name,
-                customer_id: newDebtor.customer_id,
-                phone: newDebtor.phone,
-                total_amount: newDebtor.totalAmount,
-                date: newDebtor.date,
-                notes: `بيع: ${formData.productName}`,
-                products: [{
-                  productCode: formData.productCode,
-                  productName: formData.productName,
-                  quantity: qty,
-                  price: unitPrice,
-                  total: unitPrice * qty
-                }]
-              });
-            } catch (err) {
-              console.error("Failed to sync debtor to DB", err);
-            }
-
-          } else if (formData.transactionType === 'credit') {
-            const newCreditor: Creditor = {
-              id: generateId(),
-              name: formData.customerName,
-              customer_id: formData.customerId,
-              phone: formData.customerPhone,
-              amount: unitPrice * qty,
-              date: dateStr,
-              createdAt: now.toISOString(),
-              productCode: formData.productCode,
-              productName: formData.productName,
-              quantity: qty,
-              price: unitPrice,
-              total: unitPrice * qty
-            };
-            storeData.creditors = [...(storeData.creditors || []), newCreditor];
-
-            // ⚡ Sync Creditor to Supabase
-            try {
-              const { upsertCreditor } = await import("@/lib/database");
-              await upsertCreditor({
-                id: newCreditor.id.length === 36 ? newCreditor.id : undefined,
-                name: newCreditor.name,
-                customer_id: newCreditor.customer_id,
-                phone: newCreditor.phone,
-                amount: newCreditor.amount,
-                date: newCreditor.date,
-                product_code: newCreditor.productCode,
-                product_name: newCreditor.productName,
-                quantity: newCreditor.quantity,
-                price: newCreditor.price,
-                total: newCreditor.total
-              });
-            } catch (err) {
-              console.error("Failed to sync creditor to DB", err);
-            }
-          }
-          
-          saveStoreData(storeData);
-          
-          if (formData.transactionType === 'sale' || formData.transactionType === 'debt') {
-            try {
-              const { upsertProduct } = await import("@/lib/database");
-              const currentProduct = storeData.products[productIndex];
-              await upsertProduct({
-                id: currentProduct.id?.length === 36 ? currentProduct.id : undefined,
-                code: currentProduct.code,
-                name: currentProduct.name,
-                description: currentProduct.description || undefined,
-                price: currentProduct.price,
-                cost: currentProduct.cost,
-                quantity: currentProduct.quantity,
-                low_stock_threshold: currentProduct.lowStockThreshold || 0,
-                category: currentProduct.category || undefined,
-                supplier_id: currentProduct.supplierId || undefined,
-                warehouse_id: currentProduct.warehouseId || undefined,
-                photo_url: currentProduct.photoUrl || undefined,
-                barcode: currentProduct.barcode || undefined,
-                sold: currentProduct.sold || 0
-              });
-            } catch (err) {
-              console.error("Failed to sync inventory to DB during sale", err);
-            }
-          }
-          
-          // Show success toast based on transaction type
-          const transactionTypes = {
-            sale: "بيع",
-            debt: "مديونية",
-            credit: "دائنية"
-          };
-          
-          toast({
-            title: `تم تسجيل ${transactionTypes[formData.transactionType as keyof typeof transactionTypes]} بنجاح`,
-            description: `تم ${formData.transactionType === 'sale' ? 'بيع' : 'تسجيل'} ${qty} وحدة من ${formData.productName}`
-          });
-          
-          resetForm();
-          setSuccessfulSale(true);
-          
-          setSuccess(`تم تسجيل ${transactionTypes[formData.transactionType as keyof typeof transactionTypes]} بنجاح`);
-          setTimeout(() => {
-            setSuccess("");
-            setSuccessfulSale(false);
-          }, 3000);
-          
-          loadProducts();
-          loadSales();
-          if (onSuccessCallback) {
-            onSuccessCallback();
-          }
-        } else {
-          setError("لم يتم العثور على المنتج في المخزون");
         }
       }
     } catch (err) {
-      console.error("Error recording transaction:", err);
-      setError("حدث خطأ أثناء تسجيل العملية");
+      console.error("Error updating sale:", err);
+      setError("حدث خطأ أثناء تعديل البيع");
     }
   };
 
   const handleEdit = (sale: DailySales) => {
     setIsEditing(true);
     setEditingSaleId(sale.id);
-    
+    setCartItems([]); // Clear cart when entering edit mode
+
     setFormData({
       productId: sale.productId || "",
       productName: sale.productName || "",
@@ -414,7 +520,8 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
       paymentMethod: sale.paymentMethod || "cash",
       transactionType: "sale",
       customerName: "",
-      customerPhone: ""
+      customerPhone: "",
+      date: sale.date || new Date().toISOString().split('T')[0]
     });
   };
 
@@ -428,7 +535,8 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
       paymentMethod: "cash",
       transactionType: "sale",
       customerName: "",
-      customerPhone: ""
+      customerPhone: "",
+      date: new Date().toISOString().split('T')[0]
     });
     setSelectedProduct(null);
     setQuantity(1);
@@ -440,27 +548,27 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
   const handleDeleteSale = async (saleId: string) => {
     try {
       const storeData = loadStoreData();
-      
+
       const saleToDelete = storeData.dailySales.find(sale => sale.id === saleId);
-      
+
       if (!saleToDelete) {
         setError("لم يتم العثور على السجل");
         return;
       }
-      
+
       if (saleToDelete.productId) {
         const productIndex = storeData.products.findIndex(p => p.id === saleToDelete.productId);
-        
+
         if (productIndex !== -1) {
           storeData.products[productIndex].quantity += saleToDelete.quantity || 0;
-          
+
           storeData.products[productIndex].sold = Math.max(
-            0, 
+            0,
             (storeData.products[productIndex].sold || 0) - (saleToDelete.quantity || 0)
           );
-          
+
           storeData.products[productIndex].updatedAt = new Date().toISOString();
-          
+
           try {
             const { upsertProduct } = await import("@/lib/database");
             const currentProduct = storeData.products[productIndex];
@@ -485,7 +593,7 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
           }
         }
       }
-      
+
       try {
         if (saleToDelete.id?.length === 36) {
           await deleteDailySale(saleToDelete.id);
@@ -496,15 +604,15 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
 
       storeData.dailySales = storeData.dailySales.filter(sale => sale.id !== saleId);
       saveStoreData(storeData);
-      
+
       toast({
         title: "تم الحذف بنجاح",
         description: "تم حذف البيع واسترجاع الكمية إلى المخزون"
       });
-      
+
       loadProducts();
       loadSales();
-      
+
     } catch (err) {
       console.error("Error deleting sale:", err);
       setError("حدث خطأ أثناء حذف البيع");
@@ -567,8 +675,13 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
     formData,
     setFormData,
     handleSubmit,
+    submitCart,
+    cartItems,
+    addToCart,
+    removeFromCart,
+    cartTotal,
     isEditing,
     resetForm,
-    handleEdit
+    handleEdit,
   };
 };

@@ -11,31 +11,33 @@ import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persi
 import { get, set, del } from "idb-keyval";
 import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
 
-// Pages
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import NotFound from "./pages/NotFound";
+import { Suspense, lazy } from "react";
+
+// Pages (Lazy Loaded)
+const Home = lazy(() => import("./pages/Home"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 import Layout from "./components/layout/Layout";
-import Dashboard from "./pages/Dashboard";
-import Products from "./pages/Products";
-import Inventory from "./pages/Inventory";
-import Customers from "./pages/Customers";
-import CreateInvoice from "./pages/CreateInvoice";
-import Sales from "./pages/Sales";
-import Suppliers from "./pages/Suppliers";
-import Expenses from "./pages/Expenses";
-import Returns from "./pages/Returns";
-import Debtors from "./pages/Debtors";
-import DebtorsOverview from "./pages/DebtorsOverview";
-import Creditors from "./pages/Creditors";
-import CreditorDetails from "./pages/CreditorDetails";
-import CreditorsOverview from "./pages/CreditorsOverview";
-import Archive from "./pages/Archive";
-import Settings from "./pages/Settings";
-import AccountStatement from "./pages/AccountStatement";
-import Payments from "./pages/Payments";
-import UnpaidInvoices from "./pages/UnpaidInvoices";
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Products = lazy(() => import("./pages/Products"));
+const Inventory = lazy(() => import("./pages/Inventory"));
+const Customers = lazy(() => import("./pages/Customers"));
+const CreateInvoice = lazy(() => import("./pages/CreateInvoice"));
+const Sales = lazy(() => import("./pages/Sales"));
+const Suppliers = lazy(() => import("./pages/Suppliers"));
+const Expenses = lazy(() => import("./pages/Expenses"));
+const Returns = lazy(() => import("./pages/Returns"));
+const Debtors = lazy(() => import("./pages/Debtors"));
+const DebtorsOverview = lazy(() => import("./pages/DebtorsOverview"));
+const Creditors = lazy(() => import("./pages/Creditors"));
+const CreditorDetails = lazy(() => import("./pages/CreditorDetails"));
+const CreditorsOverview = lazy(() => import("./pages/CreditorsOverview"));
+const Archive = lazy(() => import("./pages/Archive"));
+const Settings = lazy(() => import("./pages/Settings"));
+const AccountStatement = lazy(() => import("./pages/AccountStatement"));
+const Payments = lazy(() => import("./pages/Payments"));
+const UnpaidInvoices = lazy(() => import("./pages/UnpaidInvoices"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,37 +68,39 @@ const App = () => {
                 <OfflineIndicator />
                 <Toaster />
                 <Sonner />
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
+                <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-arab-blue"></div></div>}>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
 
-                  {/* Protected routes */}
-                  <Route path="/" element={<Layout />}>
-                    <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="products" element={<Products />} />
-                    <Route path="inventory" element={<Inventory />} />
-                    <Route path="customers" element={<Customers />} />
-                    <Route path="create-invoice" element={<CreateInvoice />} />
-                    <Route path="sales" element={<Sales />} />
-                    <Route path="suppliers" element={<Suppliers />} />
-                    <Route path="expenses" element={<Expenses />} />
-                    <Route path="returns" element={<Returns />} />
-                    <Route path="debtors" element={<Debtors />} />
-                    <Route path="debtors/overview" element={<DebtorsOverview />} />
-                    <Route path="creditors" element={<Creditors />} />
-                    <Route path="creditors/overview" element={<CreditorsOverview />} />
-                    <Route path="creditors/:name" element={<CreditorDetails />} />
-                    <Route path="archive" element={<Archive />} />
-                    <Route path="settings" element={<Settings />} />
-                    <Route path="account-statement" element={<AccountStatement />} />
-                    <Route path="payments" element={<Payments />} />
-                    <Route path="unpaid-invoices" element={<UnpaidInvoices />} />
-                  </Route>
+                    {/* Protected routes */}
+                    <Route path="/" element={<Layout />}>
+                      <Route path="dashboard" element={<Dashboard />} />
+                      <Route path="products" element={<Products />} />
+                      <Route path="inventory" element={<Inventory />} />
+                      <Route path="customers" element={<Customers />} />
+                      <Route path="create-invoice" element={<CreateInvoice />} />
+                      <Route path="sales" element={<Sales />} />
+                      <Route path="suppliers" element={<Suppliers />} />
+                      <Route path="expenses" element={<Expenses />} />
+                      <Route path="returns" element={<Returns />} />
+                      <Route path="debtors" element={<Debtors />} />
+                      <Route path="debtors/overview" element={<DebtorsOverview />} />
+                      <Route path="creditors" element={<Creditors />} />
+                      <Route path="creditors/overview" element={<CreditorsOverview />} />
+                      <Route path="creditors/:name" element={<CreditorDetails />} />
+                      <Route path="archive" element={<Archive />} />
+                      <Route path="settings" element={<Settings />} />
+                      <Route path="account-statement" element={<AccountStatement />} />
+                      <Route path="payments" element={<Payments />} />
+                      <Route path="unpaid-invoices" element={<UnpaidInvoices />} />
+                    </Route>
 
-                  {/* 404 route */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                    {/* 404 route */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
               </SettingsProvider>
             </AppProvider>
           </AuthProvider>
