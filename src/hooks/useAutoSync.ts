@@ -233,16 +233,20 @@ export function useAutoSync() {
 
                     // 11. Sync Settings & Company Profile
                     if (storeData.storeInfo || storeData.settings) {
-                        await upsertStoreSettings({
-                            store_name: storeData.storeInfo?.name,
-                            store_phone: storeData.storeInfo?.phone,
-                            store_email: storeData.storeInfo?.email,
-                            store_photo_url: storeData.storeInfo?.photoUrl,
-                            currency: storeData.settings?.currency,
-                            locale: storeData.settings?.locale,
-                            custom_currencies: storeData.settings?.customCurrencies,
-                            custom_payment_methods: storeData.settings?.customPaymentMethods,
-                        });
+                        try {
+                            await upsertStoreSettings({
+                                store_name: storeData.storeInfo?.name,
+                                store_phone: storeData.storeInfo?.phone,
+                                store_email: storeData.storeInfo?.email,
+                                store_photo_url: storeData.storeInfo?.photoUrl,
+                                currency: storeData.settings?.currency,
+                                locale: storeData.settings?.locale,
+                                custom_currencies: storeData.settings?.customCurrencies,
+                                custom_payment_methods: storeData.settings?.customPaymentMethods,
+                            });
+                        } catch (err) {
+                            console.error("Failed to sync store settings:", err);
+                        }
                     }
 
                     // --- PULL DATA FROM CLOUD TO LOCAL ---
@@ -251,19 +255,7 @@ export function useAutoSync() {
                         description: "جاري جلب البيانات من السحابة...",
                     });
 
-                    const [
-                        dbProducts,
-                        dbCustomers,
-                        dbInvoices,
-                        dbDailySales,
-                        dbExpenses,
-                        dbSuppliers,
-                        dbCreditors,
-                        dbDebtors,
-                        dbReturns,
-                        dbWarehouses,
-                        dbSettings
-                    ] = await Promise.all([
+                    const results = await Promise.allSettled([
                         getProducts(),
                         getCustomers(),
                         getInvoices(),
@@ -276,6 +268,23 @@ export function useAutoSync() {
                         getWarehouses(),
                         getStoreSettings()
                     ]);
+
+                    const getResult = <T,>(index: number, fallback: T): T => {
+                        const res = results[index];
+                        return res.status === 'fulfilled' ? (res.value as T) : fallback;
+                    };
+
+                    const dbProducts = getResult<any[]>(0, []);
+                    const dbCustomers = getResult<any[]>(1, []);
+                    const dbInvoices = getResult<any[]>(2, []);
+                    const dbDailySales = getResult<any[]>(3, []);
+                    const dbExpenses = getResult<any[]>(4, []);
+                    const dbSuppliers = getResult<any[]>(5, []);
+                    const dbCreditors = getResult<any[]>(6, []);
+                    const dbDebtors = getResult<any[]>(7, []);
+                    const dbReturns = getResult<any[]>(8, []);
+                    const dbWarehouses = getResult<any[]>(9, []);
+                    const dbSettings = getResult<any>(10, null);
 
                     // Map DB rows to local format
                     const mapProduct = (p: any) => ({
@@ -488,24 +497,24 @@ export function useAutoSync() {
 
                 } // end if (hasData)
 
-                } catch (error) {
-                    console.error("Auto sync failed:", error);
-                } finally {
-                    isSyncing.current = false;
-                }
-            };
-
-            // Run once on mount if online
-            if (navigator.onLine) {
-                // Small delay to let auth initialize
-                setTimeout(handleSync, 2000);
+            } catch (error) {
+                console.error("Auto sync failed:", error);
+            } finally {
+                isSyncing.current = false;
             }
+        };
 
-            // Listen for online event
-            window.addEventListener('online', handleSync);
+        // Run once on mount if online
+        if (navigator.onLine) {
+            // Small delay to let auth initialize
+            setTimeout(handleSync, 2000);
+        }
 
-            return () => {
-                window.removeEventListener('online', handleSync);
-            };
-        }, [isAuthenticated, toast]);
+        // Listen for online event
+        window.addEventListener('online', handleSync);
+
+        return () => {
+            window.removeEventListener('online', handleSync);
+        };
+    }, [isAuthenticated, toast]);
 }
