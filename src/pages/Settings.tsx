@@ -16,6 +16,8 @@ import { BackupManager } from "@/components/settings/BackupManager";
 import { CloudMigration } from "@/components/settings/CloudMigration";
 import { AccountSettings } from "@/components/settings/AccountSettings";
 import { CompanyProfile } from "@/components/settings/CompanyProfile";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { Bell, BellOff } from "lucide-react";
 
 export default function Settings() {
   const { currency, locale, updateSettings } = useSettings();
@@ -23,10 +25,13 @@ export default function Settings() {
   const t = translations[locale as keyof typeof translations];
   const [newCurrency, setNewCurrency] = useState("");
   const [newLocale, setNewLocale] = useState("");
+  const { subscribe, unsubscribe, getPermissionState, isSupported } = usePushNotifications();
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
 
   useEffect(() => {
     setNewCurrency(currency);
     setNewLocale(locale);
+    getPermissionState().then(setNotifPermission);
   }, [currency, locale]);
 
   const handleSaveSettings = () => {
@@ -85,6 +90,45 @@ export default function Settings() {
                 </Select>
               </div>
               <Button onClick={handleSaveSettings}>حفظ الإعدادات</Button>
+
+              {/* Push Notifications Toggle */}
+              {isSupported() && (
+                <div className="mt-4 pt-4 border-t">
+                  <Label className="block mb-2">إشعارات الهاتف 🔔</Label>
+                  {notifPermission === 'granted' ? (
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-green-600 font-medium">✅ الإشعارات مفعّلة</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          await unsubscribe();
+                          setNotifPermission('default');
+                          toast({ title: "تم إلغاء الإشعارات" });
+                        }}
+                      >
+                        <BellOff className="w-4 h-4 mr-2" />
+                        إلغاء الإشعارات
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={async () => {
+                        const success = await subscribe();
+                        if (success) {
+                          setNotifPermission('granted');
+                          toast({ title: "تم تفعيل الإشعارات!", description: "ستصلك إشعارات لكل عملية بيع أو دين أو نقص في المخزون." });
+                        } else {
+                          toast({ title: "لم يتم تفعيل الإشعارات", description: "يرجى السماح بالإشعارات من إعدادات المتصفح.", variant: "destructive" });
+                        }
+                      }}
+                    >
+                      <Bell className="w-4 h-4 mr-2" />
+                      تفعيل إشعارات الهاتف
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -2,22 +2,24 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { 
-  Edit, 
-  Trash2, 
-  User, 
-  Package, 
-  ChevronDown, 
-  ChevronLeft, 
-  Phone, 
-  DollarSign, 
-  Calendar, 
-  CheckCircle2, 
-  Clock 
+import {
+  Edit,
+  Trash2,
+  User,
+  Package,
+  ChevronDown,
+  ChevronLeft,
+  Phone,
+  DollarSign,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Bell
 } from "lucide-react";
 import type { Debtor } from "@/types";
 import ExportActions from "@/components/shared/ExportActions";
 import { Badge } from "@/components/ui/badge";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface DebtorsListProps {
   debtors: Debtor[];
@@ -30,6 +32,7 @@ interface DebtorsListProps {
 
 const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setDeleteId }: DebtorsListProps) => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const { sendNotification } = usePushNotifications();
 
   const toggleRowExpansion = (debtorId: string) => {
     const newExpandedRows = new Set(expandedRows);
@@ -57,7 +60,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
         totalProducts: 0
       };
     }
-    
+
     // Extract products from this debtor
     let debtorProducts = [];
     if (Array.isArray(debtor.products) && debtor.products.length > 0) {
@@ -90,14 +93,14 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
     } else {
       acc[key].totalAmount += amount;
     }
-    
+
     acc[key].totalProducts += debtorProducts.length;
-    
+
     // Keep the most recent date
     if (new Date(debtor.date || 0) > new Date(acc[key].date || 0)) {
       acc[key].date = debtor.date;
     }
-    
+
     return acc;
   }, {} as Record<string, any>);
 
@@ -106,23 +109,23 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
   const exportColumns = [
     { key: 'name', header: 'اسم المدين' },
     { key: 'phone', header: 'الهاتف' },
-    { 
-      key: 'productsCount', 
+    {
+      key: 'productsCount',
       header: 'عدد المنتجات',
       render: (debtor: Debtor) => String(Array.isArray(debtor.products) ? debtor.products.length : 1)
     },
-    { 
-      key: 'totalAmount', 
+    {
+      key: 'totalAmount',
       header: 'المبلغ المتبقي',
       render: (debtor: Debtor) => formatCurrency(debtor.totalAmount || debtor.amount || 0)
     },
-    { 
-      key: 'status', 
+    {
+      key: 'status',
       header: 'الحالة',
       render: (debtor: Debtor) => debtor.status === 'paid' ? 'تم التسديد' : 'قيد الانتظار'
     },
-    { 
-      key: 'date', 
+    {
+      key: 'date',
       header: 'التاريخ',
       render: (debtor: Debtor) => formatDate(debtor.date)
     },
@@ -156,7 +159,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
             {groupedDebtorsArray.map((debtor: any) => {
               const debtorKey = debtor.id;
               const isExpanded = expandedRows.has(debtorKey);
-              
+
               return (
                 <Card key={debtorKey} className={`border-2 transition-colors ${debtor.totalAmount === 0 ? 'bg-gray-50 border-green-100 opacity-80' : 'hover:border-primary/50'}`}>
                   <CardHeader className="pb-3">
@@ -191,10 +194,10 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         <ExportActions
-                          data={debtor.transactions.flatMap((tx: any) => 
+                          data={debtor.transactions.flatMap((tx: any) =>
                             tx.products.map((product: any) => ({
                               productName: product.productName,
                               productCode: product.productCode,
@@ -211,23 +214,23 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                             { key: 'productName', header: 'اسم المنتج' },
                             { key: 'productCode', header: 'كود المنتج' },
                             { key: 'quantity', header: 'الكمية' },
-                            { 
-                              key: 'price', 
+                            {
+                              key: 'price',
                               header: 'السعر',
                               render: (item: any) => formatCurrency(item.price)
                             },
-                            { 
-                              key: 'total', 
+                            {
+                              key: 'total',
                               header: 'الإجمالي',
                               render: (item: any) => formatCurrency(item.total)
                             },
-                            { 
-                              key: 'status', 
+                            {
+                              key: 'status',
                               header: 'الحالة',
                               render: (item: any) => item.status === 'paid' ? 'تم التسديد' : 'قيد الانتظار'
                             },
-                            { 
-                              key: 'date', 
+                            {
+                              key: 'date',
                               header: 'التاريخ',
                               render: (item: any) => formatDate(item.date)
                             }
@@ -247,7 +250,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            const actualDebtor = debtors.find(d => 
+                            const actualDebtor = debtors.find(d =>
                               (d.name || d.debtorName) === debtor.name && d.phone === debtor.phone
                             );
                             if (actualDebtor) onEdit(actualDebtor);
@@ -256,6 +259,21 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                           disabled={debtor.totalAmount === 0}
                         >
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            sendNotification(
+                              "تذكير بالدين ⏰",
+                              `تذكير: المدين ${debtor.name} عليه مبلغ ${formatCurrency(debtor.totalAmount)}`
+                            );
+                          }}
+                          className="h-8 w-8 p-0 text-amber-500 hover:text-amber-600"
+                          disabled={debtor.totalAmount === 0}
+                          title="إرسال تذكير"
+                        >
+                          <Bell className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -278,7 +296,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                           <div className="font-semibold">{debtor.totalProducts}</div>
                         </div>
                       </div>
-                      
+
                       <div className="flex flex-col md:flex-row items-center gap-2 text-sm justify-center md:justify-start">
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                         <div className="text-center md:text-right">
@@ -288,7 +306,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex flex-col md:flex-row items-center gap-2 text-sm justify-center md:justify-start">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <div className="text-center md:text-right">
@@ -341,7 +359,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                                   </Button>
                                 </div>
                               </div>
-                              
+
                               <div className="space-y-2">
                                 {transaction.products.map((product: any, pIdx: number) => (
                                   <div key={pIdx} className="flex justify-between items-center text-sm bg-white rounded p-2 shadow-sm">
@@ -386,15 +404,15 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
             })}
           </div>
         )}
-        
+
         {deleteId && (
           <div className="fixed z-50 inset-0 flex items-center justify-center bg-black/50">
             <div className="bg-background rounded-lg shadow-xl p-6 flex flex-col gap-4 min-w-[350px] mx-4">
               <h3 className="text-lg font-semibold text-destructive">تأكيد الحذف</h3>
               <p className="text-muted-foreground">هل أنت متأكد من حذف جميع معاملات هذا المدين؟</p>
               <div className="flex gap-3 justify-end">
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   onClick={() => {
                     const debtor = groupedDebtorsArray.find(d => d.id === deleteId);
                     if (debtor) {

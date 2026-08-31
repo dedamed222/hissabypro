@@ -5,6 +5,7 @@ import { getProducts, deleteDailySale } from "@/lib/database";
 import { loadStoreData, saveStoreData, generateId } from "@/utils/localStorage";
 import { Product, DailySales, Debtor, Creditor } from "@/types";
 import { useState, useEffect } from "react";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 // Define SalesFormData interface
 interface SalesFormData {
@@ -48,6 +49,7 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   const { getAvailablePaymentMethods } = useSettings();
+  const { sendNotification } = usePushNotifications();
   const { toast } = useToast();
   const { isAuthenticated } = useAuth();
 
@@ -230,6 +232,15 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
         if (formData.transactionType === 'sale' || formData.transactionType === 'debt') {
           storeData.products[productIndex].quantity -= item.quantity;
           storeData.products[productIndex].sold = (storeData.products[productIndex].sold || 0) + item.quantity;
+
+          // Low stock check
+          const threshold = storeData.products[productIndex].lowStockThreshold || 0;
+          if (storeData.products[productIndex].quantity <= threshold) {
+            sendNotification(
+              "تنبيه: نقص في المخزون ⚠️",
+              `المنتج ${item.productName} وصل إلى الحد الأدنى (${storeData.products[productIndex].quantity} متبقي)`
+            );
+          }
         }
         storeData.products[productIndex].updatedAt = now.toISOString();
 
@@ -369,6 +380,22 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
       });
 
       setCartItems([]);
+      // Trigger sync
+      window.dispatchEvent(new Event('storage'));
+
+      // Send push notification
+      if (formData.transactionType === 'sale') {
+        sendNotification(
+          "عملية بيع جديدة 🛒",
+          `تم بيع ${cartItems.length} منتجات بقيمة ${cartTotal}`
+        );
+      } else if (formData.transactionType === 'debt') {
+        sendNotification(
+          "دين جديد 📝",
+          `تم تسجيل دين على ${formData.customerName} بقيمة ${cartTotal}`
+        );
+      }
+
       resetForm();
       setSuccessfulSale(true);
       setSuccess(`تم تسجيل ${transactionTypes[formData.transactionType as keyof typeof transactionTypes]} بنجاح`);

@@ -53,9 +53,9 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Skip external requests (APIs, CDNs that need fresh data)
-  if (!url.origin.includes(self.location.origin) && 
-      !url.href.includes('fonts.googleapis.com') && 
-      !url.href.includes('fonts.gstatic.com')) {
+  if (!url.origin.includes(self.location.origin) &&
+    !url.href.includes('fonts.googleapis.com') &&
+    !url.href.includes('fonts.gstatic.com')) {
     return;
   }
 
@@ -91,7 +91,7 @@ self.addEventListener('fetch', (event) => {
                 cache.put(request, response);
               });
             }
-          }).catch(() => {});
+          }).catch(() => { });
           return cachedResponse;
         }
 
@@ -127,7 +127,7 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-  
+
   if (event.data && event.data.type === 'CLEAR_CACHE') {
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -136,3 +136,55 @@ self.addEventListener('message', (event) => {
     });
   }
 });
+
+// ─── PUSH NOTIFICATIONS ───────────────────────────────────────────────────────
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch {
+    data = { title: event.data.text(), body: '' };
+  }
+
+  const { title, body, icon, badge, url } = data;
+
+  const options = {
+    body: body || '',
+    icon: icon || '/favicon.ico',
+    badge: badge || '/favicon.ico',
+    dir: 'rtl',
+    lang: 'ar',
+    vibrate: [200, 100, 200],
+    data: { url: url || '/' },
+    requireInteraction: false,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Try to focus existing window
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      // Otherwise open new window
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
+});
+
