@@ -53,16 +53,6 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
       className={`professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans w-full max-w-[210mm] min-h-[297mm] print:max-w-none print:min-h-0 relative overflow-hidden shadow-xl`}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Letterhead / Background Logo */}
-      {storeInfo.photoUrl && (
-        <div className="print-bg-container absolute inset-0 z-0 pointer-events-none flex items-center justify-center">
-          <img
-            src={storeInfo.photoUrl}
-            alt="Letterhead Background"
-            className="letterhead-bg w-full h-full object-cover opacity-100 print:opacity-100"
-          />
-        </div>
-      )}
 
       {/* Status Watermark */}
       {invoice.type !== 'quotation' && (
@@ -89,6 +79,15 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
               <div className="flex justify-between items-start mb-6">
                 {/* Company Info */}
                 <div className="flex flex-col gap-2 max-w-[50%]">
+                  {storeInfo.photoUrl && (
+                    <div className="mb-2">
+                      <img
+                        src={storeInfo.photoUrl}
+                        alt="Company Logo"
+                        className="max-h-24 max-w-full object-contain"
+                      />
+                    </div>
+                  )}
                   <div>
                     {/* Company name removed as per user request */}
                     <div className="text-sm text-gray-800 font-medium space-y-0.5 bg-white/50 p-2 rounded-lg backdrop-blur-sm print:bg-transparent print:p-0">
@@ -285,19 +284,6 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
             height: auto !important;
             min-height: 100vh !important;
             page-break-after: always;
-          }
-          .print-bg-container {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            z-index: -1 !important;
-          }
-          .letterhead-bg {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: fill !important;
           }
         }
       `}</style>
