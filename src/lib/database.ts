@@ -667,12 +667,26 @@ export async function upsertStoreSettings(settings: {
   custom_payment_methods?: unknown;
 }) {
   const user = await getAuthenticatedUser();
+  const existing = await getStoreSettings();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from("store_settings") as any)
-    .upsert({ ...settings, user_id: user.id }, { onConflict: "user_id" })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  if (existing && existing.id) {
+    // Update existing record
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("store_settings") as any)
+      .update(settings)
+      .eq("id", existing.id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  } else {
+    // Insert new record
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.from("store_settings") as any)
+      .insert({ ...settings, user_id: user.id })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
 }
