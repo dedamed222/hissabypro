@@ -93,8 +93,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
             ...loadedSettings,
             currency: dbSettings.currency || loadedSettings.currency,
             locale: (dbSettings.locale as "ar" | "fr") || loadedSettings.locale,
-            customCurrencies: (dbSettings.custom_currencies as Currency[]) || loadedSettings.customCurrencies,
-            customPaymentMethods: (dbSettings.custom_payment_methods as PaymentMethod[]) || loadedSettings.customPaymentMethods,
+            customCurrencies: (dbSettings.custom_currencies as unknown as Currency[]) || loadedSettings.customCurrencies,
+            customPaymentMethods: (dbSettings.custom_payment_methods as unknown as PaymentMethod[]) || loadedSettings.customPaymentMethods,
           };
 
           // Update localStorage with cloud data

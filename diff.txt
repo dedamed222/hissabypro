@@ -1,0 +1,500 @@
+diff --git a/src/hooks/useAutoSync.ts b/src/hooks/useAutoSync.ts
+index c5823de..ab6f26b 100644
+--- a/src/hooks/useAutoSync.ts
++++ b/src/hooks/useAutoSync.ts
+@@ -249,253 +249,253 @@ export function useAutoSync() {
+                         }
+                     }
+ 
+-                    // --- PULL DATA FROM CLOUD TO LOCAL ---
+-                    toast({
+-                        title: "تحديث البيانات",
+-                        description: "جاري جلب البيانات من السحابة...",
+-                    });
+-
+-                    const results = await Promise.allSettled([
+-                        getProducts(),
+-                        getCustomers(),
+-                        getInvoices(),
+-                        getDailySales(),
+-                        getExpenses(),
+-                        getSuppliers(),
+-                        getCreditors(),
+-                        getDebtors(),
+-                        getReturns(),
+-                        getWarehouses(),
+-                        getStoreSettings()
+-                    ]);
+-
+-                    const getResult = <T,>(index: number, fallback: T): T => {
+-                        const res = results[index];
+-                        return res.status === 'fulfilled' ? (res.value as T) : fallback;
++                }
++
++                // --- PULL DATA FROM CLOUD TO LOCAL ---
++                toast({
++                    title: "تحديث البيانات",
++                    description: "جاري جلب البيانات من السحابة...",
++                });
++
++                const results = await Promise.allSettled([
++                    getProducts(),
++                    getCustomers(),
++                    getInvoices(),
++                    getDailySales(),
++                    getExpenses(),
++                    getSuppliers(),
++                    getCreditors(),
++                    getDebtors(),
++                    getReturns(),
++                    getWarehouses(),
++                    getStoreSettings()
++                ]);
++
++                const getResult = <T,>(index: number, fallback: T): T => {
++                    const res = results[index];
++                    return res.status === 'fulfilled' ? (res.value as T) : fallback;
++                };
++
++                const dbProducts = getResult<any[]>(0, []);
++                const dbCustomers = getResult<any[]>(1, []);
++                const dbInvoices = getResult<any[]>(2, []);
++                const dbDailySales = getResult<any[]>(3, []);
++                const dbExpenses = getResult<any[]>(4, []);
++                const dbSuppliers = getResult<any[]>(5, []);
++                const dbCreditors = getResult<any[]>(6, []);
++                const dbDebtors = getResult<any[]>(7, []);
++                const dbReturns = getResult<any[]>(8, []);
++                const dbWarehouses = getResult<any[]>(9, []);
++                const dbSettings = getResult<any>(10, null);
++
++                // Map DB rows to local format
++                const mapProduct = (p: any) => ({
++                    id: p.id,
++                    code: p.code,
++                    name: p.name,
++                    description: p.description,
++                    price: p.price,
++                    cost: p.cost,
++                    quantity: p.quantity,
++                    lowStockThreshold: p.low_stock_threshold,
++                    category: p.category,
++                    supplierId: p.supplier_id,
++                    warehouseId: p.warehouse_id,
++                    photoUrl: p.photo_url,
++                    barcode: p.barcode,
++                    sold: p.sold,
++                    createdAt: p.created_at,
++                    updatedAt: p.updated_at
++                });
++
++                const mapCustomer = (c: any) => ({
++                    id: c.id,
++                    name: c.name,
++                    phone: c.phone,
++                    email: c.email,
++                    address: c.address,
++                    company: c.company,
++                    photoUrl: c.photo_url,
++                    notes: c.notes,
++                    createdAt: c.created_at,
++                    updatedAt: c.updated_at
++                });
++
++                const mapInvoice = (inv: any) => ({
++                    id: inv.id,
++                    invoiceNumber: inv.invoice_number,
++                    customerId: inv.customer_id,
++                    customerName: inv.customer_name,
++                    total: inv.total,
++                    subtotal: inv.subtotal,
++                    discount: inv.discount,
++                    tax: inv.tax,
++                    shippingCost: inv.shipping_cost,
++                    paymentMethod: inv.payment_method,
++                    status: inv.status,
++                    type: inv.type,
++                    dueDate: inv.due_date,
++                    debtType: inv.debt_type,
++                    notes: inv.notes,
++                    date: inv.date,
++                    createdAt: inv.created_at,
++                    updatedAt: inv.updated_at,
++                    items: inv.invoice_items?.map((item: any) => ({
++                        productId: item.product_id,
++                        productName: item.product_name,
++                        quantity: item.quantity,
++                        price: item.price,
++                        total: item.total
++                    })) || [],
++                    products: inv.invoice_items?.map((item: any) => ({
++                        productId: item.product_id,
++                        productName: item.product_name,
++                        quantity: item.quantity,
++                        price: item.price,
++                        total: item.total
++                    })) || []
++                });
++
++                const mapDailySale = (sale: any) => ({
++                    id: sale.id,
++                    date: sale.date,
++                    totalSales: sale.total_sales,
++                    productId: sale.product_id,
++                    productName: sale.product_name,
++                    productCode: sale.product_code,
++                    quantity: sale.quantity,
++                    total: sale.total,
++                    unitPrice: sale.unit_price,
++                    paymentMethod: sale.payment_method,
++                    remainingQuantity: sale.remaining_quantity,
++                    createdAt: sale.created_at
++                });
++
++                const mapExpense = (exp: any) => ({
++                    id: exp.id,
++                    description: exp.description,
++                    amount: exp.amount,
++                    category: exp.category,
++                    date: exp.date,
++                    notes: exp.notes,
++                    paymentMethod: exp.payment_method,
++                    reference: exp.reference,
++                    createdAt: exp.created_at,
++                    updatedAt: exp.updated_at
++                });
++
++                const mapSupplier = (sup: any) => ({
++                    id: sup.id,
++                    name: sup.name,
++                    phone: sup.phone,
++                    email: sup.email,
++                    address: sup.address,
++                    photoUrl: sup.photo_url,
++                    notes: sup.notes,
++                    createdAt: sup.created_at,
++                    updatedAt: sup.updated_at
++                });
++
++                const mapCreditor = (cred: any) => ({
++                    id: cred.id,
++                    name: cred.name,
++                    customer_id: cred.customer_id,
++                    phone: cred.phone,
++                    email: cred.email,
++                    address: cred.address,
++                    amount: cred.amount,
++                    notes: cred.notes,
++                    productCode: cred.product_code,
++                    productName: cred.product_name,
++                    quantity: cred.quantity,
++                    price: cred.price,
++                    total: cred.total,
++                    date: cred.date,
++                    status: cred.status,
++                    createdAt: cred.created_at,
++                    updatedAt: cred.updated_at
++                });
++
++                const mapDebtor = (deb: any) => ({
++                    id: deb.id,
++                    name: deb.name,
++                    customer_id: deb.customer_id,
++                    phone: deb.phone,
++                    totalAmount: deb.total_amount,
++                    products: deb.products,
++                    notes: deb.notes,
++                    date: deb.date,
++                    status: deb.status,
++                    createdAt: deb.created_at,
++                    updatedAt: deb.updated_at
++                });
++
++                const mapReturn = (ret: any) => ({
++                    id: ret.id,
++                    returnNumber: ret.return_number,
++                    invoiceId: ret.invoice_id,
++                    customerId: ret.customer_id,
++                    customerName: ret.customer_name,
++                    products: ret.products,
++                    total: ret.total,
++                    reason: ret.reason,
++                    notes: ret.notes,
++                    status: ret.status,
++                    date: ret.date,
++                    invoiceNumber: ret.invoice_number,
++                    createdAt: ret.created_at,
++                    updatedAt: ret.updated_at
++                });
++
++                const mapWarehouse = (wh: any) => ({
++                    id: wh.id,
++                    name: wh.name,
++                    location: wh.location,
++                    description: wh.description,
++                    isActive: wh.is_active,
++                    createdAt: wh.created_at,
++                    updatedAt: wh.updated_at
++                });
++
++                // Update local storage with cloud data
++                const newStoreData = {
++                    ...storeData,
++                    products: dbProducts.map(mapProduct),
++                    customers: dbCustomers.map(mapCustomer),
++                    invoices: dbInvoices.map(mapInvoice),
++                    dailySales: dbDailySales.map(mapDailySale),
++                    expenses: dbExpenses.map(mapExpense),
++                    suppliers: dbSuppliers.map(mapSupplier),
++                    creditors: dbCreditors.map(mapCreditor),
++                    debtors: dbDebtors.map(mapDebtor),
++                    returns: dbReturns.map(mapReturn),
++                    warehouses: dbWarehouses.map(mapWarehouse),
++                };
++
++                if (dbSettings) {
++                    newStoreData.storeInfo = {
++                        name: dbSettings.store_name || "",
++                        phone: dbSettings.store_phone || "",
++                        email: dbSettings.store_email || "",
++                        photoUrl: dbSettings.store_photo_url || "",
+                     };
+-
+-                    const dbProducts = getResult<any[]>(0, []);
+-                    const dbCustomers = getResult<any[]>(1, []);
+-                    const dbInvoices = getResult<any[]>(2, []);
+-                    const dbDailySales = getResult<any[]>(3, []);
+-                    const dbExpenses = getResult<any[]>(4, []);
+-                    const dbSuppliers = getResult<any[]>(5, []);
+-                    const dbCreditors = getResult<any[]>(6, []);
+-                    const dbDebtors = getResult<any[]>(7, []);
+-                    const dbReturns = getResult<any[]>(8, []);
+-                    const dbWarehouses = getResult<any[]>(9, []);
+-                    const dbSettings = getResult<any>(10, null);
+-
+-                    // Map DB rows to local format
+-                    const mapProduct = (p: any) => ({
+-                        id: p.id,
+-                        code: p.code,
+-                        name: p.name,
+-                        description: p.description,
+-                        price: p.price,
+-                        cost: p.cost,
+-                        quantity: p.quantity,
+-                        lowStockThreshold: p.low_stock_threshold,
+-                        category: p.category,
+-                        supplierId: p.supplier_id,
+-                        warehouseId: p.warehouse_id,
+-                        photoUrl: p.photo_url,
+-                        barcode: p.barcode,
+-                        sold: p.sold,
+-                        createdAt: p.created_at,
+-                        updatedAt: p.updated_at
+-                    });
+-
+-                    const mapCustomer = (c: any) => ({
+-                        id: c.id,
+-                        name: c.name,
+-                        phone: c.phone,
+-                        email: c.email,
+-                        address: c.address,
+-                        company: c.company,
+-                        photoUrl: c.photo_url,
+-                        notes: c.notes,
+-                        createdAt: c.created_at,
+-                        updatedAt: c.updated_at
+-                    });
+-
+-                    const mapInvoice = (inv: any) => ({
+-                        id: inv.id,
+-                        invoiceNumber: inv.invoice_number,
+-                        customerId: inv.customer_id,
+-                        customerName: inv.customer_name,
+-                        total: inv.total,
+-                        subtotal: inv.subtotal,
+-                        discount: inv.discount,
+-                        tax: inv.tax,
+-                        shippingCost: inv.shipping_cost,
+-                        paymentMethod: inv.payment_method,
+-                        status: inv.status,
+-                        type: inv.type,
+-                        dueDate: inv.due_date,
+-                        debtType: inv.debt_type,
+-                        notes: inv.notes,
+-                        date: inv.date,
+-                        createdAt: inv.created_at,
+-                        updatedAt: inv.updated_at,
+-                        items: inv.invoice_items?.map((item: any) => ({
+-                            productId: item.product_id,
+-                            productName: item.product_name,
+-                            quantity: item.quantity,
+-                            price: item.price,
+-                            total: item.total
+-                        })) || [],
+-                        products: inv.invoice_items?.map((item: any) => ({
+-                            productId: item.product_id,
+-                            productName: item.product_name,
+-                            quantity: item.quantity,
+-                            price: item.price,
+-                            total: item.total
+-                        })) || []
+-                    });
+-
+-                    const mapDailySale = (sale: any) => ({
+-                        id: sale.id,
+-                        date: sale.date,
+-                        totalSales: sale.total_sales,
+-                        productId: sale.product_id,
+-                        productName: sale.product_name,
+-                        productCode: sale.product_code,
+-                        quantity: sale.quantity,
+-                        total: sale.total,
+-                        unitPrice: sale.unit_price,
+-                        paymentMethod: sale.payment_method,
+-                        remainingQuantity: sale.remaining_quantity,
+-                        createdAt: sale.created_at
+-                    });
+-
+-                    const mapExpense = (exp: any) => ({
+-                        id: exp.id,
+-                        description: exp.description,
+-                        amount: exp.amount,
+-                        category: exp.category,
+-                        date: exp.date,
+-                        notes: exp.notes,
+-                        paymentMethod: exp.payment_method,
+-                        reference: exp.reference,
+-                        createdAt: exp.created_at,
+-                        updatedAt: exp.updated_at
+-                    });
+-
+-                    const mapSupplier = (sup: any) => ({
+-                        id: sup.id,
+-                        name: sup.name,
+-                        phone: sup.phone,
+-                        email: sup.email,
+-                        address: sup.address,
+-                        photoUrl: sup.photo_url,
+-                        notes: sup.notes,
+-                        createdAt: sup.created_at,
+-                        updatedAt: sup.updated_at
+-                    });
+-
+-                    const mapCreditor = (cred: any) => ({
+-                        id: cred.id,
+-                        name: cred.name,
+-                        customer_id: cred.customer_id,
+-                        phone: cred.phone,
+-                        email: cred.email,
+-                        address: cred.address,
+-                        amount: cred.amount,
+-                        notes: cred.notes,
+-                        productCode: cred.product_code,
+-                        productName: cred.product_name,
+-                        quantity: cred.quantity,
+-                        price: cred.price,
+-                        total: cred.total,
+-                        date: cred.date,
+-                        status: cred.status,
+-                        createdAt: cred.created_at,
+-                        updatedAt: cred.updated_at
+-                    });
+-
+-                    const mapDebtor = (deb: any) => ({
+-                        id: deb.id,
+-                        name: deb.name,
+-                        customer_id: deb.customer_id,
+-                        phone: deb.phone,
+-                        totalAmount: deb.total_amount,
+-                        products: deb.products,
+-                        notes: deb.notes,
+-                        date: deb.date,
+-                        status: deb.status,
+-                        createdAt: deb.created_at,
+-                        updatedAt: deb.updated_at
+-                    });
+-
+-                    const mapReturn = (ret: any) => ({
+-                        id: ret.id,
+-                        returnNumber: ret.return_number,
+-                        invoiceId: ret.invoice_id,
+-                        customerId: ret.customer_id,
+-                        customerName: ret.customer_name,
+-                        products: ret.products,
+-                        total: ret.total,
+-                        reason: ret.reason,
+-                        notes: ret.notes,
+-                        status: ret.status,
+-                        date: ret.date,
+-                        invoiceNumber: ret.invoice_number,
+-                        createdAt: ret.created_at,
+-                        updatedAt: ret.updated_at
+-                    });
+-
+-                    const mapWarehouse = (wh: any) => ({
+-                        id: wh.id,
+-                        name: wh.name,
+-                        location: wh.location,
+-                        description: wh.description,
+-                        isActive: wh.is_active,
+-                        createdAt: wh.created_at,
+-                        updatedAt: wh.updated_at
+-                    });
+-
+-                    // Update local storage with cloud data
+-                    const newStoreData = {
+-                        ...storeData,
+-                        products: dbProducts.map(mapProduct),
+-                        customers: dbCustomers.map(mapCustomer),
+-                        invoices: dbInvoices.map(mapInvoice),
+-                        dailySales: dbDailySales.map(mapDailySale),
+-                        expenses: dbExpenses.map(mapExpense),
+-                        suppliers: dbSuppliers.map(mapSupplier),
+-                        creditors: dbCreditors.map(mapCreditor),
+-                        debtors: dbDebtors.map(mapDebtor),
+-                        returns: dbReturns.map(mapReturn),
+-                        warehouses: dbWarehouses.map(mapWarehouse),
++                    newStoreData.settings = {
++                        currency: dbSettings.currency || "MRU",
++                        locale: (dbSettings.locale as "ar" | "fr") || "ar",
++                        customCurrencies: (dbSettings.custom_currencies as any[]) || [],
++                        customPaymentMethods: (dbSettings.custom_payment_methods as any[]) || [],
+                     };
++                }
+ 
+-                    if (dbSettings) {
+-                        newStoreData.storeInfo = {
+-                            name: dbSettings.store_name || "",
+-                            phone: dbSettings.store_phone || "",
+-                            email: dbSettings.store_email || "",
+-                            photoUrl: dbSettings.store_photo_url || "",
+-                        };
+-                        newStoreData.settings = {
+-                            currency: dbSettings.currency || "MRU",
+-                            locale: (dbSettings.locale as "ar" | "fr") || "ar",
+-                            customCurrencies: (dbSettings.custom_currencies as any[]) || [],
+-                            customPaymentMethods: (dbSettings.custom_payment_methods as any[]) || [],
+-                        };
+-                    }
+-
+-                    saveStoreData(newStoreData as any);
++                saveStoreData(newStoreData as any);
+ 
+-                    // Trigger a storage event to update UI components that rely on localStorage
+-                    window.dispatchEvent(new Event('storage'));
+-
+-                    toast({
+-                        title: "اكتملت المزامنة",
+-                        description: "تم تحديث البيانات بنجاح.",
+-                    });
++                // Trigger a storage event to update UI components that rely on localStorage
++                window.dispatchEvent(new Event('storage'));
+ 
+-                } // end if (hasData)
++                toast({
++                    title: "اكتملت المزامنة",
++                    description: "تم تحديث البيانات بنجاح.",
++                });
+ 
+             } catch (error) {
+                 console.error("Auto sync failed:", error);

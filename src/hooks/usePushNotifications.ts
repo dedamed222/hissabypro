@@ -7,7 +7,11 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
     const rawData = window.atob(base64);
-    return Uint8Array.from(rawData.split(''), c => c.charCodeAt(0));
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
 }
 
 export function usePushNotifications() {
@@ -38,7 +42,7 @@ export function usePushNotifications() {
             });
 
             // Save subscription to Supabase
-            await (supabase.from('push_subscriptions') as any).upsert(
+            await supabase.from('push_subscriptions' as any).upsert(
                 { user_id: user.id, subscription: subscription.toJSON() },
                 { onConflict: 'user_id' }
             );
@@ -57,7 +61,7 @@ export function usePushNotifications() {
             const subscription = await registration.pushManager.getSubscription();
             if (subscription) {
                 await subscription.unsubscribe();
-                await (supabase.from('push_subscriptions') as any)
+                await supabase.from('push_subscriptions' as any)
                     .delete()
                     .eq('user_id', user.id);
             }
