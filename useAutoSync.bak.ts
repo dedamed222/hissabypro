@@ -27,13 +27,18 @@ import {
     getStoreSettings
 } from "@/lib/database";
 import { saveStoreData } from "@/utils/localStorage";
-import { useRealtimeSync } from "./useRealtimeSync";
 
+export function useAutoSync() {
+    const { isAuthenticated } = useAuth();
+    const { toast } = useToast();
+    const isSyncing = useRef(false);
 
-export const pushToCloud = async (toast: any) => {
-    if (!navigator.onLine) return;
-    try {
-                
+    useEffect(() => {
+        const handleSync = async () => {
+            if (!isAuthenticated || !navigator.onLine || isSyncing.current) return;
+
+            try {
+                isSyncing.current = true;
                 const storeData = loadStoreData();
 
                 // We only want to push if there's actually data to sync
@@ -246,16 +251,7 @@ export const pushToCloud = async (toast: any) => {
 
                 }
 
-                
-    } catch (error) {
-        console.error("Push to cloud failed:", error);
-    }
-};
-
-export const pullFromCloud = async (toast: any) => {
-    if (!navigator.onLine) return;
-    try {
-        // --- PULL DATA FROM CLOUD TO LOCAL ---
+                // --- PULL DATA FROM CLOUD TO LOCAL ---
                 toast({
                     title: "تحديث البيانات",
                     description: "جاري جلب البيانات من السحابة...",
@@ -501,39 +497,8 @@ export const pullFromCloud = async (toast: any) => {
                     description: "تم تحديث البيانات بنجاح.",
                 });
 
-            
-    } catch (error) {
-        console.error("Pull from cloud failed:", error);
-    }
-};
-
-export function useAutoSync() {
-    const { isAuthenticated, user } = useAuth();
-    const { toast } = useToast();
-    const isSyncing = useRef(false);
-
-    // Real-time sync listener
-    useRealtimeSync(
-        ['products', 'customers', 'invoices', 'daily_sales', 'expenses', 'suppliers', 'creditors', 'debtors', 'returns', 'warehouses', 'store_settings'],
-        () => {
-            if (!isSyncing.current && isAuthenticated) {
-                isSyncing.current = true;
-                pullFromCloud(toast).finally(() => {
-                    isSyncing.current = false;
-                });
-            }
-        },
-        user?.id
-    );
-
-    useEffect(() => {
-        const handleSync = async () => {
-            if (!isAuthenticated || !navigator.onLine || isSyncing.current) return;
-
-            try {
-                isSyncing.current = true;
-                await pushToCloud(toast);
-                await pullFromCloud(toast);
+            } catch (error) {
+                console.error("Auto sync failed:", error);
             } finally {
                 isSyncing.current = false;
             }

@@ -17,6 +17,8 @@ export function useRealtimeSync(
 ) {
     // Keep a stable ref to the callback so we don't recreate the channel on re-renders
     const onRefreshRef = useRef(onRefresh);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     useEffect(() => {
         onRefreshRef.current = onRefresh;
     }, [onRefresh]);
@@ -38,7 +40,12 @@ export function useRealtimeSync(
             if (filter) config.filter = filter;
 
             channel = channel.on("postgres_changes", config, () => {
-                onRefreshRef.current();
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+                timeoutRef.current = setTimeout(() => {
+                    onRefreshRef.current();
+                }, 500); // 500ms debounce
             });
         });
 

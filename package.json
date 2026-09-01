@@ -8,7 +8,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "push": "git add . && git commit -m \"Auto update\" && git push"
   },
   "dependencies": {
     "@capacitor/android": "^7.2.0",
