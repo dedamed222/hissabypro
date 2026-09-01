@@ -6,7 +6,8 @@ import { toast } from '@/hooks/use-toast';
 // This is a public key only; the private key lives securely in Vercel env vars.
 const VAPID_PUBLIC_KEY =
     import.meta.env.VITE_VAPID_PUBLIC_KEY ||
-    'BKcwM-PiCoiGSj-6C1v5hz2I-I8dIJsK7vMKnx7TgwyHt7fxcJl2UiZrOpKZ6PcRtO1A-YfLufSD3jLDBamlXHtod3Qggd_7_RjZzZkrB9bVAZLqs';
+    'BCnH2QDp1fwycbALBYSU_AnD_qcteFNFcGgIh_gasAihY4XqXnkvjE5EN5WCKIVF3elFDlMEgCVkBnibrDeHRew';
+
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
