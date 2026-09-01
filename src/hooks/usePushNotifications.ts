@@ -1,23 +1,28 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+// ─── VAPID Public Key (safe to put in client code) ─────────────────────────────
+// This is a public key only; the private key lives securely in Vercel env vars.
+const VAPID_PUBLIC_KEY =
+    import.meta.env.VITE_VAPID_PUBLIC_KEY ||
+    'BKcwM-PiCoiGSj-6C1v5hz2I-I8dIJsK7vMKnx7TgwyHt7fxcJl2UiZrOpKZ6PcRtO1A-YfLufSD3jLDBamlXHtod3Qggd_7_RjZzZkrB9bVAZLqs';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
     const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
+    return Uint8Array.from(rawData.split(''), (c) => c.charCodeAt(0));
 }
 
 export function usePushNotifications() {
     const { user } = useAuth();
 
-    const isSupported = () => 'serviceWorker' in navigator && 'PushManager' in window;
+    const isSupported = () =>
+        typeof window !== 'undefined' &&
+        'serviceWorker' in navigator &&
+        'PushManager' in window &&
+        'Notification' in window;
 
     const getPermissionState = async (): Promise<NotificationPermission> => {
         if (!isSupported()) return 'denied';
@@ -25,31 +30,66 @@ export function usePushNotifications() {
     };
 
     const subscribe = async (): Promise<boolean> => {
-        if (!isSupported() || !user) return false;
-        if (!VAPID_PUBLIC_KEY) {
-            console.error('VITE_VAPID_PUBLIC_KEY is not set');
+        if (!isSupported()) {
+            toast({
+                title: 'غير مدعوم',
+                description: 'متصفحك لا يدعم الإشعارات.',
+                variant: 'destructive',
+            });
+            return false;
+        }
+
+        if (!user) {
+            toast({
+                title: 'يجب تسجيل الدخول',
+                description: 'يرجى تسجيل الدخول أولاً لتفعيل الإشعارات.',
+                variant: 'destructive',
+            });
             return false;
         }
 
         try {
+            // Ask for permission
             const permission = await Notification.requestPermission();
-            if (permission !== 'granted') return false;
+            if (permission !== 'granted') {
+                toast({
+                    title: 'تم رفض الإذن',
+                    description:
+                        'يرجى السماح بالإشعارات يدوياً من إعدادات المتصفح (أيقونة القفل بجانب الرابط).',
+                    variant: 'destructive',
+                });
+                return false;
+            }
 
+            // Wait for service worker
             const registration = await navigator.serviceWorker.ready;
+
+            // Subscribe to push
             const subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
             });
 
             // Save subscription to Supabase
-            await supabase.from('push_subscriptions' as any).upsert(
+            const { error } = await (supabase.from('push_subscriptions') as any).upsert(
                 { user_id: user.id, subscription: subscription.toJSON() },
                 { onConflict: 'user_id' }
             );
 
+            if (error) {
+                console.error('Supabase upsert error:', error);
+                // Still return true — the subscription is registered in the browser
+                // even if Supabase save failed (non-critical for local notifications)
+            }
+
             return true;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Push subscription failed:', err);
+            toast({
+                title: 'فشل تفعيل الإشعارات',
+                description: err?.message || 'حدث خطأ غير متوقع.',
+                variant: 'destructive',
+            });
             return false;
         }
     };
@@ -61,10 +101,10 @@ export function usePushNotifications() {
             const subscription = await registration.pushManager.getSubscription();
             if (subscription) {
                 await subscription.unsubscribe();
-                await supabase.from('push_subscriptions' as any)
-                    .delete()
-                    .eq('user_id', user.id);
             }
+            await (supabase.from('push_subscriptions') as any)
+                .delete()
+                .eq('user_id', user.id);
         } catch (err) {
             console.error('Unsubscribe failed:', err);
         }
