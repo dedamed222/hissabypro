@@ -202,6 +202,18 @@ export interface StoreInfo {
   photoUrl: string;
   address?: string;
   commercialRegister?: string;
+  letterheadUrl?: string;
+  printSettings?: {
+    paperSize: 'A3' | 'A4' | 'A5' | 'A6';
+    orientation: 'portrait' | 'landscape';
+    printWithLetterhead: boolean;
+    margins: {
+      top: number;
+      bottom: number;
+      left: number;
+      right: number;
+    }
+  }
 }
 
 // New interfaces for custom currencies and payment methods

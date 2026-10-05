@@ -48,33 +48,62 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
 
   const statusConfig = getStatusConfig(invoice.status);
 
+  const paperSize = storeInfo.printSettings?.paperSize || 'A4';
+  const orientation = storeInfo.printSettings?.orientation || 'portrait';
+  const printWithLetterhead = storeInfo.printSettings?.printWithLetterhead || false;
+  const letterheadUrl = storeInfo.letterheadUrl;
+  const margins = storeInfo.printSettings?.margins || { top: 15, bottom: 15, left: 15, right: 15 };
+
+  const getDims = () => {
+    switch (paperSize) {
+      case 'A3': return orientation === 'portrait' ? { w: '297mm', h: '420mm' } : { w: '420mm', h: '297mm' };
+      case 'A4': return orientation === 'portrait' ? { w: '210mm', h: '297mm' } : { w: '297mm', h: '210mm' };
+      case 'A5': return orientation === 'portrait' ? { w: '148mm', h: '210mm' } : { w: '210mm', h: '148mm' };
+      case 'A6': return orientation === 'portrait' ? { w: '105mm', h: '148mm' } : { w: '148mm', h: '105mm' };
+      default: return { w: '210mm', h: '297mm' };
+    }
+  };
+  const dims = getDims();
+
   return (
     <div
-      className={`professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans w-full max-w-[210mm] min-h-[297mm] print:max-w-none print:min-h-0 relative overflow-hidden shadow-xl`}
+      className={`professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans w-full print:max-w-none print:min-h-0 relative overflow-hidden shadow-xl`}
+      style={{ maxWidth: dims.w, minHeight: dims.h }}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
+      {/* Letterhead Background - Fixed to repeat on all printed pages */}
+      {printWithLetterhead && letterheadUrl && (
+        <div className="absolute inset-0 pointer-events-none z-[-1] print:fixed print:w-[100vw] print:h-[100vh]">
+          <img src={letterheadUrl} style={{ width: '100%', height: '100%', objectFit: 'fill' }} alt="Letterhead Background" />
+        </div>
+      )}
 
       {/* Status Watermark */}
       {invoice.type !== 'quotation' && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.03] print:opacity-[0.05]">
-          <div className="transform -rotate-45 text-[150px] font-black tracking-widest text-gray-900 whitespace-nowrap">
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0 opacity-[0.03] print:opacity-[0.05]">
+          <div className="transform -rotate-45 text-[150px] font-black tracking-widest text-gray-900 whitespace-nowrap mt-[50vh]">
             {statusConfig.watermark}
           </div>
         </div>
       )}
 
-      <table className="w-full relative z-10 border-collapse">
+      <table className="w-full relative z-10 border-collapse" style={{
+        marginTop: `${margins.top}mm`,
+        marginBottom: `${margins.bottom}mm`,
+        marginLeft: `${margins.left}mm`,
+        marginRight: `${margins.right}mm`
+      }}>
         <thead>
           <tr>
             <td>
               {/* Spacer for header */}
-              <div className="h-32 print:h-40"></div>
+              <div className="h-6 print:h-8"></div>
             </td>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td className="px-8 pb-8 print:px-10 print:pb-0 bg-white/80 print:bg-transparent align-top">
+            <td className="px-6 pb-8 print:px-8 print:pb-0 bg-white/80 print:bg-transparent align-top" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
               {/* Header Section */}
               <div className="flex justify-between items-start mb-6">
                 {/* Company Info */}
@@ -268,7 +297,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
       <style>{`
         @media print {
           @page {
-            size: auto;
+            size: ${paperSize.toLowerCase()} ${orientation};
             margin: 0;
           }
           body {
@@ -283,7 +312,11 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
             width: 100% !important;
             height: auto !important;
             min-height: 100vh !important;
+            /* Using page-break constraint to avoid spliting if not needed */
             page-break-after: always;
+          }
+          td, tr {
+            page-break-inside: avoid;
           }
         }
       `}</style>

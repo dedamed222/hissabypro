@@ -16,6 +16,7 @@ import { BackupManager } from "@/components/settings/BackupManager";
 import { CloudMigration } from "@/components/settings/CloudMigration";
 import { AccountSettings } from "@/components/settings/AccountSettings";
 import { CompanyProfile } from "@/components/settings/CompanyProfile";
+import { PrintSettings } from "@/components/settings/PrintSettings";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { Bell, BellOff } from "lucide-react";
 
@@ -56,6 +57,7 @@ export default function Settings() {
             <TabsTrigger value="general" className="px-4 py-2">الإعدادات العامة</TabsTrigger>
             <TabsTrigger value="account" className="px-4 py-2">الحساب</TabsTrigger>
             <TabsTrigger value="company" className="px-4 py-2">الشركة</TabsTrigger>
+            <TabsTrigger value="print" className="px-4 py-2">الطباعة</TabsTrigger>
             <TabsTrigger value="currencies" className="px-4 py-2">العملات</TabsTrigger>
             <TabsTrigger value="payments" className="px-4 py-2">طرق الدفع</TabsTrigger>
             <TabsTrigger value="backup" className="px-4 py-2">النسخ الاحتياطية</TabsTrigger>
@@ -139,6 +141,10 @@ export default function Settings() {
 
         <TabsContent value="company">
           <CompanyProfile />
+        </TabsContent>
+
+        <TabsContent value="print">
+          <PrintSettings />
         </TabsContent>
 
         <TabsContent value="currencies">

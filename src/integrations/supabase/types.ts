@@ -536,6 +536,11 @@ export type Database = {
           store_name: string | null
           store_phone: string | null
           store_photo_url: string | null
+          letterhead_url: string | null
+          print_paper_size: string | null
+          print_orientation: string | null
+          print_with_letterhead: boolean | null
+          print_margins: Json | null
           updated_at: string
           user_id: string
         }
@@ -550,6 +555,11 @@ export type Database = {
           store_name?: string | null
           store_phone?: string | null
           store_photo_url?: string | null
+          letterhead_url?: string | null
+          print_paper_size?: string | null
+          print_orientation?: string | null
+          print_with_letterhead?: boolean | null
+          print_margins?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -564,6 +574,11 @@ export type Database = {
           store_name?: string | null
           store_phone?: string | null
           store_photo_url?: string | null
+          letterhead_url?: string | null
+          print_paper_size?: string | null
+          print_orientation?: string | null
+          print_with_letterhead?: boolean | null
+          print_margins?: Json | null
           updated_at?: string
           user_id?: string
         }

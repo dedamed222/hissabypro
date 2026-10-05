@@ -665,6 +665,11 @@ export async function upsertStoreSettings(settings: {
   locale?: string;
   custom_currencies?: unknown;
   custom_payment_methods?: unknown;
+  letterhead_url?: string;
+  print_paper_size?: string;
+  print_orientation?: string;
+  print_with_letterhead?: boolean;
+  print_margins?: unknown;
 }) {
   const user = await getAuthenticatedUser();
   const existing = await getStoreSettings();
