@@ -8,9 +8,10 @@ import { formatCurrency } from "@/utils/formatters";
 interface ProfessionalInvoiceProps {
   invoice: Invoice;
   storeInfo: StoreInfo;
+  customerLetterheadUrl?: string;
 }
 
-const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) => {
+const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: ProfessionalInvoiceProps) => {
   const { t, formatDate, locale } = useLocale();
   const barcodeRef = useRef<SVGSVGElement>(null);
   const isRTL = locale === 'ar';
@@ -51,7 +52,8 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
   const paperSize = storeInfo.printSettings?.paperSize || 'A4';
   const orientation = storeInfo.printSettings?.orientation || 'portrait';
   const printWithLetterhead = storeInfo.printSettings?.printWithLetterhead || false;
-  const letterheadUrl = storeInfo.letterheadUrl;
+  // Customer-specific letterhead takes priority over the store-level letterhead
+  const letterheadUrl = customerLetterheadUrl || storeInfo.letterheadUrl;
   const margins = storeInfo.printSettings?.margins || { top: 15, bottom: 15, left: 15, right: 15 };
 
   const getDims = () => {

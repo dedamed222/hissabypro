@@ -49,7 +49,8 @@ export interface Customer {
   notes?: string;
   createdAt: string;
   updatedAt?: string;
-  company?: string; // Add company property
+  company?: string;
+  letterheadUrl?: string; // Per-customer letterhead image
 }
 
 export interface InvoiceItem {

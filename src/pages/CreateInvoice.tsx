@@ -237,6 +237,7 @@ export default function CreateInvoice() {
             notes
           }}
           storeInfo={storeInfo}
+          customerLetterheadUrl={selectedCustomer?.letterheadUrl}
         />
       )}
     </div>;

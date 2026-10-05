@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
-import { loadStoreData, saveStoreData, generateId } from "@/utils/localStorage";
+import { useEffect, useState, useCallback } from "react";
+import { loadStoreData, generateId } from "@/utils/localStorage";
 import { Customer } from "@/types";
 import { formatShortDate } from "@/utils/formatters";
 import {
   Plus, Search, Edit, Trash2, X,
-  Save, AlertCircle, User, Download
+  Save, AlertCircle, User, Download, ImagePlus
 } from "lucide-react";
 import { getCustomers, upsertCustomer, deleteCustomer } from "@/lib/database";
+import { useDropzone } from "react-dropzone";
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -18,6 +19,8 @@ export default function Customers() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [letterheadPreview, setLetterheadPreview] = useState<string>("");
+  const [letterheadUploading, setLetterheadUploading] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -42,6 +45,7 @@ export default function Customers() {
         address: c.address,
         company: c.company,
         photoUrl: c.photo_url,
+        letterheadUrl: (c as any).letterhead_url,
         notes: c.notes,
         createdAt: c.created_at,
         updatedAt: c.updated_at
@@ -122,6 +126,7 @@ export default function Customers() {
       address: "",
       notes: "",
     });
+    setLetterheadPreview("");
     setError("");
   };
 
@@ -142,6 +147,7 @@ export default function Customers() {
       address: customer.address,
       notes: customer.notes,
     });
+    setLetterheadPreview(customer.letterheadUrl || "");
     setIsModalOpen(true);
   };
 
@@ -185,7 +191,8 @@ export default function Customers() {
         phone: formData.phone,
         email: formData.email,
         address: formData.address,
-        notes: formData.notes
+        notes: formData.notes,
+        letterhead_url: letterheadPreview || undefined,
       };
 
       await upsertCustomer(payload);
@@ -445,6 +452,67 @@ export default function Customers() {
                     rows={3}
                     className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-arab-blue"
                   ></textarea>
+                </div>
+
+                <div className="arab-form-group">
+                  <label className="arab-label">راسية العميل (اختياري)</label>
+                  <div
+                    onClick={() => document.getElementById('customer-letterhead-input')?.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-arab-blue transition-colors"
+                  >
+                    {letterheadPreview ? (
+                      <div className="relative">
+                        <img src={letterheadPreview} alt="Letterhead preview" className="max-h-32 mx-auto object-contain rounded" />
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setLetterheadPreview(""); }}
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-gray-500 flex flex-col items-center gap-1">
+                        <ImagePlus size={24} className="text-gray-400" />
+                        <span className="text-sm">انقر لرفع صورة الراسية</span>
+                        <span className="text-xs text-gray-400">PNG, JPG, PDF</span>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    id="customer-letterhead-input"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setLetterheadUploading(true);
+                      try {
+                        if (file.type === 'application/pdf') {
+                          const pdfjsLib = await import('pdfjs-dist');
+                          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+                          const arrayBuffer = await file.arrayBuffer();
+                          const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                          const page = await pdfDoc.getPage(1);
+                          const viewport = page.getViewport({ scale: 2 });
+                          const canvas = document.createElement('canvas');
+                          canvas.width = viewport.width;
+                          canvas.height = viewport.height;
+                          const ctx = canvas.getContext('2d')!;
+                          await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+                          setLetterheadPreview(canvas.toDataURL('image/png'));
+                        } else {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setLetterheadPreview(ev.target?.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      } finally {
+                        setLetterheadUploading(false);
+                      }
+                    }}
+                  />
+                  {letterheadUploading && <p className="text-sm text-arab-blue mt-2">جاري تحميل الصورة...</p>}
                 </div>
               </div>
 

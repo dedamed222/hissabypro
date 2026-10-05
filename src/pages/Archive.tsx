@@ -21,8 +21,9 @@ import ProfessionalInvoice from "@/components/invoice/ProfessionalInvoice";
 import { Invoice, StoreInfo } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { getInvoices } from "@/lib/database";
+import { getInvoices, getCustomers } from "@/lib/database";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { Customer } from "@/types";
 
 export default function Archive() {
   const { t } = useLocale();
@@ -34,6 +35,7 @@ export default function Archive() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
 
@@ -44,7 +46,19 @@ export default function Archive() {
       setStoreInfo(localData.storeInfo);
 
       if (isAuthenticated) {
-        const rows = await getInvoices();
+        const [rows, customerRows] = await Promise.all([getInvoices(), getCustomers()]);
+        setCustomers(customerRows.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone || '',
+          email: c.email,
+          address: c.address,
+          company: c.company,
+          letterheadUrl: c.letterhead_url,
+          notes: c.notes,
+          createdAt: c.created_at,
+          updatedAt: c.updated_at
+        })));
         const mapped: Invoice[] = rows.map((row: any) => ({
           id: row.id,
           invoiceNumber: row.invoice_number,
@@ -292,6 +306,7 @@ export default function Archive() {
         <ProfessionalInvoice
           invoice={selectedInvoice}
           storeInfo={storeInfo}
+          customerLetterheadUrl={customers.find(c => c.name === selectedInvoice.customerName)?.letterheadUrl}
         />
       )}
     </div>

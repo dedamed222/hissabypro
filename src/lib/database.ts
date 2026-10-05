@@ -191,6 +191,7 @@ export async function upsertCustomer(customer: {
   address?: string;
   company?: string;
   photo_url?: string;
+  letterhead_url?: string;
   notes?: string;
 }) {
   const user = await getAuthenticatedUser();
