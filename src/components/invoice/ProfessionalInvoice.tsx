@@ -71,11 +71,17 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
       style={{ maxWidth: dims.w, minHeight: dims.h }}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Letterhead Background - Fixed to repeat on all printed pages */}
+      {/* Letterhead Background - Tiled to simulate pages in preview, repeating on all printed pages */}
       {printWithLetterhead && letterheadUrl && (
-        <div className="absolute inset-0 pointer-events-none z-[-1] print:fixed print:w-[100vw] print:h-[100vh]">
-          <img src={letterheadUrl} style={{ width: '100%', height: '100%', objectFit: 'fill' }} alt="Letterhead Background" />
-        </div>
+        <div 
+          className="absolute inset-0 pointer-events-none z-[-1] print:fixed print:w-full print:h-[100vh]"
+          style={{
+            backgroundImage: `url(${letterheadUrl})`,
+            backgroundSize: `100% ${dims.h}`,
+            backgroundRepeat: 'repeat-y',
+            backgroundPosition: 'top center'
+          }}
+        />
       )}
 
       {/* Status Watermark */}
@@ -97,7 +103,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
           <tr>
             <td>
               {/* Spacer for header */}
-              <div className="h-6 print:h-8"></div>
+              <div className="h-4 print:h-4"></div>
             </td>
           </tr>
         </thead>
@@ -108,7 +114,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
               <div className="flex justify-between items-start mb-6">
                 {/* Company Info */}
                 <div className="flex flex-col gap-2 max-w-[50%]">
-                  {storeInfo.photoUrl && (
+                  {!printWithLetterhead && storeInfo.photoUrl && (
                     <div className="mb-2">
                       <img
                         src={storeInfo.photoUrl}
@@ -117,19 +123,21 @@ const ProfessionalInvoice = ({ invoice, storeInfo }: ProfessionalInvoiceProps) =
                       />
                     </div>
                   )}
-                  <div>
-                    {/* Company name removed as per user request */}
-                    <div className="text-sm text-gray-800 font-medium space-y-0.5 bg-white/50 p-2 rounded-lg backdrop-blur-sm print:bg-transparent print:p-0">
-                      {storeInfo.address && <p>{storeInfo.address}</p>}
-                      {storeInfo.phone && <p dir="ltr" className={isRTL ? "text-right" : ""}>{storeInfo.phone}</p>}
-                      {storeInfo.email && <p dir="ltr" className={isRTL ? "text-right" : ""}>{storeInfo.email}</p>}
-                      {storeInfo.commercialRegister && (
-                        <p className="mt-1 text-xs text-gray-600">
-                          {t('commercialRegister')}: {storeInfo.commercialRegister}
-                        </p>
-                      )}
+                  {!printWithLetterhead && (
+                    <div>
+                      {/* Company name removed as per user request */}
+                      <div className="text-sm text-gray-800 font-medium space-y-0.5 bg-white/50 p-2 rounded-lg backdrop-blur-sm print:bg-transparent print:p-0">
+                        {storeInfo.address && <p>{storeInfo.address}</p>}
+                        {storeInfo.phone && <p dir="ltr" className={isRTL ? "text-right" : ""}>{storeInfo.phone}</p>}
+                        {storeInfo.email && <p dir="ltr" className={isRTL ? "text-right" : ""}>{storeInfo.email}</p>}
+                        {storeInfo.commercialRegister && (
+                          <p className="mt-1 text-xs text-gray-600">
+                            {t('commercialRegister')}: {storeInfo.commercialRegister}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Invoice Details */}
