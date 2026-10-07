@@ -50,7 +50,9 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
   const paperSize = storeInfo.printSettings?.paperSize || 'A4';
   const orientation = storeInfo.printSettings?.orientation || 'portrait';
   const printWithLetterhead = storeInfo.printSettings?.printWithLetterhead || false;
-  const letterheadUrl = customerLetterheadUrl || storeInfo.letterheadUrl;
+  // Read from dedicated localStorage key (large base64 no longer stored in storeInfo)
+  const storedLetterhead = typeof window !== 'undefined' ? (localStorage.getItem('store-letterhead-v1') || storeInfo.letterheadUrl || '') : '';
+  const letterheadUrl = customerLetterheadUrl || storedLetterhead;
   const margins = storeInfo.printSettings?.margins || { top: 15, bottom: 15, left: 15, right: 15 };
 
   const getDims = () => {
