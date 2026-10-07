@@ -348,27 +348,28 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
             color-adjust: exact !important;
           }
 
-          /* Hide everything on the page except the invoice */
-          body > * {
-            display: none !important;
+          /* Hide everything via visibility (keeps DOM hierarchy intact) */
+          body {
+            visibility: hidden !important;
           }
 
-          /* Show only the invoice container */
+          /* Show only the invoice and ALL its children */
+          .professional-invoice,
+          .professional-invoice * {
+            visibility: visible !important;
+          }
+
+          /* Position invoice at top of page */
           .professional-invoice {
-            display: block !important;
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             width: 100vw !important;
-            height: 100vh !important;
             max-width: 100% !important;
-            min-height: 100vh !important;
             margin: 0 !important;
             padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
-            overflow: visible !important;
-            z-index: 9999 !important;
             background: white !important;
           }
 
@@ -396,3 +397,4 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
 };
 
 export default ProfessionalInvoice;
+
