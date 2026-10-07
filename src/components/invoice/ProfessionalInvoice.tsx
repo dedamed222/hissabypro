@@ -75,16 +75,16 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
       className="professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans relative shadow-xl overflow-hidden"
       style={{ maxWidth: dims.w, minHeight: dims.h, direction: isRTL ? 'rtl' : 'ltr' }}
     >
-      {/* Letterhead Background */}
+      {/* Letterhead Background - full page at invoice size */}
       {printWithLetterhead && letterheadUrl && (
         <div
-          className="absolute inset-0 pointer-events-none z-0 print:fixed print:inset-0 print:w-full print:h-full"
+          className="absolute inset-0 pointer-events-none z-0"
           style={{
             backgroundImage: `url(${letterheadUrl})`,
             backgroundSize: '100% 100%',
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'top center',
-            opacity: 0.15,
+            opacity: 0.18,
           }}
         />
       )}
@@ -188,37 +188,37 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
         <div className="mb-5">
           <table className="w-full text-xs border-collapse border border-gray-800">
             <thead>
-              <tr className="bg-gray-900 text-white">
-                <th className="px-2 py-2 text-center w-8 border border-gray-800">#</th>
-                <th className={`px-3 py-2 border border-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+              <tr style={{ backgroundColor: '#bfdbfe', color: '#1e3a8a' }}>
+                <th className="px-2 py-2 text-center w-8 border border-blue-300">#</th>
+                <th className={`px-3 py-2 border border-blue-300 ${isRTL ? 'text-right' : 'text-left'}`}>
                   {t('product')}
                 </th>
-                <th className="px-2 py-2 text-center w-16 border border-gray-800">{t('quantity')}</th>
-                <th className={`px-2 py-2 w-24 border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>
+                <th className="px-2 py-2 text-center w-16 border border-blue-300">{t('quantity')}</th>
+                <th className={`px-2 py-2 w-24 border border-blue-300 ${isRTL ? 'text-left' : 'text-right'}`}>
                   {t('unitPrice')}
                 </th>
-                <th className={`px-2 py-2 w-24 border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>
+                <th className={`px-2 py-2 w-24 border border-blue-300 ${isRTL ? 'text-left' : 'text-right'}`}>
                   {t('total')}
                 </th>
               </tr>
             </thead>
             <tbody>
               {invoice.items.map((item, index) => (
-                <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-2 py-2 text-center text-gray-600 border border-gray-300">{index + 1}</td>
-                  <td className={`px-3 py-2 border border-gray-300 ${isRTL ? 'text-right' : 'text-left'}`}>
+                <tr key={index} style={{ backgroundColor: index % 2 === 0 ? '#ffffff' : '#eff6ff' }}>
+                  <td className="px-2 py-2 text-center text-gray-600 border border-blue-200">{index + 1}</td>
+                  <td className={`px-3 py-2 border border-blue-200 ${isRTL ? 'text-right' : 'text-left'}`}>
                     <div className="font-semibold text-gray-900">{item.productName}</div>
                     {item.productCode && (
                       <div className="text-[10px] text-gray-500 mt-0.5">{item.productCode}</div>
                     )}
                   </td>
-                  <td className="px-2 py-2 text-center text-gray-800 font-medium border border-gray-300">
+                  <td className="px-2 py-2 text-center text-gray-800 font-medium border border-blue-200">
                     {item.quantity}
                   </td>
-                  <td className={`px-2 py-2 text-gray-700 border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
+                  <td className={`px-2 py-2 text-gray-700 border border-blue-200 ${isRTL ? 'text-left' : 'text-right'}`}>
                     {formatCurrency(item.price)}
                   </td>
-                  <td className={`px-2 py-2 font-bold text-gray-900 border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
+                  <td className={`px-2 py-2 font-bold text-gray-900 border border-blue-200 ${isRTL ? 'text-left' : 'text-right'}`}>
                     {formatCurrency(item.total)}
                   </td>
                 </tr>
@@ -251,41 +251,44 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
 
           {/* Totals */}
           <div className="shrink-0 w-56">
-            <table className="w-full text-xs border-collapse border border-gray-800">
+            <table className="w-full text-xs border-collapse border border-blue-300">
               <tbody>
                 <tr>
-                  <td className={`py-2 px-3 text-gray-700 font-semibold bg-gray-50 border border-gray-300 ${isRTL ? 'text-right' : 'text-left'}`}>
+                  <td className={`py-2 px-3 text-gray-700 font-semibold border border-blue-200 ${isRTL ? 'text-right' : 'text-left'}`}
+                    style={{ backgroundColor: '#eff6ff' }}>
                     {t('subtotal')}
                   </td>
-                  <td className={`py-2 px-3 font-semibold text-gray-900 border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
+                  <td className={`py-2 px-3 font-semibold text-gray-900 border border-blue-200 ${isRTL ? 'text-left' : 'text-right'}`}>
                     {formatCurrency(invoice.subtotal || invoice.total)}
                   </td>
                 </tr>
                 {(invoice.discount || 0) > 0 && (
                   <tr>
-                    <td className={`py-2 px-3 text-gray-700 font-semibold bg-gray-50 border border-gray-300 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <td className={`py-2 px-3 text-gray-700 font-semibold border border-blue-200 ${isRTL ? 'text-right' : 'text-left'}`}
+                      style={{ backgroundColor: '#eff6ff' }}>
                       {t('discount')}
                     </td>
-                    <td className={`py-2 px-3 font-semibold text-red-600 border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
+                    <td className={`py-2 px-3 font-semibold text-red-600 border border-blue-200 ${isRTL ? 'text-left' : 'text-right'}`}>
                       -{formatCurrency(invoice.discount || 0)}
                     </td>
                   </tr>
                 )}
                 {(invoice.tax || 0) > 0 && (
                   <tr>
-                    <td className={`py-2 px-3 text-gray-700 font-semibold bg-gray-50 border border-gray-300 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <td className={`py-2 px-3 text-gray-700 font-semibold border border-blue-200 ${isRTL ? 'text-right' : 'text-left'}`}
+                      style={{ backgroundColor: '#eff6ff' }}>
                       {t('taxAmount')}
                     </td>
-                    <td className={`py-2 px-3 font-semibold text-gray-900 border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
+                    <td className={`py-2 px-3 font-semibold text-gray-900 border border-blue-200 ${isRTL ? 'text-left' : 'text-right'}`}>
                       +{formatCurrency(invoice.tax || 0)}
                     </td>
                   </tr>
                 )}
-                <tr className="bg-gray-900 text-white">
-                  <td className={`py-2.5 px-3 font-black text-sm border border-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+                <tr style={{ backgroundColor: '#1d4ed8', color: '#ffffff' }}>
+                  <td className={`py-2.5 px-3 font-black text-sm border border-blue-800 ${isRTL ? 'text-right' : 'text-left'}`}>
                     {t('total')}
                   </td>
-                  <td className={`py-2.5 px-3 font-black text-sm border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>
+                  <td className={`py-2.5 px-3 font-black text-sm border border-blue-800 ${isRTL ? 'text-left' : 'text-right'}`}>
                     {formatCurrency(invoice.total)}
                   </td>
                 </tr>
@@ -373,16 +376,21 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
             background: white !important;
           }
 
-          /* Ensure table header dark background prints */
-          thead tr.bg-gray-900,
-          tr.bg-gray-900 {
-            background-color: #111827 !important;
+          /* Ensure table header light blue background prints */
+          thead tr {
+            background-color: #bfdbfe !important;
+            color: #1e3a8a !important;
+          }
+
+          /* Total row blue */
+          tr.total-row {
+            background-color: #1d4ed8 !important;
             color: #ffffff !important;
           }
 
           /* Ensure zebra striping prints */
-          tr.bg-gray-50 {
-            background-color: #f9fafb !important;
+          tr:nth-child(even) {
+            background-color: #eff6ff !important;
           }
 
           /* Avoid breaking rows across pages */
