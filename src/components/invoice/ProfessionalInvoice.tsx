@@ -22,7 +22,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
         JsBarcode(barcodeRef.current, invoice.invoiceNumber, {
           format: "CODE128",
           width: 1.5,
-          height: 40,
+          height: 35,
           displayValue: false,
           margin: 0,
           lineColor: "#374151"
@@ -33,26 +33,23 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
     }
   }, [invoice.invoiceNumber]);
 
-  // Determine status colors and labels
   const getStatusConfig = (status: string) => {
     switch (status) {
       case 'paid':
-        return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200', label: t('paid') || 'مدفوعة', watermark: 'PAID' };
+        return { bg: '#dcfce7', text: '#15803d', border: '#86efac', label: t('paid') || 'مدفوعة', watermark: 'PAID' };
       case 'partial':
-        return { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200', label: t('partial') || 'مدفوعة جزئياً', watermark: 'PARTIAL' };
+        return { bg: '#fef9c3', text: '#a16207', border: '#fde047', label: t('partial') || 'مدفوعة جزئياً', watermark: 'PARTIAL' };
       case 'cancelled':
-        return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200', label: t('cancelled') || 'ملغاة', watermark: 'CANCELLED' };
+        return { bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5', label: t('cancelled') || 'ملغاة', watermark: 'CANCELLED' };
       default:
-        return { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200', label: t('pending') || 'غير مدفوعة', watermark: 'UNPAID' };
+        return { bg: '#ffedd5', text: '#c2410c', border: '#fdba74', label: t('pending') || 'غير مدفوعة', watermark: 'UNPAID' };
     }
   };
 
   const statusConfig = getStatusConfig(invoice.status);
-
   const paperSize = storeInfo.printSettings?.paperSize || 'A4';
   const orientation = storeInfo.printSettings?.orientation || 'portrait';
   const printWithLetterhead = storeInfo.printSettings?.printWithLetterhead || false;
-  // Customer-specific letterhead takes priority over the store-level letterhead
   const letterheadUrl = customerLetterheadUrl || storeInfo.letterheadUrl;
   const margins = storeInfo.printSettings?.margins || { top: 15, bottom: 15, left: 15, right: 15 };
 
@@ -67,13 +64,18 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
   };
   const dims = getDims();
 
+  const invoiceTitle = invoice.type === 'quotation'
+    ? (t('quotationInvoice') || 'عرض سعر')
+    : invoice.type === 'debt'
+    ? (t('debtInvoice') || 'فاتورة دين')
+    : (t('salesInvoice') || 'فاتورة بيع');
+
   return (
     <div
-      className={`professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans w-full print:max-w-none print:min-h-0 relative overflow-hidden shadow-xl`}
-      style={{ maxWidth: dims.w, minHeight: dims.h }}
-      dir={isRTL ? 'rtl' : 'ltr'}
+      className="professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans relative shadow-xl overflow-hidden"
+      style={{ maxWidth: dims.w, minHeight: dims.h, direction: isRTL ? 'rtl' : 'ltr' }}
     >
-      {/* Letterhead Background - covers full page, semi-transparent so content is readable */}
+      {/* Letterhead Background */}
       {printWithLetterhead && letterheadUrl && (
         <div
           className="absolute inset-0 pointer-events-none z-0 print:fixed print:inset-0 print:w-full print:h-full"
@@ -89,248 +91,307 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
 
       {/* Status Watermark */}
       {invoice.type !== 'quotation' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0 opacity-[0.03] print:opacity-[0.05]">
-          <div className="transform -rotate-45 text-[150px] font-black tracking-widest text-gray-900 whitespace-nowrap mt-[50vh]">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.04] print:opacity-[0.05]">
+          <div className="transform -rotate-45 text-[120px] font-black tracking-widest text-gray-900 whitespace-nowrap">
             {statusConfig.watermark}
           </div>
         </div>
       )}
 
-      <table className="w-full relative z-10 border-collapse" style={{
-        marginTop: `${margins.top}mm`,
-        marginBottom: `${margins.bottom}mm`,
-        marginLeft: `${margins.left}mm`,
-        marginRight: `${margins.right}mm`
-      }}>
-        <thead>
-          <tr>
-            <td>
-              <div className="h-4 print:h-4"></div>
-            </td>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className="px-6 pb-8 print:px-8 print:pb-0 print:bg-transparent align-top" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
-              {/* Header Section */}
-              <div className="flex justify-between items-start mb-6">
-                {/* Company Info */}
-                <div className="flex flex-col gap-2 max-w-[50%]">
-                  {!printWithLetterhead && storeInfo.photoUrl && (
-                    <div className="mb-2">
-                      <img
-                        src={storeInfo.photoUrl}
-                        alt="Company Logo"
-                        className="max-h-24 max-w-full object-contain"
-                      />
-                    </div>
-                  )}
-                  {!printWithLetterhead && (
-                    <div>
-                      {/* Company name removed as per user request */}
-                      <div className="text-sm text-gray-800 font-medium space-y-0.5 bg-white/50 p-2 rounded-lg backdrop-blur-sm print:bg-transparent print:p-0">
-                        {storeInfo.address && <p>{storeInfo.address}</p>}
-                        {storeInfo.phone && <p dir="ltr" className={isRTL ? "text-right" : ""}>{storeInfo.phone}</p>}
-                        {storeInfo.email && <p dir="ltr" className={isRTL ? "text-right" : ""}>{storeInfo.email}</p>}
-                        {storeInfo.commercialRegister && (
-                          <p className="mt-1 text-xs text-gray-600">
-                            {t('commercialRegister')}: {storeInfo.commercialRegister}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+      {/* ─── MAIN CONTENT ─── */}
+      <div
+        className="relative z-10 flex flex-col min-h-full"
+        style={{
+          paddingTop: `${margins.top}mm`,
+          paddingBottom: `${margins.bottom}mm`,
+          paddingLeft: `${margins.left}mm`,
+          paddingRight: `${margins.right}mm`,
+        }}
+      >
 
-                {/* Invoice Details */}
-                <div className="flex flex-col items-end text-right">
-                  <div className="flex items-center gap-3 mb-3">
-                    {invoice.type !== 'quotation' && (
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border}`}>
-                        {statusConfig.label}
-                      </span>
+        {/* ── HEADER ── */}
+        <div className="flex justify-between items-start mb-5 gap-4">
+          {/* Left: Logo / Company Info */}
+          <div className="flex flex-col gap-1.5 min-w-0">
+            {!printWithLetterhead && storeInfo.photoUrl && (
+              <img src={storeInfo.photoUrl} alt="Logo" className="max-h-16 max-w-[160px] object-contain mb-1" />
+            )}
+            {!printWithLetterhead && (
+              <div className="text-xs text-gray-600 space-y-0.5 leading-relaxed">
+                {storeInfo.address && <p className="font-medium">{storeInfo.address}</p>}
+                {storeInfo.phone && <p dir="ltr" className={isRTL ? 'text-right' : ''}>{storeInfo.phone}</p>}
+                {storeInfo.email && <p dir="ltr" className={isRTL ? 'text-right' : ''}>{storeInfo.email}</p>}
+                {storeInfo.commercialRegister && (
+                  <p className="text-gray-500">{t('commercialRegister')}: {storeInfo.commercialRegister}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right: Invoice Title + Meta */}
+          <div className={`flex flex-col ${isRTL ? 'items-start' : 'items-end'} shrink-0`}>
+            {/* Title row */}
+            <div className="flex items-center gap-2 mb-2">
+              {invoice.type !== 'quotation' && (
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border"
+                  style={{ background: statusConfig.bg, color: statusConfig.text, borderColor: statusConfig.border }}
+                >
+                  {statusConfig.label}
+                </span>
+              )}
+              <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">{invoiceTitle}</h2>
+            </div>
+
+            {/* Meta table */}
+            <table className="text-xs border-collapse">
+              <tbody>
+                <tr>
+                  <td className={`py-0.5 text-gray-500 font-semibold uppercase tracking-wider ${isRTL ? 'pl-4' : 'pr-4'}`}>
+                    {t('invoiceNumber')}
+                  </td>
+                  <td className="font-bold text-gray-900 py-0.5">#{invoice.invoiceNumber}</td>
+                </tr>
+                <tr>
+                  <td className={`py-0.5 text-gray-500 font-semibold uppercase tracking-wider ${isRTL ? 'pl-4' : 'pr-4'}`}>
+                    {t('date')}
+                  </td>
+                  <td className="font-bold text-gray-900 py-0.5">{formatDate(new Date(invoice.date))}</td>
+                </tr>
+                {invoice.dueDate && (
+                  <tr>
+                    <td className={`py-0.5 text-gray-500 font-semibold uppercase tracking-wider ${isRTL ? 'pl-4' : 'pr-4'}`}>
+                      {t('dueDate')}
+                    </td>
+                    <td className="font-bold text-gray-900 py-0.5">{formatDate(new Date(invoice.dueDate))}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t-2 border-gray-800 mb-4" />
+
+        {/* ── CLIENT INFO ── */}
+        <div className="mb-4">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+            {t('customerInfo') || 'معلومات العميل'}
+          </p>
+          <div className="bg-gray-50 border border-gray-200 rounded px-3 py-2">
+            <p className="font-bold text-gray-900 text-sm">{invoice.customerName}</p>
+          </div>
+        </div>
+
+        {/* ── ITEMS TABLE ── */}
+        <div className="mb-5">
+          <table className="w-full text-xs border-collapse border border-gray-800">
+            <thead>
+              <tr className="bg-gray-900 text-white">
+                <th className="px-2 py-2 text-center w-8 border border-gray-800">#</th>
+                <th className={`px-3 py-2 border border-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+                  {t('product')}
+                </th>
+                <th className="px-2 py-2 text-center w-16 border border-gray-800">{t('quantity')}</th>
+                <th className={`px-2 py-2 w-24 border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>
+                  {t('unitPrice')}
+                </th>
+                <th className={`px-2 py-2 w-24 border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>
+                  {t('total')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoice.items.map((item, index) => (
+                <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="px-2 py-2 text-center text-gray-600 border border-gray-300">{index + 1}</td>
+                  <td className={`px-3 py-2 border border-gray-300 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <div className="font-semibold text-gray-900">{item.productName}</div>
+                    {item.productCode && (
+                      <div className="text-[10px] text-gray-500 mt-0.5">{item.productCode}</div>
                     )}
-                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">
-                      {invoice.type === 'quotation' ? t('quotationInvoice') :
-                        invoice.type === 'debt' ? t('debtInvoice') : t('salesInvoice')}
-                    </h2>
-                  </div>
+                  </td>
+                  <td className="px-2 py-2 text-center text-gray-800 font-medium border border-gray-300">
+                    {item.quantity}
+                  </td>
+                  <td className={`px-2 py-2 text-gray-700 border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
+                    {formatCurrency(item.price)}
+                  </td>
+                  <td className={`px-2 py-2 font-bold text-gray-900 border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
+                    {formatCurrency(item.total)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-                  <table className="text-sm">
-                    <tbody>
-                      <tr>
-                        <td className="pr-3 py-0.5 text-gray-500 font-medium uppercase text-xs tracking-wider">{t('invoiceNumber')}</td>
-                        <td className="font-bold text-gray-900">#{invoice.invoiceNumber}</td>
-                      </tr>
-                      <tr>
-                        <td className="pr-3 py-0.5 text-gray-500 font-medium uppercase text-xs tracking-wider">{t('date')}</td>
-                        <td className="font-bold text-gray-900">{formatDate(new Date(invoice.date))}</td>
-                      </tr>
-                      {invoice.dueDate && (
-                        <tr>
-                          <td className="pr-3 py-0.5 text-gray-500 font-medium uppercase text-xs tracking-wider">{t('dueDate')}</td>
-                          <td className="font-bold text-gray-900">{formatDate(new Date(invoice.dueDate))}</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+        {/* ── TOTALS + NOTES ROW ── */}
+        <div className="flex justify-between items-start mb-6 gap-6">
+          {/* Notes / Payment Method */}
+          <div className="flex-1 space-y-3">
+            {invoice.notes && (
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('notes')}</p>
+                <p className="text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded px-3 py-2 leading-relaxed">
+                  {invoice.notes}
+                </p>
               </div>
-
-              <hr className="border-gray-200 mb-6" />
-
-              {/* Client Info */}
-              <div className="mb-6">
-                <h3 className="text-xs uppercase font-bold text-gray-400 tracking-widest mb-1.5">
-                  {t('customerInfo') || 'فاتورة إلى'}
-                </h3>
-                <div className="bg-gray-50/80 rounded-lg p-3 border border-gray-100">
-                  <p className="text-base font-bold text-gray-900">{invoice.customerName}</p>
-                </div>
+            )}
+            {invoice.type !== 'quotation' && invoice.type !== 'debt' && (
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('paymentMethod')}</p>
+                <p className="text-sm font-bold text-gray-900">
+                  {t(invoice.paymentMethod as any) || invoice.paymentMethod}
+                </p>
               </div>
+            )}
+          </div>
 
-              {/* Items Table */}
-              <div className="mb-6 flex-grow">
-                <table className="w-full text-sm border-collapse border border-gray-800">
-                  <thead>
-                    <tr className="bg-gray-100 text-gray-900 border-b border-gray-800">
-                      <th className="px-3 py-2 font-bold uppercase tracking-wider text-center w-10 border border-gray-800">#</th>
-                      <th className={`px-3 py-2 font-bold uppercase tracking-wider border border-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>{t('product')}</th>
-                      <th className="px-3 py-2 font-bold uppercase tracking-wider text-center w-24 border border-gray-800">{t('quantity')}</th>
-                      <th className={`px-3 py-2 font-bold uppercase tracking-wider w-28 border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>{t('unitPrice')}</th>
-                      <th className={`px-3 py-2 font-bold uppercase tracking-wider w-32 border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>{t('total')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.items.map((item, index) => (
-                      <tr key={index} className="even:bg-gray-50">
-                        <td className="px-3 py-2 text-gray-800 text-center border border-gray-800">{index + 1}</td>
-                        <td className="px-3 py-2 border border-gray-800">
-                          <div className="font-bold text-gray-900">{item.productName}</div>
-                          {item.productCode && <div className="text-xs text-gray-600 mt-0.5">{item.productCode}</div>}
-                        </td>
-                        <td className="px-3 py-2 text-center text-gray-800 font-medium border border-gray-800">{item.quantity}</td>
-                        <td className={`px-3 py-2 text-gray-800 font-medium border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>{formatCurrency(item.price)}</td>
-                        <td className={`px-3 py-2 font-bold text-gray-900 border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>{formatCurrency(item.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          {/* Totals */}
+          <div className="shrink-0 w-56">
+            <table className="w-full text-xs border-collapse border border-gray-800">
+              <tbody>
+                <tr>
+                  <td className={`py-2 px-3 text-gray-700 font-semibold bg-gray-50 border border-gray-300 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    {t('subtotal')}
+                  </td>
+                  <td className={`py-2 px-3 font-semibold text-gray-900 border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
+                    {formatCurrency(invoice.subtotal || invoice.total)}
+                  </td>
+                </tr>
+                {(invoice.discount || 0) > 0 && (
+                  <tr>
+                    <td className={`py-2 px-3 text-gray-700 font-semibold bg-gray-50 border border-gray-300 ${isRTL ? 'text-right' : 'text-left'}`}>
+                      {t('discount')}
+                    </td>
+                    <td className={`py-2 px-3 font-semibold text-red-600 border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
+                      -{formatCurrency(invoice.discount || 0)}
+                    </td>
+                  </tr>
+                )}
+                {(invoice.tax || 0) > 0 && (
+                  <tr>
+                    <td className={`py-2 px-3 text-gray-700 font-semibold bg-gray-50 border border-gray-300 ${isRTL ? 'text-right' : 'text-left'}`}>
+                      {t('taxAmount')}
+                    </td>
+                    <td className={`py-2 px-3 font-semibold text-gray-900 border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
+                      +{formatCurrency(invoice.tax || 0)}
+                    </td>
+                  </tr>
+                )}
+                <tr className="bg-gray-900 text-white">
+                  <td className={`py-2.5 px-3 font-black text-sm border border-gray-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    {t('total')}
+                  </td>
+                  <td className={`py-2.5 px-3 font-black text-sm border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>
+                    {formatCurrency(invoice.total)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-              {/* Totals Section */}
-              <div className="flex justify-between items-start mb-8">
-                <div className="w-1/2 pr-6">
-                  {invoice.notes && (
-                    <div className="mb-4">
-                      <h4 className="text-xs uppercase font-bold text-gray-800 tracking-widest mb-1.5">{t('notes')}</h4>
-                      <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded-lg border border-gray-800">{invoice.notes}</p>
-                    </div>
-                  )}
+        {/* ── FOOTER ── */}
+        <div className="mt-auto pt-4 border-t border-gray-300">
+          <div className="flex justify-between items-end gap-4">
+            {/* Terms */}
+            <div className={`flex-1 ${isRTL ? 'text-right' : 'text-left'}`}>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+                {t('termsAndConditions')}
+              </p>
+              <ul className="text-[10px] text-gray-500 space-y-0.5 list-disc list-inside leading-relaxed">
+                <li>
+                  {isRTL
+                    ? 'البضاعة المباعة لا ترد ولا تستبدل بعد 3 أيام.'
+                    : 'Les marchandises vendues ne sont ni reprises ni échangées après 3 jours.'}
+                </li>
+                <li>
+                  {isRTL
+                    ? 'يجب إحضار الفاتورة الأصلية عند المراجعة.'
+                    : "La facture originale doit être présentée lors de l'examen."}
+                </li>
+              </ul>
+              <p className="mt-2 text-xs font-semibold text-gray-700">
+                {t('thankYou') || 'شكراً لتعاملكم معنا!'}
+              </p>
+            </div>
 
-                  {invoice.type !== 'quotation' && invoice.type !== 'debt' && (
-                    <div>
-                      <h4 className="text-xs uppercase font-bold text-gray-800 tracking-widest mb-1.5">{t('paymentMethod')}</h4>
-                      <p className="text-sm font-bold text-gray-900">{t(invoice.paymentMethod as any) || invoice.paymentMethod}</p>
-                    </div>
-                  )}
-                </div>
+            {/* QR + Barcode */}
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              <QRCodeSVG
+                value={JSON.stringify({ id: invoice.id, no: invoice.invoiceNumber, total: invoice.total })}
+                size={48}
+                level="M"
+                includeMargin={false}
+              />
+              <svg ref={barcodeRef} className="max-w-[90px]"></svg>
+            </div>
+          </div>
+        </div>
 
-                <div className="w-1/2 max-w-[300px]">
-                  <table className="w-full text-sm border-collapse border border-gray-800">
-                    <tbody>
-                      <tr>
-                        <td className="py-2 px-3 text-gray-800 font-bold border border-gray-800 bg-gray-50">{t('subtotal')}</td>
-                        <td className={`py-2 px-3 font-bold text-gray-900 border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>{formatCurrency(invoice.subtotal || invoice.total)}</td>
-                      </tr>
-                      {(invoice.discount || 0) > 0 && (
-                        <tr>
-                          <td className="py-2 px-3 text-gray-800 font-bold border border-gray-800 bg-gray-50">{t('discount')}</td>
-                          <td className={`py-2 px-3 font-bold text-gray-900 border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>-{formatCurrency(invoice.discount || 0)}</td>
-                        </tr>
-                      )}
-                      {(invoice.tax || 0) > 0 && (
-                        <tr>
-                          <td className="py-2 px-3 text-gray-800 font-bold border border-gray-800 bg-gray-50">{t('taxAmount')}</td>
-                          <td className={`py-2 px-3 font-bold text-gray-900 border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>+{formatCurrency(invoice.tax || 0)}</td>
-                        </tr>
-                      )}
-                      <tr className="bg-gray-100">
-                        <td className="py-3 px-3 font-black text-gray-900 text-base border border-gray-800">{t('total')}</td>
-                        <td className={`py-3 px-3 font-black text-gray-900 text-lg border border-gray-800 ${isRTL ? 'text-left' : 'text-right'}`}>{formatCurrency(invoice.total)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="mt-auto pt-6 border-t border-gray-200">
-                <div className="flex justify-between items-end">
-                  <div className="flex-1">
-                    <h4 className="text-xs uppercase font-bold text-gray-400 tracking-widest mb-1.5">{t('termsAndConditions')}</h4>
-                    <ul className="text-xs text-gray-500 space-y-0.5 list-disc list-inside">
-                      <li>{isRTL ? 'البضاعة المباعة لا ترد ولا تستبدل بعد 3 أيام.' : 'Les marchandises vendues ne sont ni reprises ni échangées après 3 jours.'}</li>
-                      <li>{isRTL ? 'يجب إحضار الفاتورة الأصلية عند المراجعة.' : "La facture originale doit être présentée lors de l'examen."}</li>
-                    </ul>
-                    <p className="mt-3 text-sm font-medium text-gray-800">{t('thankYou') || 'شكراً لتعاملكم معنا!'}</p>
-                  </div>
-
-                  <div className="flex flex-col items-center gap-1.5">
-                    <QRCodeSVG
-                      value={JSON.stringify({
-                        id: invoice.id,
-                        no: invoice.invoiceNumber,
-                        total: invoice.total
-                      })}
-                      size={50}
-                      level="M"
-                      includeMargin={false}
-                    />
-                    <svg ref={barcodeRef} className="max-w-[100px]"></svg>
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr>
-            <td>
-              {/* Spacer for footer */}
-              <div className="h-10 print:h-32"></div>
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+      </div>{/* end main content */}
 
       <style>{`
         @media print {
           @page {
             size: ${paperSize.toLowerCase()} ${orientation};
-            margin: 0;
+            margin: 0mm;
           }
-          body {
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+
+          /* Force color/background printing */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
+
+          /* Hide everything on the page except the invoice */
+          body > * {
+            display: none !important;
+          }
+
+          /* Show only the invoice container */
           .professional-invoice {
             display: block !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100% !important;
+            min-height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
             box-shadow: none !important;
             border: none !important;
-            margin: 0 !important;
-            width: 100% !important;
-            height: auto !important;
-            min-height: 100vh !important;
-            /* Using page-break constraint to avoid spliting if not needed */
-            page-break-after: always;
+            overflow: visible !important;
+            z-index: 9999 !important;
+            background: white !important;
           }
-          td, tr {
-            page-break-inside: avoid;
+
+          /* Ensure table header dark background prints */
+          thead tr.bg-gray-900,
+          tr.bg-gray-900 {
+            background-color: #111827 !important;
+            color: #ffffff !important;
           }
+
+          /* Ensure zebra striping prints */
+          tr.bg-gray-50 {
+            background-color: #f9fafb !important;
+          }
+
+          /* Avoid breaking rows across pages */
+          table { page-break-inside: auto; }
+          tr    { page-break-inside: avoid; page-break-after: auto; }
+          thead { display: table-header-group; }
+          tfoot { display: table-footer-group; }
         }
       `}</style>
-    </div >
+    </div>
   );
 };
 
