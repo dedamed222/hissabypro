@@ -462,6 +462,7 @@ export const pullFromCloud = async (toast: any) => {
                 });
 
                 // Update local storage with cloud data
+                const storeData = loadStoreData();
                 const newStoreData = {
                     ...storeData,
                     products: dbProducts.map(mapProduct),
