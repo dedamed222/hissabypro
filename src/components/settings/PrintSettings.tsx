@@ -48,7 +48,7 @@ export function PrintSettings() {
     });
 
     const { isAuthenticated, user } = useAuth();
-    
+
     // Watch fields to instantly update layout logic
     const { watch } = form;
     const paperSize = watch("paperSize");
@@ -83,7 +83,7 @@ export function PrintSettings() {
                         marginLeft: marginsData?.left ?? lp.marginLeft,
                         marginRight: marginsData?.right ?? lp.marginRight,
                     };
-                    
+
                     data.storeInfo.letterheadUrl = lp.letterheadUrl;
                     data.storeInfo.printSettings = {
                         paperSize: lp.paperSize as "A3" | "A4" | "A5" | "A6",
@@ -119,7 +119,7 @@ export function PrintSettings() {
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             const page = await pdf.getPage(1);
 
-            const viewport = page.getViewport({ scale: 2.0 }); 
+            const viewport = page.getViewport({ scale: 2.0 });
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
 
@@ -143,7 +143,7 @@ export function PrintSettings() {
 
     const getRecommendedResolution = (size: string, isPortrait: boolean) => {
         let text = "";
-        switch(size) {
+        switch (size) {
             case "A3": text = "3508 × 4961"; break;
             case "A4": text = "2480 × 3508"; break;
             case "A5": text = "1748 × 2480"; break;
@@ -273,9 +273,9 @@ export function PrintSettings() {
         }
     };
 
-    const aspectRatioStyle = 
-        paperSize === 'A4' || paperSize === 'A3' ? (orientation === 'portrait' ? 'aspect-[1/1.414]' : 'aspect-[1.414/1]') : 
-        (orientation === 'portrait' ? 'aspect-[1/1.414]' : 'aspect-[1.414/1]');
+    const aspectRatioStyle =
+        paperSize === 'A4' || paperSize === 'A3' ? (orientation === 'portrait' ? 'aspect-[1/1.414]' : 'aspect-[1.414/1]') :
+            (orientation === 'portrait' ? 'aspect-[1/1.414]' : 'aspect-[1.414/1]');
 
     let paperDimsText = "";
     if (paperSize === "A4") paperDimsText = "210×297 مم";
@@ -292,7 +292,7 @@ export function PrintSettings() {
             <CardContent>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
                                 control={form.control}
@@ -363,9 +363,9 @@ export function PrintSettings() {
 
                         <div className="flex flex-col space-y-4 mb-6">
                             <FormLabel>الراسية (Letterhead)</FormLabel>
-                            
+
                             <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded-md mb-2">
-                                <strong>توصية: </strong> للحصول على دقة طباعة ممتازة لمقاس {paperSize} {orientation === 'portrait' ? 'طولي' : 'عرضي'} ({paperDimsText})، 
+                                <strong>توصية: </strong> للحصول على دقة طباعة ممتازة لمقاس {paperSize} {orientation === 'portrait' ? 'طولي' : 'عرضي'} ({paperDimsText})،
                                 يفضل استخدام صورة بدقة جودة عالية (300 DPI) وبأبعاد: <span className="font-bold">{getRecommendedResolution(paperSize, orientation === 'portrait')} بكسل</span>.
                             </div>
 

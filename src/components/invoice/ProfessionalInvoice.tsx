@@ -72,7 +72,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
 
   return (
     <div
-      className="professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans relative shadow-xl overflow-hidden"
+      className="professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans relative shadow-xl"
       style={{ maxWidth: dims.w, minHeight: dims.h, direction: isRTL ? 'rtl' : 'ltr' }}
     >
       {/* Letterhead Background - full page at invoice size */}
@@ -83,8 +83,8 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
             backgroundImage: `url(${letterheadUrl})`,
             backgroundSize: '100% 100%',
             backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'top center',
-            opacity: 0.18,
+            backgroundPosition: 'center',
+            opacity: 0.55,
           }}
         />
       )}
@@ -108,6 +108,8 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
           paddingRight: `${margins.right}mm`,
         }}
       >
+        {/* Center content column so letterhead shows on sides */}
+        <div style={{ width: printWithLetterhead ? '80%' : '100%', margin: '0 auto' }}>
 
         {/* ── HEADER ── */}
         <div className="flex justify-between items-start mb-5 gap-4">
@@ -284,11 +286,11 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
                     </td>
                   </tr>
                 )}
-                <tr style={{ backgroundColor: '#1d4ed8', color: '#ffffff' }}>
-                  <td className={`py-2.5 px-3 font-black text-sm border border-blue-800 ${isRTL ? 'text-right' : 'text-left'}`}>
+                <tr className="total-row" style={{ backgroundColor: '#f3f4f6', color: '#000000' }}>
+                  <td className={`py-2.5 px-3 font-black text-sm border border-gray-300 ${isRTL ? 'text-right' : 'text-left'}`}>
                     {t('total')}
                   </td>
-                  <td className={`py-2.5 px-3 font-black text-sm border border-blue-800 ${isRTL ? 'text-left' : 'text-right'}`}>
+                  <td className={`py-2.5 px-3 font-black text-sm border border-gray-300 ${isRTL ? 'text-left' : 'text-right'}`}>
                     {formatCurrency(invoice.total)}
                   </td>
                 </tr>
@@ -333,7 +335,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
               <svg ref={barcodeRef} className="max-w-[90px]"></svg>
             </div>
           </div>
-        </div>
+        </div>{/* end centered content column */}
 
       </div>{/* end main content */}
 
@@ -382,10 +384,10 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
             color: #1e3a8a !important;
           }
 
-          /* Total row blue */
+          /* Total row light gray / black */
           tr.total-row {
-            background-color: #1d4ed8 !important;
-            color: #ffffff !important;
+            background-color: #f3f4f6 !important;
+            color: #000000 !important;
           }
 
           /* Ensure zebra striping prints */
