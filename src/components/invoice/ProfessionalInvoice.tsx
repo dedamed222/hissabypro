@@ -334,7 +334,9 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
               />
               <svg ref={barcodeRef} className="max-w-[90px]"></svg>
             </div>
-          </div>
+          </div>{/* end flex row */}
+        </div>{/* end footer */}
+
         </div>{/* end centered content column */}
 
       </div>{/* end main content */}
