@@ -73,15 +73,15 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
       style={{ maxWidth: dims.w, minHeight: dims.h }}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Letterhead Background - Tiled to simulate pages in preview, repeating on all printed pages */}
+      {/* Letterhead Background - covers full page to show both header & footer areas */}
       {printWithLetterhead && letterheadUrl && (
-        <div 
-          className="absolute inset-0 pointer-events-none z-[-1] print:fixed print:w-full print:h-[100vh]"
+        <div
+          className="absolute inset-0 pointer-events-none z-0 print:fixed print:inset-0 print:w-full print:h-full"
           style={{
             backgroundImage: `url(${letterheadUrl})`,
-            backgroundSize: `100% ${dims.h}`,
-            backgroundRepeat: 'repeat-y',
-            backgroundPosition: 'top center'
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'top center',
           }}
         />
       )}
@@ -104,14 +104,13 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
         <thead>
           <tr>
             <td>
-              {/* Spacer for header */}
               <div className="h-4 print:h-4"></div>
             </td>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td className="px-6 pb-8 print:px-8 print:pb-0 bg-white/80 print:bg-transparent align-top" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
+            <td className="px-6 pb-8 print:px-8 print:pb-0 print:bg-transparent align-top" style={{ paddingLeft: '20px', paddingRight: '20px' }}>
               {/* Header Section */}
               <div className="flex justify-between items-start mb-6">
                 {/* Company Info */}

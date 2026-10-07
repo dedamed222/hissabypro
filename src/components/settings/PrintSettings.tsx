@@ -380,10 +380,17 @@ export function PrintSettings() {
                                     >
                                         <X className="w-4 h-4" />
                                     </Button>
-                                    <div className={`relative ${aspectRatioStyle} w-full max-w-[500px] border shadow-sm bg-white overflow-hidden`}>
-                                        <img src={previewUrl} alt="Letterhead" className="absolute inset-0 w-full h-full object-cover" />
+                                    <div
+                                        className={`relative ${aspectRatioStyle} w-full max-w-[500px] border shadow-sm overflow-hidden`}
+                                        style={{
+                                            backgroundImage: `url(${previewUrl})`,
+                                            backgroundSize: '100% 100%',
+                                            backgroundRepeat: 'no-repeat',
+                                            backgroundPosition: 'top center',
+                                        }}
+                                    >
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            <div className="border border-dashed border-gray-400 bg-white/50 px-4 py-2 font-bold text-gray-500 rounded backdrop-blur-sm">
+                                            <div className="border border-dashed border-gray-500 bg-white/60 px-4 py-2 font-bold text-gray-600 rounded backdrop-blur-sm">
                                                 مساحة محتوى الفاتورة
                                             </div>
                                         </div>
