@@ -73,7 +73,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
   return (
     <div
       className="professional-invoice print:block hidden bg-white mx-auto text-gray-800 font-sans relative shadow-xl"
-      style={{ maxWidth: dims.w, minHeight: dims.h, direction: isRTL ? 'rtl' : 'ltr' }}
+      style={{ maxWidth: dims.w, width: dims.w, height: dims.h, direction: isRTL ? 'rtl' : 'ltr' }}
     >
       {/* Letterhead Background - full page at invoice size */}
       {printWithLetterhead && letterheadUrl && (
@@ -84,7 +84,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
             backgroundSize: '100% 100%',
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'center',
-            opacity: 0.55,
+            opacity: 1,
           }}
         />
       )}
@@ -100,16 +100,18 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
 
       {/* ─── MAIN CONTENT ─── */}
       <div
-        className="relative z-10 flex flex-col min-h-full"
+        className="relative z-10 flex flex-col"
         style={{
-          paddingTop: `${margins.top}mm`,
-          paddingBottom: `${margins.bottom}mm`,
-          paddingLeft: `${margins.left}mm`,
-          paddingRight: `${margins.right}mm`,
+          position: 'absolute',
+          top: `${margins.top}mm`,
+          bottom: `${margins.bottom}mm`,
+          left: `${margins.left}mm`,
+          right: `${margins.right}mm`,
+          overflow: 'hidden',
         }}
       >
-        {/* Center content column so letterhead shows on sides */}
-        <div style={{ width: printWithLetterhead ? '80%' : '100%', margin: '0 auto' }}>
+        {/* Content column - full width of the safe area */}
+        <div style={{ width: '100%' }}>
 
         {/* ── HEADER ── */}
         <div className="flex justify-between items-start mb-5 gap-4">
