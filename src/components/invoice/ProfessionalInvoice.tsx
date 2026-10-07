@@ -73,7 +73,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
       style={{ maxWidth: dims.w, minHeight: dims.h }}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      {/* Letterhead Background - covers full page to show both header & footer areas */}
+      {/* Letterhead Background - covers full page, semi-transparent so content is readable */}
       {printWithLetterhead && letterheadUrl && (
         <div
           className="absolute inset-0 pointer-events-none z-0 print:fixed print:inset-0 print:w-full print:h-full"
@@ -82,6 +82,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
             backgroundSize: '100% 100%',
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'top center',
+            opacity: 0.15,
           }}
         />
       )}
