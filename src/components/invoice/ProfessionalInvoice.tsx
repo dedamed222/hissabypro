@@ -79,15 +79,11 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
     >
       {/* Letterhead Background - full page at invoice size */}
       {printWithLetterhead && letterheadUrl && (
-        <div
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            backgroundImage: `url(${letterheadUrl})`,
-            backgroundSize: '100% 100%',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center',
-            opacity: 1,
-          }}
+        <img
+          src={letterheadUrl}
+          className="absolute inset-0 w-full h-full pointer-events-none z-0"
+          style={{ objectFit: 'fill', opacity: 1 }}
+          alt=""
         />
       )}
 
@@ -376,6 +372,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
             top: 0 !important;
             left: 0 !important;
             width: 100vw !important;
+            height: 100vh !important;
             max-width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
