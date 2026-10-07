@@ -238,6 +238,11 @@ export const pushToCloud = async (toast: any) => {
                                 locale: storeData.settings?.locale,
                                 custom_currencies: storeData.settings?.customCurrencies,
                                 custom_payment_methods: storeData.settings?.customPaymentMethods,
+                                letterhead_url: storeData.storeInfo?.letterheadUrl,
+                                print_paper_size: storeData.storeInfo?.printSettings?.paperSize,
+                                print_orientation: storeData.storeInfo?.printSettings?.orientation,
+                                print_with_letterhead: storeData.storeInfo?.printSettings?.printWithLetterhead,
+                                print_margins: storeData.storeInfo?.printSettings?.margins,
                             });
                         } catch (err) {
                             console.error("Failed to sync store settings:", err);
@@ -478,11 +483,21 @@ export const pullFromCloud = async (toast: any) => {
                 };
 
                 if (dbSettings) {
+                    const marginsData = dbSettings.print_margins ? (typeof dbSettings.print_margins === 'string' ? JSON.parse(dbSettings.print_margins) : dbSettings.print_margins) : null;
                     newStoreData.storeInfo = {
+                        ...storeData.storeInfo,
                         name: dbSettings.store_name || "",
                         phone: dbSettings.store_phone || "",
                         email: dbSettings.store_email || "",
                         photoUrl: dbSettings.store_photo_url || "",
+                        letterheadUrl: dbSettings.letterhead_url || storeData.storeInfo?.letterheadUrl || "",
+                        printSettings: {
+                            ...(storeData.storeInfo?.printSettings || {}),
+                            paperSize: dbSettings.print_paper_size || storeData.storeInfo?.printSettings?.paperSize || 'A4',
+                            orientation: dbSettings.print_orientation || storeData.storeInfo?.printSettings?.orientation || 'portrait',
+                            printWithLetterhead: dbSettings.print_with_letterhead ?? storeData.storeInfo?.printSettings?.printWithLetterhead ?? false,
+                            margins: marginsData || storeData.storeInfo?.printSettings?.margins || { top: 0, bottom: 0, left: 0, right: 0 }
+                        }
                     };
                     newStoreData.settings = {
                         currency: dbSettings.currency || "MRU",
