@@ -495,7 +495,7 @@ export const pullFromCloud = async (toast: any) => {
                             ...(storeData.storeInfo?.printSettings || {}),
                             paperSize: dbSettings.print_paper_size || storeData.storeInfo?.printSettings?.paperSize || 'A4',
                             orientation: dbSettings.print_orientation || storeData.storeInfo?.printSettings?.orientation || 'portrait',
-                            printWithLetterhead: dbSettings.print_with_letterhead ?? storeData.storeInfo?.printSettings?.printWithLetterhead ?? false,
+                            printWithLetterhead: dbSettings.print_with_letterhead ?? storeData.storeInfo?.printSettings?.printWithLetterhead ?? true,
                             margins: marginsData || storeData.storeInfo?.printSettings?.margins || { top: 0, bottom: 0, left: 0, right: 0 }
                         }
                     };

@@ -49,7 +49,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
   const statusConfig = getStatusConfig(invoice.status);
   const paperSize = storeInfo.printSettings?.paperSize || 'A4';
   const orientation = storeInfo.printSettings?.orientation || 'portrait';
-  const printWithLetterhead = storeInfo.printSettings?.printWithLetterhead || false;
+  const printWithLetterhead = storeInfo.printSettings?.printWithLetterhead !== false;
   // Read from dedicated localStorage key (large base64 no longer stored in storeInfo)
   const storedLetterhead = typeof window !== 'undefined' ? (localStorage.getItem('store-letterhead-v1') || storeInfo.letterheadUrl || '') : '';
   const letterheadUrl = customerLetterheadUrl || storedLetterhead;
