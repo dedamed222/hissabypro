@@ -580,8 +580,8 @@ export default function Archive() {
                     className="w-full p-2.5 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-arab-blue"
                   >
                     <option value="cash">{t("cash")}</option>
-                    <option value="bank">{t("bank")}</option>
-                    <option value="check">{t("check")}</option>
+                    <option value="bank">{(t as any)("bank") || "تحويل بنكي"}</option>
+                    <option value="check">{(t as any)("check") || "شيك"}</option>
                   </select>
                 </div>
                 <div>

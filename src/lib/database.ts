@@ -880,7 +880,7 @@ export async function updateProductDefaultPrice(
 
 export async function getProductMovementsDB(productId?: string, customerId?: string) {
   try {
-    let query = supabase
+    let query = (supabase as any)
       .from("product_movements")
       .select("*")
       .order("date", { ascending: false });
@@ -922,7 +922,7 @@ export async function upsertProductMovementDB(movement: {
   try {
     const user = await getAuthenticatedUser();
     const payload = { ...movement, user_id: user.id };
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("product_movements")
       .upsert(payload, { onConflict: "id" })
       .select()
@@ -937,7 +937,7 @@ export async function upsertProductMovementDB(movement: {
 
 export async function deleteProductMovementsByInvoiceDB(invoiceId?: string, invoiceNumber?: string) {
   try {
-    let query = supabase.from("product_movements").delete();
+    let query = (supabase as any).from("product_movements").delete();
     if (invoiceId) {
       query = query.eq("invoice_id", invoiceId);
     } else if (invoiceNumber) {
