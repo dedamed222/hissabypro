@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { Outlet, Navigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
@@ -16,19 +17,22 @@ export default function Layout() {
   }
 
   return (
-    <div className="flex h-[100dvh] bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 overflow-hidden">
+    <div className="flex h-[100dvh] overflow-hidden bg-slate-50">
       {/* Sidebar */}
       <Sidebar />
 
-      {/* Main content */}
-      <div className="flex flex-col flex-1 min-w-0">
+      {/* Main content area */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Header />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-white/95 via-blue-50/20 to-indigo-50/30 backdrop-blur-sm">
-          {/* pb-32 leaves room for the mobile bottom nav bar and safe area */}
-          <div className="w-full min-h-full pb-32 lg:pb-6">
-            <div className="animate-fade-in min-h-full">
-              <Outlet />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Subtle dot grid background */}
+          <div className="w-full min-h-full bg-dots">
+            <div className="min-h-full bg-gradient-to-br from-slate-50/80 via-indigo-50/20 to-purple-50/20">
+              {/* pb-24 leaves room for mobile bottom nav bar */}
+              <div className="pb-24 lg:pb-4 animate-fade-in">
+                <Outlet />
+              </div>
             </div>
           </div>
         </main>

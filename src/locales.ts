@@ -152,7 +152,12 @@ export const translations = {
     systemVersion: "نظام إدارة المتجر v2.0",
     logoutSuccess: "تم تسجيل الخروج",
     logoutSuccessDesc: "تم تسجيل خروجك بنجاح",
-
+    menuGroupOverview: "نظرة عامة",
+    menuGroupSales: "الفواتير والمبيعات",
+    menuGroupInventory: "المخزون والمنتجات",
+    menuGroupFinance: "الحسابات والعملاء",
+    menuGroupSystem: "النظام",
+    
     // User roles
     admin: "مدير النظام",
     user: "مستخدم",
@@ -434,6 +439,7 @@ export const translations = {
     noProductsSoldToday: "لا توجد منتجات مباعة اليوم",
     productAlert: "إنذار المنتجات",
     productsNearDepletion: "منتجات قاربت على النفاذ",
+    allProductsInStock: "المخزون كافٍ - جميع المنتجات متوفرة",
     viewProducts: "عرض المنتجات",
     recentlyUsedProducts: "أحدث المنتجات المستخدمة (MRU)",
     noRecentProducts: "لا توجد منتجات مستخدمة حديثاً",
@@ -754,6 +760,11 @@ export const translations = {
     systemVersion: "Système de gestion v2.0",
     logoutSuccess: "Déconnexion réussie",
     logoutSuccessDesc: "Vous avez été déconnecté avec succès",
+    menuGroupOverview: "Vue d'ensemble",
+    menuGroupSales: "Ventes & Factures",
+    menuGroupInventory: "Stock & Produits",
+    menuGroupFinance: "Comptes & Clients",
+    menuGroupSystem: "Système",
 
     // User roles
     admin: "Administrateur",
@@ -1037,6 +1048,7 @@ export const translations = {
     noProductsSoldToday: "Aucun produit vendu aujourd'hui",
     productAlert: "Alerte produits",
     productsNearDepletion: "produits presque épuisés",
+    allProductsInStock: "Stock suffisant - tous les produits disponibles",
     viewProducts: "Voir les produits",
     recentlyUsedProducts: "Produits récemment utilisés (MRU)",
     noRecentProducts: "Aucun produit récemment utilisé",

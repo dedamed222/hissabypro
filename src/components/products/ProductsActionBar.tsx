@@ -20,6 +20,7 @@ export default function ProductsActionBar({
   products,
   onProductsUpdate,
   onImportProducts,
+  onOpenReports,
 }: ProductsActionBarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();

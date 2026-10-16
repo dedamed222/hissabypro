@@ -16,7 +16,7 @@ export default function ProductTable({
   onDelete,
   onViewHistory
 }: ProductTableProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   return <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
     <table className="arab-table block md:table w-full">
