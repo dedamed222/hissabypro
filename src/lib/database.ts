@@ -239,6 +239,7 @@ export async function upsertInvoice(invoice: {
   debt_type?: "debtor" | "creditor" | null;
   notes?: string;
   date?: string;
+  created_at?: string;
 }, items?: Array<{
   product_id?: string;
   product_name: string;

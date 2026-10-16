@@ -52,6 +52,7 @@ export default function ClientNotes() {
   const [isInvoiceEditOpen, setIsInvoiceEditOpen] = useState(false);
   const [editingInvoiceObj, setEditingInvoiceObj] = useState<Invoice | null>(null);
   const [editInvCustName, setEditInvCustName] = useState("");
+  const [editInvDate, setEditInvDate] = useState("");
   const [editInvStatus, setEditInvStatus] = useState<"pending" | "paid" | "partial" | "cancelled">("pending");
   const [editInvPaymentMethod, setEditInvPaymentMethod] = useState("cash");
   const [editInvType, setEditInvType] = useState<"sales" | "quotation" | "debt">("sales");
@@ -384,6 +385,24 @@ export default function ClientNotes() {
     }
     setEditingInvoiceObj(inv);
     setEditInvCustName(inv.customerName || "");
+
+    // Extract YYYY-MM-DD from inv.date or inv.createdAt
+    const rawDate = inv.date || inv.createdAt || "";
+    let dStr = "";
+    if (rawDate) {
+      try {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          dStr = d.toISOString().split("T")[0];
+        } else if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+          dStr = rawDate.slice(0, 10);
+        }
+      } catch {
+        dStr = "";
+      }
+    }
+    setEditInvDate(dStr || new Date().toISOString().split("T")[0]);
+
     setEditInvStatus(inv.status || "pending");
     setEditInvPaymentMethod(inv.paymentMethod || "cash");
     setEditInvType(inv.type || "sales");
@@ -401,12 +420,29 @@ export default function ClientNotes() {
   const handleSaveInvoiceEdit = async () => {
     if (!editingInvoiceObj) return;
     const computedTotal = editInvItems.reduce((acc, it) => acc + (it.total || 0), 0);
+
+    let finalCreatedAt = editingInvoiceObj.createdAt;
+    const finalDate = editInvDate || editingInvoiceObj.date || new Date().toISOString().split("T")[0];
+    if (editInvDate) {
+      try {
+        const oldTime = editingInvoiceObj.createdAt && editingInvoiceObj.createdAt.includes("T")
+          ? editingInvoiceObj.createdAt.split("T")[1]
+          : "12:00:00.000Z";
+        const timePart = oldTime.split(".")[0] || "12:00:00";
+        finalCreatedAt = new Date(`${editInvDate}T${timePart}`).toISOString();
+      } catch {
+        finalCreatedAt = new Date(editInvDate).toISOString();
+      }
+    }
+
     const updatedInvoice: Invoice = {
       ...editingInvoiceObj,
       customerName: editInvCustName.trim() || editingInvoiceObj.customerName,
       status: editInvStatus,
       paymentMethod: editInvPaymentMethod,
       type: editInvType,
+      date: finalDate,
+      createdAt: finalCreatedAt,
       notes: editInvNotes,
       subtotal: computedTotal,
       total: computedTotal,
@@ -439,7 +475,7 @@ export default function ClientNotes() {
     if (store.customerFiles) {
       store.customerFiles = store.customerFiles.map((f) =>
         (f.invoiceId === updatedInvoice.id || f.invoiceNumber === updatedInvoice.invoiceNumber)
-          ? { ...f, customerName: updatedInvoice.customerName, total: updatedInvoice.total }
+          ? { ...f, customerName: updatedInvoice.customerName, total: updatedInvoice.total, date: finalDate }
           : f
       );
     }
@@ -458,6 +494,7 @@ export default function ClientNotes() {
         status: updatedInvoice.status,
         type: updatedInvoice.type,
         date: updatedInvoice.date,
+        created_at: updatedInvoice.createdAt,
         notes: updatedInvoice.notes,
       }, editInvItems.map((it) => ({
         product_id: it.productId,
@@ -1249,11 +1286,18 @@ export default function ClientNotes() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Customer Name */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">{t("customer")}</label>
-                <input type="text" value={editInvCustName} onChange={(e) => setEditInvCustName(e.target.value)}
-                  className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-arab-blue" />
+              {/* Customer Name & Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">{t("customer")}</label>
+                  <input type="text" value={editInvCustName} onChange={(e) => setEditInvCustName(e.target.value)}
+                    className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-arab-blue" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">{t("date") || "تاريخ الفاتورة"}</label>
+                  <input type="date" value={editInvDate} onChange={(e) => setEditInvDate(e.target.value)}
+                    className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-arab-blue bg-white font-sans" />
+                </div>
               </div>
 
               {/* Status + Payment + Type */}

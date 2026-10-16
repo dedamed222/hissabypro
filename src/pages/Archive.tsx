@@ -44,6 +44,7 @@ export default function Archive() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [editCustomerName, setEditCustomerName] = useState("");
+  const [editDate, setEditDate] = useState("");
   const [editStatus, setEditStatus] = useState<"pending" | "paid" | "partial" | "cancelled">("pending");
   const [editPaymentMethod, setEditPaymentMethod] = useState("cash");
   const [editType, setEditType] = useState<"sales" | "quotation" | "debt">("sales");
@@ -139,7 +140,8 @@ export default function Archive() {
   const filteredInvoices = invoices
     .filter(invoice => {
       const invoiceType = invoice.type || 'sales';
-      const invoiceYear = new Date(invoice.createdAt).getFullYear();
+      const invoiceDate = invoice.date || invoice.createdAt;
+      const invoiceYear = invoiceDate ? new Date(invoiceDate).getFullYear() : 0;
 
       const matchesYear = year === 0 || invoiceYear === year;
       const matchesType = filterType === "all" || invoiceType === filterType;
@@ -170,7 +172,7 @@ export default function Archive() {
     {
       key: "createdAt",
       header: "التاريخ",
-      render: (invoice: any) => formatDate(invoice.createdAt)
+      render: (invoice: any) => formatDate(invoice.date || invoice.createdAt)
     },
     {
       key: "total",
@@ -196,6 +198,24 @@ export default function Archive() {
   const handleOpenEdit = (invoice: Invoice) => {
     setEditingInvoice(invoice);
     setEditCustomerName(invoice.customerName);
+
+    // Extract YYYY-MM-DD from invoice.date or invoice.createdAt
+    const rawDate = invoice.date || invoice.createdAt || "";
+    let dStr = "";
+    if (rawDate) {
+      try {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          dStr = d.toISOString().split("T")[0];
+        } else if (/^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+          dStr = rawDate.slice(0, 10);
+        }
+      } catch {
+        dStr = "";
+      }
+    }
+    setEditDate(dStr || new Date().toISOString().split("T")[0]);
+
     setEditStatus(invoice.status || "pending");
     setEditPaymentMethod(invoice.paymentMethod || "cash");
     setEditType(invoice.type || "sales");
@@ -213,12 +233,29 @@ export default function Archive() {
   const handleSaveInvoiceEdit = async () => {
     if (!editingInvoice) return;
     const computedTotal = editItems.reduce((acc, it) => acc + (it.total || 0), 0);
+
+    let finalCreatedAt = editingInvoice.createdAt;
+    const finalDate = editDate || editingInvoice.date || new Date().toISOString().split("T")[0];
+    if (editDate) {
+      try {
+        const oldTime = editingInvoice.createdAt && editingInvoice.createdAt.includes("T")
+          ? editingInvoice.createdAt.split("T")[1]
+          : "12:00:00.000Z";
+        const timePart = oldTime.split(".")[0] || "12:00:00";
+        finalCreatedAt = new Date(`${editDate}T${timePart}`).toISOString();
+      } catch {
+        finalCreatedAt = new Date(editDate).toISOString();
+      }
+    }
+
     const updatedInvoice: Invoice = {
       ...editingInvoice,
       customerName: editCustomerName.trim() || editingInvoice.customerName,
       status: editStatus,
       paymentMethod: editPaymentMethod,
       type: editType,
+      date: finalDate,
+      createdAt: finalCreatedAt,
       notes: editNotes,
       subtotal: computedTotal,
       total: computedTotal,
@@ -252,7 +289,7 @@ export default function Archive() {
     if (store.customerFiles) {
       store.customerFiles = store.customerFiles.map(f => 
         (f.invoiceId === updatedInvoice.id || f.invoiceNumber === updatedInvoice.invoiceNumber)
-          ? { ...f, customerName: updatedInvoice.customerName, total: updatedInvoice.total }
+          ? { ...f, customerName: updatedInvoice.customerName, total: updatedInvoice.total, date: finalDate }
           : f
       );
     }
@@ -271,6 +308,7 @@ export default function Archive() {
         status: updatedInvoice.status,
         type: updatedInvoice.type,
         date: updatedInvoice.date,
+        created_at: updatedInvoice.createdAt,
         notes: updatedInvoice.notes,
       }, editItems.map(it => ({
         product_id: it.productId,
@@ -413,7 +451,7 @@ export default function Archive() {
                           {invoice.items.map(item => item.productName).join(", ")}
                         </div>
                       </TableCell>
-                      <TableCell data-label="التاريخ">{formatDate(invoice.createdAt)}</TableCell>
+                      <TableCell data-label="التاريخ">{formatDate(invoice.date || invoice.createdAt)}</TableCell>
                       <TableCell data-label="المبلغ" className="font-medium text-green-600">
                         {formatCurrency(invoice.total)}
                       </TableCell>
@@ -490,7 +528,7 @@ export default function Archive() {
             </div>
 
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
-              {/* Customer and Status */}
+              {/* Customer and Date */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">{t("customer")}</label>
@@ -501,6 +539,19 @@ export default function Archive() {
                     className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-arab-blue"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">{t("date") || "تاريخ الفاتورة"}</label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full p-2.5 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-arab-blue font-sans"
+                  />
+                </div>
+              </div>
+
+              {/* Status, Payment method and Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">{t("invoiceStatus")}</label>
                   <select
@@ -514,10 +565,6 @@ export default function Archive() {
                     <option value="cancelled">{t("cancelled")}</option>
                   </select>
                 </div>
-              </div>
-
-              {/* Payment method and Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">{t("paymentMethod")}</label>
                   <select

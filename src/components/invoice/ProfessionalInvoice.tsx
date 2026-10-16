@@ -158,7 +158,7 @@ const ProfessionalInvoice = ({ invoice, storeInfo, customerLetterheadUrl }: Prof
                   <td className={`py-0.5 text-gray-500 font-semibold uppercase tracking-wider ${isRTL ? 'pl-4' : 'pr-4'}`}>
                     {t('date')}
                   </td>
-                  <td className="font-bold text-gray-900 py-0.5">{formatDate(new Date(invoice.date))}</td>
+                  <td className="font-bold text-gray-900 py-0.5">{formatDate(new Date(invoice.date || invoice.createdAt))}</td>
                 </tr>
                 {invoice.dueDate && (
                   <tr>
