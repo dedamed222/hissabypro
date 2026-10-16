@@ -25,6 +25,7 @@ import { getInvoices, getCustomers, deleteInvoice, upsertInvoice } from "@/lib/d
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { Customer } from "@/types";
 import { saveStoreData } from "@/utils/localStorage";
+import { updateInvoiceMovements, revertInvoiceMovements } from "@/utils/productMovements";
 
 export default function Archive() {
   const { t, isRTL } = useLocale();
@@ -295,6 +296,9 @@ export default function Archive() {
     }
     saveStoreData(store);
 
+    // Update product movements for this edited invoice
+    updateInvoiceMovements(updatedInvoice);
+
     // Update in Supabase
     try {
       await upsertInvoice({
@@ -340,6 +344,9 @@ export default function Archive() {
       store.customerFiles = store.customerFiles.filter(f => f.invoiceId !== invId && f.invoiceNumber !== invNum);
     }
     saveStoreData(store);
+
+    // Revert/cancel movements associated with this deleted invoice
+    revertInvoiceMovements(invId, invNum);
 
     // Remove from Supabase
     try {

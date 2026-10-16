@@ -1,18 +1,22 @@
 import { useEffect, useState, useCallback } from "react";
 import { loadStoreData, generateId } from "@/utils/localStorage";
-import { Customer } from "@/types";
+import { Customer, ProductMovement } from "@/types";
 import { formatShortDate } from "@/utils/formatters";
 import {
   Plus, Search, Edit, Trash2, X,
-  Save, AlertCircle, User, Download, ImagePlus
+  Save, AlertCircle, User, Download, ImagePlus, ShoppingBag
 } from "lucide-react";
 import { getCustomers, upsertCustomer, deleteCustomer } from "@/lib/database";
 import { useDropzone } from "react-dropzone";
+import CustomerPurchasedProductsModal from "@/components/customers/CustomerPurchasedProductsModal";
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [movements, setMovements] = useState<ProductMovement[]>([]);
+  const [selectedCustomerForPurchases, setSelectedCustomerForPurchases] = useState<Customer | null>(null);
+  const [isPurchasesModalOpen, setIsPurchasesModalOpen] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -52,6 +56,9 @@ export default function Customers() {
       }));
       setCustomers(mapped);
       setFilteredCustomers(mapped);
+
+      const store = loadStoreData();
+      setMovements(store.productMovements || []);
     } catch (err) {
       console.error("Error loading customers:", err);
       setError("فشل تحميل البيانات من السحابة");
@@ -301,7 +308,18 @@ export default function Customers() {
                     <div>{formatShortDate(customer.updatedAt)}</div>
                   </td>
                   <td data-label="الإجراءات">
-                    <div className="flex items-center gap-2 justify-end">
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <button
+                        onClick={() => {
+                          setSelectedCustomerForPurchases(customer);
+                          setIsPurchasesModalOpen(true);
+                        }}
+                        className="text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs border border-purple-100"
+                        title="المنتجات المشتراة وتاريخ الأسعار"
+                      >
+                        <ShoppingBag size={15} />
+                        <span className="hidden sm:inline">المشتريات</span>
+                      </button>
                       <button
                         onClick={() => handleEdit(customer)}
                         className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
@@ -614,6 +632,19 @@ export default function Customers() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Customer Purchased Products Modal */}
+      {selectedCustomerForPurchases && isPurchasesModalOpen && (
+        <CustomerPurchasedProductsModal
+          isOpen={isPurchasesModalOpen}
+          onClose={() => {
+            setIsPurchasesModalOpen(false);
+            setSelectedCustomerForPurchases(null);
+          }}
+          customer={selectedCustomerForPurchases}
+          movements={movements}
+        />
       )}
     </div>
   );

@@ -150,7 +150,11 @@ export default function CreateInvoice() {
           
           <ProductSearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} filteredProducts={filteredProducts} selectedProduct={selectedProduct} setSelectedProduct={setSelectedProduct} quantity={quantity} manualQuantity={manualQuantity} handleQuantityChange={handleQuantityChange} />
           
-          <SelectedProduct selectedProduct={selectedProduct} handleAddProduct={handleAddProduct} />
+          <SelectedProduct
+            selectedProduct={selectedProduct}
+            selectedCustomer={selectedCustomer}
+            handleAddProduct={handleAddProduct}
+          />
           
           <InvoiceNotification error={error} success={success} />
           

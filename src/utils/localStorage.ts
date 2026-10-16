@@ -51,6 +51,7 @@ const initialStoreData: StoreData = {
   clientNotes: [],
   priceChangeHistories: [],
   customerFiles: [],
+  productMovements: [],
   storeInfo: {
     name: "",
     phone: "",
@@ -71,6 +72,7 @@ export const loadStoreData = (): StoreData => {
         if (!parsed.clientNotes) parsed.clientNotes = [];
         if (!parsed.priceChangeHistories) parsed.priceChangeHistories = [];
         if (!parsed.customerFiles) parsed.customerFiles = [];
+        if (!parsed.productMovements) parsed.productMovements = [];
         if (!parsed.invoices) parsed.invoices = [];
         return parsed;
       }

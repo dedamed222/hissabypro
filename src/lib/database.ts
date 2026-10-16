@@ -876,3 +876,78 @@ export async function updateProductDefaultPrice(
   return product;
 }
 
+// ─── PRODUCT MOVEMENTS ────────────────────────────────────────────────────────
+
+export async function getProductMovementsDB(productId?: string, customerId?: string) {
+  try {
+    let query = supabase
+      .from("product_movements")
+      .select("*")
+      .order("date", { ascending: false });
+
+    if (productId) {
+      query = query.eq("product_id", productId);
+    }
+    if (customerId) {
+      query = query.eq("customer_id", customerId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data ?? [];
+  } catch (err) {
+    console.warn("getProductMovementsDB: Could not fetch from cloud, returning empty array:", err);
+    return [];
+  }
+}
+
+export async function upsertProductMovementDB(movement: {
+  id: string;
+  product_id?: string | null;
+  product_name: string;
+  product_code?: string;
+  customer_id?: string | null;
+  customer_name: string;
+  invoice_id?: string | null;
+  invoice_number: string;
+  date: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  cost_price?: number;
+  type: string;
+  is_manual_item: boolean;
+  notes?: string;
+}) {
+  try {
+    const user = await getAuthenticatedUser();
+    const payload = { ...movement, user_id: user.id };
+    const { data, error } = await supabase
+      .from("product_movements")
+      .upsert(payload, { onConflict: "id" })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.warn("upsertProductMovementDB: Offline or sync skipped:", err);
+    return null;
+  }
+}
+
+export async function deleteProductMovementsByInvoiceDB(invoiceId?: string, invoiceNumber?: string) {
+  try {
+    let query = supabase.from("product_movements").delete();
+    if (invoiceId) {
+      query = query.eq("invoice_id", invoiceId);
+    } else if (invoiceNumber) {
+      query = query.eq("invoice_number", invoiceNumber);
+    } else {
+      return;
+    }
+    const { error } = await query;
+    if (error) throw error;
+  } catch (err) {
+    console.warn("deleteProductMovementsByInvoiceDB: Offline or sync skipped:", err);
+  }
+}

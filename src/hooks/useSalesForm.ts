@@ -3,9 +3,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/SettingsContext";
 import { getProducts, deleteDailySale } from "@/lib/database";
 import { loadStoreData, saveStoreData, generateId } from "@/utils/localStorage";
-import { Product, DailySales, Debtor, Creditor } from "@/types";
+import { Product, DailySales, Debtor, Creditor, ProductMovement } from "@/types";
 import { useState, useEffect } from "react";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { generateMovementId } from "@/utils/productMovements";
 
 // Define SalesFormData interface
 interface SalesFormData {
@@ -260,6 +261,31 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
         };
 
         storeData.dailySales = [...storeData.dailySales, newSale];
+
+        // Record product movement
+        const newMovement: ProductMovement = {
+          id: generateMovementId(),
+          productId: item.productId,
+          productName: item.productName,
+          productCode: item.productCode,
+          customerId: formData.customerId || null,
+          customerName: formData.customerName.trim() || "عميل مباشر",
+          invoiceId: newSale.id,
+          invoiceNumber: `SALE-${newSale.id.slice(0, 8).toUpperCase()}`,
+          date: dateStr,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+          costPrice: storeData.products[productIndex]?.cost || 0,
+          type: "sale",
+          isManualItem: false,
+          notes: formData.transactionType === "debt" ? `بيع آجل: ${formData.customerName}` : "مبيعات مباشرة",
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+          isDeleted: false,
+        };
+        if (!storeData.productMovements) storeData.productMovements = [];
+        storeData.productMovements.unshift(newMovement);
 
         // Sync product inventory to Supabase
         if (formData.transactionType === 'sale' || formData.transactionType === 'debt') {
@@ -630,6 +656,11 @@ export const useSalesForm = (dateFilter?: string, onSuccessCallback?: () => void
       }
 
       storeData.dailySales = storeData.dailySales.filter(sale => sale.id !== saleId);
+      if (storeData.productMovements) {
+        storeData.productMovements = storeData.productMovements.map(m => 
+          m.invoiceId === saleId ? { ...m, isDeleted: true, type: "cancellation" as const, updatedAt: new Date().toISOString() } : m
+        );
+      }
       saveStoreData(storeData);
 
       toast({

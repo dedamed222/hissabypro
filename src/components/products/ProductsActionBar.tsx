@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Plus, Upload, Printer, Download } from 'lucide-react';
+import { Plus, Upload, Printer, Download, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import * as XLSX from 'xlsx';
 import { loadStoreData, saveStoreData, generateId } from '@/utils/localStorage';
@@ -12,6 +12,7 @@ interface ProductsActionBarProps {
   products: Product[];
   onProductsUpdate: (products: Product[]) => void;
   onImportProducts?: (newProducts: (Partial<Product> & { name: string; code: string })[]) => Promise<void>;
+  onOpenReports?: () => void;
 }
 
 export default function ProductsActionBar({
@@ -315,6 +316,17 @@ export default function ProductsActionBar({
           <Download size={18} />
           <span>ترحيل</span>
         </Button>
+        {onOpenReports && (
+          <Button
+            onClick={onOpenReports}
+            variant="outline"
+            className="flex items-center gap-2 text-indigo-700 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 font-bold"
+            title="تقارير ومؤشرات حركة المنتجات"
+          >
+            <BarChart3 size={18} />
+            <span className="hidden sm:inline">تقارير الحركة</span>
+          </Button>
+        )}
         <Button
           onClick={onAddNew}
           className="bg-arab-blue text-white px-4 py-2 rounded-md hover:bg-arab-blue-dark transition-colors flex items-center gap-2"

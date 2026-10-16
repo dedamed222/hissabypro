@@ -120,6 +120,28 @@ export interface CustomerFile {
   createdAt: string;
 }
 
+export interface ProductMovement {
+  id: string;
+  productId?: string | null;
+  productName: string;
+  productCode?: string;
+  customerId?: string | null;
+  customerName: string;
+  invoiceId?: string | null;
+  invoiceNumber: string;
+  date: string; // ISO format or YYYY-MM-DD
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  costPrice?: number;
+  type: "sale" | "return" | "manual_adjustment" | "cancellation";
+  isManualItem: boolean;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted?: boolean;
+}
+
 export interface Invoice {
   id: string;
   invoiceNumber: string;
@@ -310,6 +332,7 @@ export interface StoreData {
   clientNotes?: ClientNote[];
   priceChangeHistories?: PriceChangeHistory[];
   customerFiles?: CustomerFile[];
+  productMovements?: ProductMovement[];
   settings?: {
     currency: string;
     locale: "ar" | "fr";

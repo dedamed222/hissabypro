@@ -1,5 +1,5 @@
 import { formatCurrency, formatShortDate } from "@/utils/formatters";
-import { AlertTriangle, Edit, Trash2 } from "lucide-react";
+import { AlertTriangle, Edit, Trash2, History } from "lucide-react";
 import type { Product } from "@/types";
 import { useLocale } from "@/hooks/useLocale";
 interface ProductTableProps {
@@ -7,12 +7,14 @@ interface ProductTableProps {
   searchQuery: string;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
+  onViewHistory?: (product: Product) => void;
 }
 export default function ProductTable({
   products,
   searchQuery,
   onEdit,
-  onDelete
+  onDelete,
+  onViewHistory
 }: ProductTableProps) {
   const { t } = useLocale();
 
@@ -68,12 +70,18 @@ export default function ProductTable({
             </td>
             <td data-label={t('lastUpdated')} className="text-sm text-gray-500">{formatShortDate(product.updatedAt)}</td>
             <td data-label={t('actions')} className="mt-2 md:mt-0 border-t md:border-t-0 border-gray-100 pt-3 md:pt-0">
-              <div className="flex items-center justify-end gap-3 w-full md:w-auto">
-                <button onClick={() => onEdit(product)} className="flex items-center gap-1 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md transition-colors" title={t('edit')}>
+              <div className="flex items-center justify-end gap-2 w-full md:w-auto">
+                {onViewHistory && (
+                  <button onClick={() => onViewHistory(product)} className="flex items-center gap-1 text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg transition-colors border border-purple-100 font-bold" title={locale === 'fr' ? 'Historique' : 'سجل حركة المنتج'}>
+                    <History size={16} />
+                    <span className="text-xs">{locale === 'fr' ? 'Historique' : 'الحركة'}</span>
+                  </button>
+                )}
+                <button onClick={() => onEdit(product)} className="flex items-center gap-1 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors" title={t('edit')}>
                   <Edit size={16} />
                   <span className="md:hidden text-sm font-medium">{t('edit')}</span>
                 </button>
-                <button onClick={() => onDelete(product)} className="flex items-center gap-1 text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors" title={t('delete')}>
+                <button onClick={() => onDelete(product)} className="flex items-center gap-1 text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors" title={t('delete')}>
                   <Trash2 size={16} />
                   <span className="md:hidden text-sm font-medium">{t('delete')}</span>
                 </button>

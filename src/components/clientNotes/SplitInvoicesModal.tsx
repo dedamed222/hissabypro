@@ -15,6 +15,7 @@ import { formatCurrency, formatShortDate } from "@/utils/formatters";
 import { generateId, generateInvoiceNumber, saveStoreData, loadStoreData, saveCustomerFile } from "@/utils/localStorage";
 import { upsertInvoice, upsertClientNote } from "@/lib/database";
 import { useLocale } from "@/hooks/useLocale";
+import { recordInvoiceMovements } from "@/utils/productMovements";
 
 interface InvoiceSlot {
   slotId: string;
@@ -255,6 +256,9 @@ export const SplitInvoicesModal: React.FC<SplitInvoicesModalProps> = ({
         if (!storeData.invoices) storeData.invoices = [];
         storeData.invoices.unshift(newInvoice);
         saveStoreData(storeData);
+
+        // Record movements for this split invoice
+        recordInvoiceMovements(newInvoice);
 
         // Save customer file entry
         saveCustomerFile({

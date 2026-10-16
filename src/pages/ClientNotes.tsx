@@ -21,6 +21,7 @@ import { useLocale } from "@/hooks/useLocale";
 import { PriceChangeDialog } from "@/components/shared/PriceChangeDialog";
 import { SplitInvoicesModal } from "@/components/clientNotes/SplitInvoicesModal";
 import ProfessionalInvoice from "@/components/invoice/ProfessionalInvoice";
+import { recordInvoiceMovements, updateInvoiceMovements, revertInvoiceMovements } from "@/utils/productMovements";
 
 const COMMON_UNITS_AR = ["قطعة", "كغ", "متر", "علبة", "كرتونة", "لتر", "حزمة", "وحدة"];
 const COMMON_UNITS_FR = ["Pièce", "Kg", "Mètre", "Boîte", "Carton", "Litre", "Paquet", "Unité"];
@@ -252,7 +253,9 @@ export default function ClientNotes() {
     try {
       const storeData = loadStoreData();
       if (!storeData.invoices) storeData.invoices = [];
-      storeData.invoices.unshift(newInvoice); saveStoreData(storeData);
+      storeData.invoices.unshift(newInvoice);
+      saveStoreData(storeData);
+      recordInvoiceMovements(newInvoice);
       saveCustomerFile({
         customerId: targetCustomer.id,
         customerName: targetCustomer.name,
@@ -481,6 +484,9 @@ export default function ClientNotes() {
     }
     saveStoreData(store);
 
+    // Update product movement records for this edited invoice
+    updateInvoiceMovements(updatedInvoice);
+
     // Update in Supabase
     try {
       await upsertInvoice({
@@ -527,6 +533,9 @@ export default function ClientNotes() {
       store.customerFiles = store.customerFiles.filter((f) => f.invoiceId !== invId && f.invoiceNumber !== invNum);
     }
     saveStoreData(store);
+
+    // Revert/cancel movements associated with this deleted invoice
+    revertInvoiceMovements(invId, invNum);
 
     // Remove from Supabase
     try {

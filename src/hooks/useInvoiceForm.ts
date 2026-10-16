@@ -9,6 +9,7 @@ import {
 } from "@/utils/localStorage";
 import { getProducts, getCustomers, upsertInvoice } from "@/lib/database";
 import { useProducts } from "@/hooks/useProducts";
+import { recordInvoiceMovements } from "@/utils/productMovements";
 
 export const useInvoiceForm = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -264,6 +265,41 @@ export const useInvoiceForm = () => {
       }));
 
       await upsertInvoice(invData, itemRows);
+
+      // Create complete Invoice object for local store & movement tracking
+      const savedInvoiceObj: Invoice = {
+        id: generateId(),
+        invoiceNumber: invoiceNumber,
+        customerId: selectedCustomer.id.startsWith("manual-") ? undefined : selectedCustomer.id,
+        customerName: selectedCustomer.name,
+        total: total,
+        subtotal: subtotal,
+        discount: discount,
+        tax: taxAmount,
+        paymentMethod: paymentMethod,
+        status: paymentStatus,
+        type: invoiceType,
+        notes: notes,
+        date: now.split("T")[0],
+        createdAt: now,
+        updatedAt: now,
+        items: invoiceItems,
+        products: invoiceItems.map((it) => ({
+          productId: it.productId,
+          quantity: it.quantity,
+          price: it.price,
+          name: it.productName,
+        })),
+      };
+
+      // Save to localStorage
+      const storeDataCurrent = loadStoreData();
+      if (!storeDataCurrent.invoices) storeDataCurrent.invoices = [];
+      storeDataCurrent.invoices.unshift(savedInvoiceObj);
+      saveStoreData(storeDataCurrent);
+
+      // Automatically record movements for each product/item in the invoice
+      recordInvoiceMovements(savedInvoiceObj, invoiceType === "quotation" ? "sale" : "sale");
 
       // Update inventory in Supabase for sales and debtor invoices
       if (invoiceType === "sales" || (invoiceType === "debt" && debtType === "debtor")) {
