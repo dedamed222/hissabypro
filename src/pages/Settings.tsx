@@ -18,27 +18,31 @@ import { AccountSettings } from "@/components/settings/AccountSettings";
 import { CompanyProfile } from "@/components/settings/CompanyProfile";
 import { PrintSettings } from "@/components/settings/PrintSettings";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, PanelBottom, PanelLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Settings() {
-  const { currency, locale, updateSettings } = useSettings();
+  const { currency, locale, navPosition = "bottom", updateSettings } = useSettings();
   const { changeLocale } = useLocale();
   const t = translations[locale as keyof typeof translations];
   const [newCurrency, setNewCurrency] = useState("");
   const [newLocale, setNewLocale] = useState("");
+  const [newNavPosition, setNewNavPosition] = useState<"bottom" | "sidebar">("bottom");
   const { subscribe, unsubscribe, getPermissionState, isSupported } = usePushNotifications();
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
 
   useEffect(() => {
     setNewCurrency(currency);
     setNewLocale(locale);
+    setNewNavPosition(navPosition || "bottom");
     getPermissionState().then(setNotifPermission);
-  }, [currency, locale]);
+  }, [currency, locale, navPosition]);
 
   const handleSaveSettings = () => {
     updateSettings({
       currency: newCurrency,
       locale: newLocale as "ar" | "fr",
+      navPosition: newNavPosition,
     });
     changeLocale(newLocale as "ar" | "fr");
     toast({
@@ -91,6 +95,50 @@ export default function Settings() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="grid gap-2">
+                <Label>{t.navPosition}</Label>
+                <p className="text-xs text-gray-500">{t.navPositionDesc}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setNewNavPosition("bottom")}
+                    className={cn(
+                      "flex items-start gap-3 p-3.5 rounded-xl border-2 text-start transition-all",
+                      newNavPosition === "bottom"
+                        ? "border-indigo-600 bg-indigo-50/50 shadow-sm ring-2 ring-indigo-500/20"
+                        : "border-gray-200 hover:border-gray-300 bg-white"
+                    )}
+                  >
+                    <div className={cn("p-2 rounded-lg flex-shrink-0", newNavPosition === "bottom" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500")}>
+                      <PanelBottom className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-gray-800">{t.navPositionBottom}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{t.navPositionBottomDesc}</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewNavPosition("sidebar")}
+                    className={cn(
+                      "flex items-start gap-3 p-3.5 rounded-xl border-2 text-start transition-all",
+                      newNavPosition === "sidebar"
+                        ? "border-indigo-600 bg-indigo-50/50 shadow-sm ring-2 ring-indigo-500/20"
+                        : "border-gray-200 hover:border-gray-300 bg-white"
+                    )}
+                  >
+                    <div className={cn("p-2 rounded-lg flex-shrink-0", newNavPosition === "sidebar" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500")}>
+                      <PanelLeft className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-gray-800">{t.navPositionSidebar}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{t.navPositionSidebarDesc}</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <Button onClick={handleSaveSettings}>حفظ الإعدادات</Button>
 
               {/* Push Notifications Toggle */}

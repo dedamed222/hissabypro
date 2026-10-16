@@ -13,6 +13,7 @@ export interface SettingsState {
   locale: "ar" | "fr";
   customCurrencies: Currency[];
   customPaymentMethods: PaymentMethod[];
+  navPosition?: "bottom" | "sidebar";
 }
 
 interface SettingsContextType extends SettingsState {
@@ -47,7 +48,8 @@ const defaultSettings: SettingsState = {
   currency: "MRU",
   locale: "ar",
   customCurrencies: [],
-  customPaymentMethods: []
+  customPaymentMethods: [],
+  navPosition: "bottom",
 };
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -74,6 +76,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       let loadedSettings = { ...defaultSettings };
       const storeData = loadStoreData();
       const savedLocale = localStorage.getItem("app-locale") as "ar" | "fr" | null;
+      const savedNavPosition = localStorage.getItem("app-nav-position") as "bottom" | "sidebar" | null;
 
       // 1. Load from localStorage first (for fast initial render)
       if (storeData.settings) {
@@ -81,8 +84,14 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
           ...defaultSettings,
           ...storeData.settings,
           customCurrencies: storeData.settings.customCurrencies || [],
-          customPaymentMethods: storeData.settings.customPaymentMethods || []
+          customPaymentMethods: storeData.settings.customPaymentMethods || [],
+          navPosition: storeData.settings.navPosition || "bottom",
         };
+      }
+
+      // Prioritize saved local preference if set
+      if (savedNavPosition) {
+        loadedSettings.navPosition = savedNavPosition;
       }
 
       // 2. If authenticated, fetch from Supabase and overwrite
@@ -158,6 +167,11 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       // Sync locale with localStorage for consistency
       if (newSettings.locale) {
         localStorage.setItem("app-locale", newSettings.locale);
+      }
+
+      // Sync nav position with localStorage
+      if (newSettings.navPosition) {
+        localStorage.setItem("app-nav-position", newSettings.navPosition);
       }
 
       // Save to cloud

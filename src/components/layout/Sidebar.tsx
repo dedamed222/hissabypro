@@ -1,9 +1,9 @@
-
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/hooks/useLocale";
+import { useSettings } from "@/contexts/SettingsContext";
 import { translations } from "@/locales";
 import { cn } from "@/lib/utils";
 import {
@@ -28,7 +28,10 @@ import {
   LogIn,
   X,
   Menu,
-  TrendingUp
+  TrendingUp,
+  Search,
+  PanelLeft,
+  PanelBottom,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -49,8 +52,13 @@ const Sidebar = () => {
   const { sidebarOpen, closeSidebar, sidebarCollapsed, toggleCollapse, toggleSidebar } = useApp();
   const { logout, isAuthenticated, user, profile } = useAuth();
   const { locale } = useLocale();
+  const { navPosition = "bottom", updateSettings } = useSettings();
   const t = translations[locale];
   const navigate = useNavigate();
+
+  const [menuSearch, setMenuSearch] = useState("");
+
+  const isBottomMode = navPosition === "bottom";
 
   const menuGroups: MenuGroup[] = [
     {
@@ -105,280 +113,536 @@ const Sidebar = () => {
 
   const handleLogin = () => navigate("/login");
 
+  const toggleNavMode = () => {
+    const nextMode = isBottomMode ? "sidebar" : "bottom";
+    updateSettings({ navPosition: nextMode });
+    toast({
+      title: t.settingsSaved || "تم تحديث موضع شريط التنقل",
+      description: nextMode === "bottom" ? t.navPositionBottom : t.navPositionSidebar,
+    });
+  };
+
   const userName = profile?.name || user?.email || "";
   const userInitial = userName.charAt(0).toUpperCase() || (locale === "ar" ? "م" : "U");
 
+  // Filtered menu items for Bottom Sheet search
+  const filteredGroups = useMemo(() => {
+    if (!menuSearch.trim()) return menuGroups;
+    const q = menuSearch.trim().toLowerCase();
+    return menuGroups
+      .map((g) => ({
+        ...g,
+        items: g.items.filter((item) => {
+          const title = (t[item.titleKey as keyof typeof t] as string || "").toLowerCase();
+          return title.includes(q);
+        }),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [menuGroups, menuSearch, t]);
+
   return (
     <>
-      {/* Mobile Backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 lg:hidden transition-opacity"
-          onClick={closeSidebar}
-        />
-      )}
+      {/* ────────────────────────────────────────────────────────── */}
+      {/* 1. CLASSIC VERTICAL SIDEBAR (Shown ONLY when navPosition === 'sidebar' on Desktop) */}
+      {/* ────────────────────────────────────────────────────────── */}
+      {!isBottomMode && (
+        <aside
+          className={cn(
+            "hidden lg:flex flex-col h-full transition-all duration-300 ease-in-out print:hidden flex-shrink-0 z-30",
+            "border-e border-gray-200/50 bg-white/95 backdrop-blur-xl shadow-sm",
+            sidebarCollapsed ? "w-[68px]" : "w-64"
+          )}
+        >
+          {/* Header */}
+          <div className="flex-shrink-0 px-3 pt-4 pb-3 border-b border-gray-100/80">
+            <div className="flex items-center justify-between">
+              {!sidebarCollapsed && (
+                <div className="flex items-center gap-2.5 px-1">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
+                  >
+                    <TrendingUp className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-gray-900 leading-tight">Hissaby Pro</h2>
+                    <p className="text-[10px] text-gray-400 leading-tight">{t.storeManagementSystem}</p>
+                  </div>
+                </div>
+              )}
 
-      {/* Sidebar */}
-      <div
-        className={cn(
-          "flex flex-col h-full transition-all duration-300 ease-in-out print:hidden",
-          "fixed inset-y-0 start-0 z-50 lg:relative lg:transform-none lg:translate-x-0",
-          "border-e border-gray-200/50",
-          sidebarCollapsed ? "w-[68px]" : "w-64",
-          sidebarOpen
-            ? "translate-x-0 rtl:translate-x-0"
-            : "-translate-x-full rtl:translate-x-full"
-        )}
-        style={{
-          background: "linear-gradient(180deg, rgba(255,255,255,0.97) 0%, rgba(248,249,255,0.97) 100%)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
-          boxShadow: "2px 0 20px rgba(99,102,241,0.06), 1px 0 0 rgba(226,232,240,0.5)"
-        }}
-      >
-        {/* ── Header ── */}
-        <div className="flex-shrink-0 px-3 pt-4 pb-3 border-b border-gray-100/80">
-          <div className="flex items-center justify-between">
-            {/* Logo + Brand */}
-            {!sidebarCollapsed && (
-              <div className="flex items-center gap-2.5 px-1">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
+              {sidebarCollapsed && (
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center mx-auto"
+                  style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
+                >
                   <TrendingUp className="w-4 h-4 text-white" />
                 </div>
-                <div>
-                  <h2 className="text-sm font-bold text-gray-900 leading-tight">Hissaby Pro</h2>
-                  <p className="text-[10px] text-gray-400 leading-tight">{t.storeManagementSystem}</p>
-                </div>
-              </div>
-            )}
+              )}
 
-            {sidebarCollapsed && (
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center mx-auto"
-                style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-                <TrendingUp className="w-4 h-4 text-white" />
-              </div>
-            )}
-
-            {/* Toggle buttons */}
-            <div className="flex items-center gap-1">
-              {/* Desktop collapse toggle */}
               <button
                 onClick={toggleCollapse}
-                className="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all"
+                className="flex items-center justify-center w-7 h-7 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all"
                 title={sidebarCollapsed ? t.expandMenu : t.collapseMenu}
               >
-                <svg className={cn("w-4 h-4 transition-transform", sidebarCollapsed && "rotate-180")}
-                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d={locale === "ar" ? "M11 19l-7-7 7-7M5 19l7-7-7-7" : "M13 19l7-7-7-7M5 19l7-7-7-7"} />
+                <svg
+                  className={cn("w-4 h-4 transition-transform", sidebarCollapsed && "rotate-180")}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d={locale === "ar" ? "M11 19l-7-7 7-7M5 19l7-7-7-7" : "M13 19l7-7-7-7M5 19l7-7-7-7"}
+                  />
                 </svg>
-              </button>
-
-              {/* Mobile close */}
-              <button
-                onClick={closeSidebar}
-                className="lg:hidden flex items-center justify-center w-7 h-7 rounded-lg hover:bg-gray-100 text-gray-400 transition-all"
-              >
-                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
-        </div>
 
-        {/* ── Navigation ── */}
-        <nav className="flex-1 overflow-y-auto py-2 px-2">
-          {menuGroups.map((group) => (
-            <div key={group.labelKey} className="mb-1">
-              {/* Group label */}
-              {!sidebarCollapsed && (
-                <div className="sidebar-group-label">
-                  {t[group.labelKey as keyof typeof t] as string}
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
+            {menuGroups.map((group) => (
+              <div key={group.labelKey} className="mb-1">
+                {!sidebarCollapsed && (
+                  <div className="sidebar-group-label">
+                    {t[group.labelKey as keyof typeof t] as string}
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={({ isActive }) =>
+                          cn(
+                            "sidebar-link-premium group relative",
+                            sidebarCollapsed && "justify-center px-0 py-2.5",
+                            isActive && "sidebar-link-active font-semibold shadow-sm"
+                          )
+                        }
+                        title={sidebarCollapsed ? (t[item.titleKey as keyof typeof t] as string) : undefined}
+                      >
+                        {({ isActive }) => (
+                          <>
+                            <div
+                              className={cn(
+                                "w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110",
+                                isActive ? "shadow-sm" : ""
+                              )}
+                              style={{
+                                backgroundColor: isActive ? item.color : item.bgColor,
+                                color: isActive ? "#ffffff" : item.color,
+                              }}
+                            >
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            {!sidebarCollapsed && (
+                              <span className="truncate flex-1 text-[0.825rem]">
+                                {t[item.titleKey as keyof typeof t] as string}
+                              </span>
+                            )}
+                            {!sidebarCollapsed && isActive && (
+                              <div
+                                className="w-1.5 h-4 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: item.color }}
+                              />
+                            )}
+                          </>
+                        )}
+                      </NavLink>
+                    );
+                  })}
                 </div>
-              )}
-
-              {/* Group items */}
-              <div className="space-y-0.5">
-                {group.items.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => { if (window.innerWidth < 1024) closeSidebar(); }}
-                    title={sidebarCollapsed ? t[item.titleKey as keyof typeof t] as string : undefined}
-                    className={({ isActive }) =>
-                      cn(
-                        "nav-link-premium",
-                        sidebarCollapsed && "justify-center px-2",
-                        isActive && "active"
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <div
-                          className="nav-icon flex-shrink-0"
-                          style={{
-                            background: isActive ? item.color : "transparent",
-                            color: isActive ? "#fff" : item.color,
-                          }}
-                        >
-                          <item.icon className="w-4 h-4" />
-                        </div>
-                        {!sidebarCollapsed && (
-                          <span className="truncate flex-1 text-[0.825rem]">
-                            {t[item.titleKey as keyof typeof t] as string}
-                          </span>
-                        )}
-                        {!sidebarCollapsed && isActive && (
-                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                            style={{ background: item.color }} />
-                        )}
-                      </>
-                    )}
-                  </NavLink>
-                ))}
               </div>
-            </div>
-          ))}
-        </nav>
+            ))}
+          </nav>
 
-        {/* ── Footer ── */}
-        <div className="flex-shrink-0 px-2 pb-4 border-t border-gray-100/80 pt-3 space-y-2">
-          {/* User Card */}
-          {!sidebarCollapsed && isAuthenticated && (
-            <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl bg-gray-50/80">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-                {userInitial}
+          {/* Footer */}
+          <div className="flex-shrink-0 p-3 border-t border-gray-100/80 bg-gray-50/50 space-y-2">
+            {!sidebarCollapsed && isAuthenticated && (
+              <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl bg-white border border-gray-100 shadow-xs">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
+                >
+                  {userInitial}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[0.78rem] font-semibold text-gray-800 truncate">{userName}</p>
+                  <p className="text-[0.68rem] text-gray-400">
+                    {profile?.role === "admin" ? t.admin : t.user}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[0.78rem] font-semibold text-gray-800 truncate">{userName}</p>
-                <p className="text-[0.68rem] text-gray-400">
-                  {profile?.role === "admin" ? t.admin : t.user}
-                </p>
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Logout / Login */}
-          {isAuthenticated ? (
-            <button
-              onClick={handleLogout}
-              title={sidebarCollapsed ? t.logout : undefined}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[0.825rem] font-medium",
-                "bg-red-50 text-red-600 hover:bg-red-100 transition-all",
-                sidebarCollapsed && "justify-center px-2"
-              )}
-            >
-              <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                <LogOut className="w-4 h-4" />
-              </div>
-              {!sidebarCollapsed && <span>{t.logout}</span>}
-            </button>
-          ) : (
-            <button
-              onClick={handleLogin}
-              title={sidebarCollapsed ? t.login : undefined}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[0.825rem] font-medium",
-                "bg-green-50 text-green-600 hover:bg-green-100 transition-all",
-                sidebarCollapsed && "justify-center px-2"
-              )}
-            >
-              <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
-                <LogIn className="w-4 h-4" />
-              </div>
-              {!sidebarCollapsed && <span>{t.login}</span>}
-            </button>
-          )}
+            {/* Switch to Bottom Bar button */}
+            {!sidebarCollapsed && (
+              <button
+                onClick={toggleNavMode}
+                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[0.75rem] text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100 transition-all font-medium"
+                title={t.navPositionBottom}
+              >
+                <span className="flex items-center gap-2">
+                  <PanelBottom className="w-3.5 h-3.5" />
+                  <span>{t.navPositionBottom}</span>
+                </span>
+                <span className="text-[10px] text-indigo-500">تبديل</span>
+              </button>
+            )}
 
-          {/* Version indicator */}
-          {!sidebarCollapsed && (
-            <div className="flex items-center justify-center gap-2 py-1">
-              <div className="pulse-dot" />
-              <span className="text-[0.65rem] text-gray-400">{t.systemVersion}</span>
-            </div>
-          )}
-        </div>
-      </div>
+            {isAuthenticated ? (
+              <button
+                onClick={handleLogout}
+                title={sidebarCollapsed ? t.logout : undefined}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[0.825rem] font-medium",
+                  "bg-red-50 text-red-600 hover:bg-red-100 transition-all",
+                  sidebarCollapsed && "justify-center px-2"
+                )}
+              >
+                <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                  <LogOut className="w-4 h-4" />
+                </div>
+                {!sidebarCollapsed && <span>{t.logout}</span>}
+              </button>
+            ) : (
+              <button
+                onClick={handleLogin}
+                title={sidebarCollapsed ? t.login : undefined}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[0.825rem] font-medium",
+                  "bg-green-50 text-green-600 hover:bg-green-100 transition-all",
+                  sidebarCollapsed && "justify-center px-2"
+                )}
+              >
+                <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                  <LogIn className="w-4 h-4" />
+                </div>
+                {!sidebarCollapsed && <span>{t.login}</span>}
+              </button>
+            )}
+          </div>
+        </aside>
+      )}
 
-      {/* ── Mobile Bottom Navigation Bar ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 mobile-nav-premium z-40 pb-safe print:hidden">
-        <div className="flex justify-around items-center h-16 px-2">
+      {/* ────────────────────────────────────────────────────────── */}
+      {/* 2. BOTTOM NAVIGATION BAR */}
+      {/* Always visible on Mobile, and visible on Desktop when navPosition === 'bottom' */}
+      {/* ────────────────────────────────────────────────────────── */}
+      <div
+        className={cn(
+          "fixed bottom-0 left-0 right-0 z-40 pb-safe print:hidden transition-all duration-300",
+          !isBottomMode && "lg:hidden", // if sidebar mode is chosen, hide on desktop
+          "bg-white/95 backdrop-blur-2xl border-t border-slate-200/80 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]"
+        )}
+      >
+        <div className="max-w-5xl mx-auto flex items-center justify-around h-16 px-2 sm:px-6">
           {/* Dashboard */}
-          <NavLink to="/dashboard"
-            className={({ isActive }) => cn(
-              "flex flex-col items-center justify-center w-full h-full gap-1 transition-all",
-              isActive ? "text-indigo-600" : "text-gray-400 hover:text-gray-600"
-            )}>
+          <NavLink
+            to="/dashboard"
+            onClick={closeSidebar}
+            className={({ isActive }) =>
+              cn(
+                "flex flex-col items-center justify-center w-full h-full gap-1 transition-all",
+                isActive ? "text-indigo-600 font-bold" : "text-gray-500 hover:text-gray-800"
+              )
+            }
+          >
             {({ isActive }) => (
               <>
-                <div className={cn("p-1.5 rounded-lg transition-all", isActive && "bg-indigo-50")}>
+                <div className={cn("p-1.5 rounded-xl transition-all", isActive && "bg-indigo-50 shadow-xs")}>
                   <LayoutDashboard className="w-5 h-5" />
                 </div>
-                <span className="text-[9px] font-medium">{t.home}</span>
+                <span className="text-[10px] md:text-xs truncate">{t.home}</span>
               </>
             )}
           </NavLink>
 
           {/* Products */}
-          <NavLink to="/products"
-            className={({ isActive }) => cn(
-              "flex flex-col items-center justify-center w-full h-full gap-1 transition-all",
-              isActive ? "text-cyan-600" : "text-gray-400 hover:text-gray-600"
-            )}>
+          <NavLink
+            to="/products"
+            onClick={closeSidebar}
+            className={({ isActive }) =>
+              cn(
+                "flex flex-col items-center justify-center w-full h-full gap-1 transition-all",
+                isActive ? "text-cyan-600 font-bold" : "text-gray-500 hover:text-gray-800"
+              )
+            }
+          >
             {({ isActive }) => (
               <>
-                <div className={cn("p-1.5 rounded-lg transition-all", isActive && "bg-cyan-50")}>
+                <div className={cn("p-1.5 rounded-xl transition-all", isActive && "bg-cyan-50 shadow-xs")}>
                   <Package className="w-5 h-5" />
                 </div>
-                <span className="text-[9px] font-medium">{t.products}</span>
+                <span className="text-[10px] md:text-xs truncate">{t.products}</span>
               </>
             )}
           </NavLink>
 
-          {/* Create Invoice — Center FAB */}
-          <NavLink to="/create-invoice"
-            className="flex flex-col items-center justify-center w-full h-full -mt-6 gap-1">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:scale-105 transition-all"
-              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-              <FileText className="w-5 h-5 text-white" />
+          {/* Create Invoice (Prominent Center Button) */}
+          <NavLink
+            to="/create-invoice"
+            onClick={closeSidebar}
+            className="flex flex-col items-center justify-center w-full h-full -mt-5 sm:-mt-6 group"
+          >
+            <div
+              className="w-12 h-12 sm:w-13 sm:h-13 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:shadow-indigo-500/50 group-hover:scale-105 transition-all text-white"
+              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
+            >
+              <FileText className="w-6 h-6" />
             </div>
-            <span className="text-[9px] font-medium text-indigo-600">{t.createInvoice}</span>
+            <span className="text-[10px] md:text-xs font-bold text-indigo-600 mt-0.5 truncate">
+              {t.createInvoice}
+            </span>
           </NavLink>
 
           {/* Sales */}
-          <NavLink to="/sales"
-            className={({ isActive }) => cn(
-              "flex flex-col items-center justify-center w-full h-full gap-1 transition-all",
-              isActive ? "text-emerald-600" : "text-gray-400 hover:text-gray-600"
-            )}>
+          <NavLink
+            to="/sales"
+            onClick={closeSidebar}
+            className={({ isActive }) =>
+              cn(
+                "flex flex-col items-center justify-center w-full h-full gap-1 transition-all",
+                isActive ? "text-emerald-600 font-bold" : "text-gray-500 hover:text-gray-800"
+              )
+            }
+          >
             {({ isActive }) => (
               <>
-                <div className={cn("p-1.5 rounded-lg transition-all", isActive && "bg-emerald-50")}>
+                <div className={cn("p-1.5 rounded-xl transition-all", isActive && "bg-emerald-50 shadow-xs")}>
                   <ShoppingCart className="w-5 h-5" />
                 </div>
-                <span className="text-[9px] font-medium">{t.sales}</span>
+                <span className="text-[10px] md:text-xs truncate">{t.sales}</span>
               </>
             )}
           </NavLink>
 
-          {/* More Menu */}
+          {/* Customers (Visible on tablets & desktop bottom bar) */}
+          {isBottomMode && (
+            <NavLink
+              to="/customers"
+              onClick={closeSidebar}
+              className={({ isActive }) =>
+                cn(
+                  "hidden sm:flex flex-col items-center justify-center w-full h-full gap-1 transition-all",
+                  isActive ? "text-purple-600 font-bold" : "text-gray-500 hover:text-gray-800"
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <div className={cn("p-1.5 rounded-xl transition-all", isActive && "bg-purple-50 shadow-xs")}>
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] md:text-xs truncate">{t.customers}</span>
+                </>
+              )}
+            </NavLink>
+          )}
+
+          {/* More / All Menus (Opens Bottom Sheet) */}
           <button
             onClick={toggleSidebar}
             className={cn(
               "flex flex-col items-center justify-center w-full h-full gap-1 transition-all",
-              sidebarOpen ? "text-indigo-600" : "text-gray-400 hover:text-gray-600"
+              sidebarOpen ? "text-indigo-600 font-bold" : "text-gray-500 hover:text-gray-800"
             )}
           >
-            <div className={cn("p-1.5 rounded-lg transition-all", sidebarOpen && "bg-indigo-50")}>
+            <div className={cn("p-1.5 rounded-xl transition-all", sidebarOpen && "bg-indigo-50 shadow-xs")}>
               <Menu className="w-5 h-5" />
             </div>
-            <span className="text-[9px] font-medium">{t.mainMenu}</span>
+            <span className="text-[10px] md:text-xs truncate">{t.mainMenu}</span>
           </button>
         </div>
       </div>
+
+      {/* ────────────────────────────────────────────────────────── */}
+      {/* 3. MODERN BOTTOM SHEET (Opens when clicking "Main Menu / المزيد") */}
+      {/* Native-feeling, thumb-friendly, categorized grid of all features */}
+      {/* ────────────────────────────────────────────────────────── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end print:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-[2px] transition-opacity"
+            onClick={closeSidebar}
+          />
+
+          {/* Sheet Modal */}
+          <div
+            className={cn(
+              "relative bg-white rounded-t-3xl max-h-[85vh] sm:max-h-[80vh] shadow-2xl flex flex-col z-50",
+              "border-t border-slate-200/80 transition-all duration-300 ease-out",
+              "w-full max-w-4xl mx-auto"
+            )}
+          >
+            {/* Drag Handle */}
+            <div className="flex justify-center pt-3 pb-1 cursor-pointer" onClick={closeSidebar}>
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+            </div>
+
+            {/* Header */}
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-sm flex-shrink-0"
+                  style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
+                >
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 leading-tight">
+                    {t.mainMenu || "القائمة الرئيسية"}
+                  </h3>
+                  <p className="text-xs text-gray-400">Hissaby Pro</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Fast Switcher between Bottom and Sidebar */}
+                <button
+                  onClick={toggleNavMode}
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                  title={t.navPosition}
+                >
+                  {isBottomMode ? <PanelLeft className="w-3.5 h-3.5" /> : <PanelBottom className="w-3.5 h-3.5" />}
+                  <span>{isBottomMode ? "تحويل لشريط جانبي" : "تثبيت في الأسفل"}</span>
+                </button>
+
+                <button
+                  onClick={closeSidebar}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Search inside Menu */}
+            <div className="px-5 pt-3 pb-2">
+              <div className="relative">
+                <Search className="w-4 h-4 text-gray-400 absolute start-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={menuSearch}
+                  onChange={(e) => setMenuSearch(e.target.value)}
+                  placeholder={locale === "ar" ? "ابحث في القائمة..." : "Rechercher dans le menu..."}
+                  className="w-full ps-9 pe-4 py-2 text-xs md:text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Categorized Menu Items Grid */}
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4">
+              {filteredGroups.map((group) => (
+                <div key={group.labelKey}>
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">
+                    {t[group.labelKey as keyof typeof t] as string}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <NavLink
+                          key={item.path}
+                          to={item.path}
+                          onClick={closeSidebar}
+                          className={({ isActive }) =>
+                            cn(
+                              "flex items-center gap-3 p-3 rounded-2xl border transition-all text-start group",
+                              isActive
+                                ? "bg-indigo-50/80 border-indigo-200 text-indigo-900 shadow-xs ring-1 ring-indigo-500/20 font-bold"
+                                : "bg-white hover:bg-slate-50 border-gray-100 hover:border-gray-200 text-gray-700 shadow-2xs"
+                            )
+                          }
+                        >
+                          {({ isActive }) => (
+                            <>
+                              <div
+                                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105"
+                                style={{
+                                  backgroundColor: isActive ? item.color : item.bgColor,
+                                  color: isActive ? "#ffffff" : item.color,
+                                }}
+                              >
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              <span className="text-xs font-semibold leading-tight line-clamp-2">
+                                {t[item.titleKey as keyof typeof t] as string}
+                              </span>
+                            </>
+                          )}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Sheet Footer */}
+            <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/70 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                {isAuthenticated && (
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                      style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
+                    >
+                      {userInitial}
+                    </div>
+                    <span className="text-xs font-medium text-gray-700 truncate max-w-[140px]">
+                      {userName}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Mobile switcher button */}
+                <button
+                  onClick={toggleNavMode}
+                  className="sm:hidden flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700"
+                >
+                  {isBottomMode ? <PanelLeft className="w-3.5 h-3.5" /> : <PanelBottom className="w-3.5 h-3.5" />}
+                  <span>{isBottomMode ? "شريط جانبي" : "شريط سفلي"}</span>
+                </button>
+
+                {isAuthenticated ? (
+                  <button
+                    onClick={() => {
+                      closeSidebar();
+                      handleLogout();
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>{t.logout}</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      closeSidebar();
+                      handleLogin();
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>{t.login}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

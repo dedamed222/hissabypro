@@ -606,6 +606,12 @@ export const translations = {
     invoiceDeletedSuccess: "تم حذف الفاتورة بنجاح",
     invoiceUpdatedSuccess: "تم تحديث الفاتورة بنجاح",
     invoiceStatus: "حالة الفاتورة",
+    navPosition: "موضع شريط التنقل",
+    navPositionDesc: "تحديد مكان شريط القائمة الرئيسية في البرنامج",
+    navPositionBottom: "في الأسفل (Bottom Bar)",
+    navPositionSidebar: "شريط جانبي (Sidebar)",
+    navPositionBottomDesc: "شريط تنقل مريح في أسفل الشاشة لجميع الأجهزة",
+    navPositionSidebarDesc: "شريط جانبي على طرف الشاشة لسطح المكتب",
   },
   fr: {
     // General
@@ -1216,6 +1222,12 @@ export const translations = {
     invoiceDeletedSuccess: "Facture supprimée avec succès",
     invoiceUpdatedSuccess: "Facture mise à jour avec succès",
     invoiceStatus: "Statut de la facture",
+    navPosition: "Position de la barre de navigation",
+    navPositionDesc: "Choisir l'emplacement de la barre de menu",
+    navPositionBottom: "En bas (Barre inférieure)",
+    navPositionSidebar: "Barre latérale (Sidebar)",
+    navPositionBottomDesc: "Navigation fluide et accessible en bas d'écran",
+    navPositionSidebarDesc: "Barre latérale classique sur le côté pour ordinateur",
   }
 };
 

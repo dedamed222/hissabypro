@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 import { loadStoreData } from "@/utils/localStorage";
 import SearchBar from "./SearchBar";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useSettings } from "@/contexts/SettingsContext";
+import { cn } from "@/lib/utils";
 
 function StoreLogoPreview({ locale }: { locale: "ar" | "fr" }) {
   const [storeInfo, setStoreInfo] = useState({ name: "", photoUrl: "" });
@@ -51,10 +53,13 @@ export default function Header() {
   const { toggleSidebar, sidebarOpen } = useApp();
   const { user, profile } = useAuth();
   const { locale } = useLocale();
+  const { navPosition = "bottom" } = useSettings();
   const t = translations[locale];
 
   const userName = profile?.name || user?.email || "";
   const userInitial = userName.charAt(0)?.toUpperCase() || (locale === "ar" ? "م" : "U");
+
+  const isBottomMode = navPosition === "bottom";
 
   return (
     <header className="header-premium min-h-[3.75rem] px-3 sm:px-4 md:px-6 flex items-center justify-between z-30 flex-shrink-0 print:hidden">
@@ -62,8 +67,12 @@ export default function Header() {
       <div className="flex items-center gap-2.5">
         <button
           onClick={toggleSidebar}
-          className="lg:hidden flex items-center justify-center w-9 h-9 rounded-xl hover:bg-gray-100 text-gray-500 transition-all"
+          className={cn(
+            "flex items-center justify-center w-9 h-9 rounded-xl hover:bg-gray-100 text-gray-500 transition-all",
+            !isBottomMode && "lg:hidden"
+          )}
           aria-label={sidebarOpen ? t.closeMenu : t.openMenu}
+          title={t.mainMenu}
         >
           {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
