@@ -593,6 +593,13 @@ export const translations = {
     noCustomerFilesYet: "لا توجد فواتير أو ملفات محفوظة لهذا العميل بعد",
     noCustomerNotesYet: "لا توجد ملاحظات مسجلة لهذا العميل حتى الآن",
     clientFolderStats: "إحصائيات ملف العميل",
+    editInvoice: "تعديل الفاتورة",
+    deleteInvoice: "حذف الفاتورة",
+    confirmDeleteInvoice: "تأكيد حذف الفاتورة",
+    confirmDeleteInvoiceMsg: "هل أنت متأكد من حذف الفاتورة رقم",
+    invoiceDeletedSuccess: "تم حذف الفاتورة بنجاح",
+    invoiceUpdatedSuccess: "تم تحديث الفاتورة بنجاح",
+    invoiceStatus: "حالة الفاتورة",
   },
   fr: {
     // General
@@ -1190,6 +1197,13 @@ export const translations = {
     noCustomerFilesYet: "Aucune facture ou fichier enregistré pour ce client pour le moment",
     noCustomerNotesYet: "Aucune note enregistrée pour ce client jusqu'à présent",
     clientFolderStats: "Statistiques du dossier",
+    editInvoice: "Modifier la facture",
+    deleteInvoice: "Supprimer la facture",
+    confirmDeleteInvoice: "Confirmer la suppression de la facture",
+    confirmDeleteInvoiceMsg: "Êtes-vous sûr de vouloir supprimer la facture n°",
+    invoiceDeletedSuccess: "Facture supprimée avec succès",
+    invoiceUpdatedSuccess: "Facture mise à jour avec succès",
+    invoiceStatus: "Statut de la facture",
   }
 };
 

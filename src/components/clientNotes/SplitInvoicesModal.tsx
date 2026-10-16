@@ -282,9 +282,15 @@ export const SplitInvoicesModal: React.FC<SplitInvoicesModalProps> = ({
             type: newInvoice.type,
             date: newInvoice.date,
             notes: newInvoice.notes,
-          });
-        } catch {
-          // offline is safe
+          }, invoiceItems.map(it => ({
+            product_id: it.productId,
+            product_name: it.productName,
+            quantity: it.quantity,
+            price: it.price,
+            total: it.total,
+          })));
+        } catch (err) {
+          console.error("DB upsertInvoice error:", err);
         }
 
         createdList.push(newInvoice);
