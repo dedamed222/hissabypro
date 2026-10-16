@@ -60,6 +60,64 @@ export interface InvoiceItem {
   quantity: number;
   price: number;
   total: number;
+  unit?: string;
+  isManual?: boolean;
+  originalNoteId?: string;
+  originalNoteDate?: string;
+}
+
+export interface ClientNoteItem {
+  id: string;
+  productId?: string;
+  productName: string;
+  productCode?: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  total: number;
+  isManual?: boolean;
+}
+
+export interface ClientNote {
+  id: string;
+  customerId: string;
+  customerName: string;
+  title: string;
+  content?: string;
+  date: string;
+  status: "open" | "converted" | "archived";
+  items: ClientNoteItem[];
+  total: number;
+  invoiceIds?: string[];
+  convertedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PriceChangeHistory {
+  id: string;
+  productId: string;
+  productName: string;
+  oldPrice: number;
+  newPrice: number;
+  costPrice?: number;
+  date: string;
+  source?: "note" | "invoice" | "product_form" | "manual";
+  noteId?: string;
+  invoiceId?: string;
+}
+
+export interface CustomerFile {
+  id: string;
+  customerId: string;
+  customerName: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  fileName: string;
+  fileType: "pdf" | "invoice";
+  date: string;
+  total: number;
+  createdAt: string;
 }
 
 export interface Invoice {
@@ -83,6 +141,10 @@ export interface Invoice {
   date: string;
   createdAt: string;
   updatedAt?: string;
+  clientNoteIds?: string[];
+  batchNumber?: string;
+  batchIndex?: number;
+  batchTotal?: number;
 }
 
 export interface Return {
@@ -245,6 +307,9 @@ export interface StoreData {
   debtors: Debtor[];
   storeInfo: StoreInfo;
   warehouses?: Warehouse[]; // Add warehouses
+  clientNotes?: ClientNote[];
+  priceChangeHistories?: PriceChangeHistory[];
+  customerFiles?: CustomerFile[];
   settings?: {
     currency: string;
     locale: "ar" | "fr";

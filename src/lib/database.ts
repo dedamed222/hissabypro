@@ -696,3 +696,182 @@ export async function upsertStoreSettings(settings: {
     return data;
   }
 }
+
+// ─── CLIENT NOTES (ملاحظات العملاء) ──────────────────────────────────────────
+
+export async function getClientNotes() {
+  try {
+    const { loadStoreData } = await import("@/utils/localStorage");
+    const localNotes = loadStoreData().clientNotes || [];
+
+    // Attempt cloud fetch if connected
+    if (navigator.onLine) {
+      try {
+        const { data, error } = await supabase
+          .from("client_notes" as any)
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (!error && data && data.length > 0) {
+          return data.map((d: any) => ({
+            id: d.id,
+            customerId: d.customer_id,
+            customerName: d.customer_name,
+            title: d.title,
+            content: d.content,
+            date: d.date || d.created_at,
+            status: d.status || "open",
+            items: d.items || [],
+            total: d.total || 0,
+            invoiceIds: d.invoice_ids || [],
+            convertedAt: d.converted_at,
+            createdAt: d.created_at,
+            updatedAt: d.updated_at,
+          }));
+        }
+      } catch {
+        // Table might not exist yet in Supabase or network error, fallback to local seamlessly
+      }
+    }
+    return localNotes;
+  } catch (err) {
+    console.error("Error in getClientNotes:", err);
+    const { loadStoreData } = await import("@/utils/localStorage");
+    return loadStoreData().clientNotes || [];
+  }
+}
+
+export async function upsertClientNote(note: {
+  id?: string;
+  customerId: string;
+  customerName: string;
+  title: string;
+  content?: string;
+  date: string;
+  status: "open" | "converted" | "archived";
+  items: any[];
+  total: number;
+  invoiceIds?: string[];
+  convertedAt?: string;
+}) {
+  const { loadStoreData, saveStoreData, generateId } = await import("@/utils/localStorage");
+  const data = loadStoreData();
+  if (!data.clientNotes) data.clientNotes = [];
+
+  const noteId = note.id || generateId();
+  const fullNote = {
+    ...note,
+    id: noteId,
+    createdAt: (note as any).createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const index = data.clientNotes.findIndex((n) => n.id === noteId);
+  if (index >= 0) {
+    data.clientNotes[index] = fullNote;
+  } else {
+    data.clientNotes.unshift(fullNote);
+  }
+  saveStoreData(data);
+
+  // Sync to Supabase in background if online
+  if (navigator.onLine) {
+    try {
+      const user = await getAuthenticatedUser();
+      const payload: any = {
+        id: isValidUUID(noteId) ? noteId : undefined,
+        user_id: user.id,
+        customer_id: isValidUUID(note.customerId) ? note.customerId : null,
+        customer_name: note.customerName,
+        title: note.title,
+        content: note.content,
+        date: note.date,
+        status: note.status,
+        items: note.items,
+        total: note.total,
+        invoice_ids: note.invoiceIds,
+        converted_at: note.convertedAt,
+      };
+      await supabase.from("client_notes" as any).upsert(payload, { onConflict: "id" });
+    } catch {
+      // Offline or table not configured; local is ground truth
+    }
+  }
+
+  return fullNote;
+}
+
+export async function deleteClientNote(id: string) {
+  const { deleteClientNote: deleteLocal } = await import("@/utils/localStorage");
+  deleteLocal(id);
+
+  if (navigator.onLine && isValidUUID(id)) {
+    try {
+      await supabase.from("client_notes" as any).delete().eq("id", id);
+    } catch {
+      // Ignore if offline
+    }
+  }
+}
+
+// ─── PRICE UPDATES & LOGGING ─────────────────────────────────────────────────
+
+export async function updateProductDefaultPrice(
+  productId: string,
+  newPrice: number,
+  source: "note" | "invoice" | "product_form" | "manual" = "manual",
+  contextId?: string
+) {
+  const { loadStoreData, saveStoreData, logPriceChange } = await import("@/utils/localStorage");
+  const storeData = loadStoreData();
+  const productIndex = storeData.products.findIndex((p) => p.id === productId);
+
+  if (productIndex === -1) return null;
+
+  const product = storeData.products[productIndex];
+  const oldPrice = product.price;
+
+  // Record price change history
+  logPriceChange({
+    productId: product.id,
+    productName: product.name,
+    oldPrice,
+    newPrice,
+    costPrice: product.cost,
+    date: new Date().toISOString(),
+    source,
+    noteId: source === "note" ? contextId : undefined,
+    invoiceId: source === "invoice" ? contextId : undefined,
+  });
+
+  // Update product price
+  product.price = newPrice;
+  product.updatedAt = new Date().toISOString();
+  saveStoreData(storeData);
+
+  // If online and authenticated, update in Supabase
+  if (navigator.onLine) {
+    try {
+      await upsertProduct({
+        id: product.id,
+        code: product.code,
+        name: product.name,
+        description: product.description,
+        price: newPrice,
+        cost: product.cost,
+        quantity: product.quantity,
+        low_stock_threshold: product.lowStockThreshold,
+        category: product.category,
+        supplier_id: product.supplierId,
+        warehouse_id: product.warehouseId,
+        photo_url: product.photoUrl,
+        barcode: product.barcode,
+        sold: product.sold,
+      });
+    } catch (err) {
+      console.warn("Could not sync price update to cloud immediately:", err);
+    }
+  }
+
+  return product;
+}
+

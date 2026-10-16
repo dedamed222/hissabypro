@@ -1,5 +1,5 @@
 
-import { StoreData } from "@/types";
+import { StoreData, ClientNote, PriceChangeHistory, CustomerFile } from "@/types";
 import * as CryptoJS from "crypto-js";
 
 const STORE_KEY = "arab-business-hub";
@@ -48,6 +48,9 @@ const initialStoreData: StoreData = {
       createdAt: new Date().toISOString(),
     },
   ],
+  clientNotes: [],
+  priceChangeHistories: [],
+  customerFiles: [],
   storeInfo: {
     name: "",
     phone: "",
@@ -63,7 +66,13 @@ export const loadStoreData = (): StoreData => {
     if (encryptedData) {
       const decryptedData = CryptoJS.AES.decrypt(encryptedData, getEncryptionKey()).toString(CryptoJS.enc.Utf8);
       if (decryptedData) {
-        return JSON.parse(decryptedData);
+        const parsed = JSON.parse(decryptedData);
+        // Ensure new arrays exist for backward compatibility
+        if (!parsed.clientNotes) parsed.clientNotes = [];
+        if (!parsed.priceChangeHistories) parsed.priceChangeHistories = [];
+        if (!parsed.customerFiles) parsed.customerFiles = [];
+        if (!parsed.invoices) parsed.invoices = [];
+        return parsed;
       }
     }
     // If no data, initialize and save the default data
@@ -210,3 +219,112 @@ export const getMostRecentProductsList = (): string[] => {
   const data = loadStoreData();
   return data.mostRecentProducts;
 };
+
+// ─── CLIENT NOTES HELPERS ──────────────────────────────────────────────────
+export const getClientNotes = (): ClientNote[] => {
+  const data = loadStoreData();
+  return data.clientNotes || [];
+};
+
+export const saveClientNote = (note: ClientNote): ClientNote => {
+  const data = loadStoreData();
+  if (!data.clientNotes) data.clientNotes = [];
+  const index = data.clientNotes.findIndex((n) => n.id === note.id);
+  if (index >= 0) {
+    data.clientNotes[index] = { ...note, updatedAt: new Date().toISOString() };
+  } else {
+    data.clientNotes.unshift({
+      ...note,
+      createdAt: note.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  saveStoreData(data);
+  return note;
+};
+
+export const deleteClientNote = (id: string): void => {
+  const data = loadStoreData();
+  if (!data.clientNotes) return;
+  data.clientNotes = data.clientNotes.filter((n) => n.id !== id);
+  saveStoreData(data);
+};
+
+export const markNotesAsConverted = (noteIds: string[], invoiceId: string): void => {
+  const data = loadStoreData();
+  if (!data.clientNotes) return;
+  data.clientNotes = data.clientNotes.map((note) => {
+    if (noteIds.includes(note.id)) {
+      const existingInvoices = note.invoiceIds || [];
+      return {
+        ...note,
+        status: "converted" as const,
+        convertedAt: new Date().toISOString(),
+        invoiceIds: Array.from(new Set([...existingInvoices, invoiceId])),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return note;
+  });
+  saveStoreData(data);
+};
+
+export const revertInvoiceNotesToOpen = (invoiceId: string): void => {
+  const data = loadStoreData();
+  if (!data.clientNotes) return;
+  data.clientNotes = data.clientNotes.map((note) => {
+    if (note.invoiceIds && note.invoiceIds.includes(invoiceId)) {
+      const remainingInvoices = note.invoiceIds.filter((id) => id !== invoiceId);
+      return {
+        ...note,
+        status: remainingInvoices.length === 0 ? ("open" as const) : note.status,
+        invoiceIds: remainingInvoices,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return note;
+  });
+  saveStoreData(data);
+};
+
+// ─── PRICE CHANGE HISTORY HELPERS ──────────────────────────────────────────
+export const logPriceChange = (change: Omit<PriceChangeHistory, "id">): PriceChangeHistory => {
+  const data = loadStoreData();
+  if (!data.priceChangeHistories) data.priceChangeHistories = [];
+  const entry: PriceChangeHistory = {
+    ...change,
+    id: generateId(),
+  };
+  data.priceChangeHistories.unshift(entry);
+  saveStoreData(data);
+  return entry;
+};
+
+export const getPriceChangeHistory = (productId?: string): PriceChangeHistory[] => {
+  const data = loadStoreData();
+  const list = data.priceChangeHistories || [];
+  if (productId) {
+    return list.filter((p) => p.productId === productId);
+  }
+  return list;
+};
+
+// ─── CUSTOMER FILES HELPERS ────────────────────────────────────────────────
+export const saveCustomerFile = (file: Omit<CustomerFile, "id" | "createdAt">): CustomerFile => {
+  const data = loadStoreData();
+  if (!data.customerFiles) data.customerFiles = [];
+  const newFile: CustomerFile = {
+    ...file,
+    id: generateId(),
+    createdAt: new Date().toISOString(),
+  };
+  data.customerFiles.unshift(newFile);
+  saveStoreData(data);
+  return newFile;
+};
+
+export const getCustomerFiles = (customerId: string): CustomerFile[] => {
+  const data = loadStoreData();
+  return (data.customerFiles || []).filter((f) => f.customerId === customerId);
+};
+

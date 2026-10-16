@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Package,
   Users,
+  StickyNote,
   FileText,
   ShoppingCart,
   Truck,
@@ -61,6 +62,12 @@ const Sidebar = () => {
       icon: Users,
       path: "/customers",
       color: "from-purple-500 to-pink-500"
+    },
+    {
+      titleKey: "clientNotes",
+      icon: StickyNote,
+      path: "/client-notes",
+      color: "from-amber-500 to-orange-500"
     },
     {
       titleKey: "createInvoice",
