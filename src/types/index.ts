@@ -287,6 +287,8 @@ export interface StoreInfo {
   photoUrl: string;
   address?: string;
   commercialRegister?: string;
+  taxNumber?: string;
+  businessType?: string;
   letterheadUrl?: string;
   printSettings?: {
     paperSize: 'A3' | 'A4' | 'A5' | 'A6';

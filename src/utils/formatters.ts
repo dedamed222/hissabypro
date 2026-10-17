@@ -114,3 +114,19 @@ export const formatPercentageChange = (change: number): string => {
 export const formatNumber = (value: number): string => {
   return new Intl.NumberFormat("en-US").format(value);
 };
+
+// Robust Arabic text normalization helper
+export const normalizeArabic = (text: string | null | undefined): string => {
+  if (!text) return "";
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[\u064B-\u065F\u0670]/g, "") // remove diacritics
+    .replace(/[أإآٱ]/g, "ا")
+    .replace(/[ة]/g, "ه")
+    .replace(/[يى]/g, "ي")
+    .replace(/[ؤ]/g, "و")
+    .replace(/[ئ]/g, "ي")
+    .replace(/[^\w\s\u0600-\u06FF]/gi, "")
+    .replace(/\s+/g, " ");
+};
