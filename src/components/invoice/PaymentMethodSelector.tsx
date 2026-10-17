@@ -1,11 +1,7 @@
-
 import React from "react";
-import {
-  RadioGroup,
-  RadioGroupItem
-} from "@/components/ui/radio-group";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useLocale } from "@/hooks/useLocale";
+import { Wallet } from "lucide-react";
 
 interface PaymentMethodSelectorProps {
   paymentMethod: string;
@@ -18,41 +14,32 @@ const PaymentMethodSelector = ({ paymentMethod, setPaymentMethod }: PaymentMetho
   const paymentMethods = getAvailablePaymentMethods();
 
   return (
-    <div className="arab-form-group mx-[30px]">
-      <label id="payment-method-label" className="arab-label">{t('paymentMethod')}</label>
+    <div className="space-y-1.5">
+      <label id="payment-method-label" className="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
+        <Wallet size={13} className="text-slate-400" />
+        <span>{t('paymentMethod')}</span>
+      </label>
 
-      <div className="border border-gray-200 rounded-md overflow-hidden">
-        <RadioGroup
-          aria-labelledby="payment-method-label"
-          value={paymentMethod}
-          onValueChange={(value: string) => setPaymentMethod(value)}
-          className="flex flex-wrap"
-        >
-          {paymentMethods.map((method) => {
-            const isSelected = paymentMethod === method.id;
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {paymentMethods.map((method) => {
+          const isSelected = paymentMethod === method.id;
 
-            return (
-              <label
-                key={method.id}
-                htmlFor={`payment-${method.id}`}
-                className={`flex-1 min-w-[80px] md:min-w-[100px] text-center py-1.5 px-2 md:py-2 md:px-3 cursor-pointer transition-all ${isSelected
-                    ? "bg-arab-rose text-white"
-                    : "bg-white hover:bg-gray-50"
-                  }`}
-                title={t(method.id as any)}
-              >
-                <RadioGroupItem
-                  value={method.id}
-                  id={`payment-${method.id}`}
-                  className="sr-only"
-                />
-                <span className={`text-sm font-sans ${isSelected ? "font-medium" : ""}`}>
-                  {t(method.id as any) !== method.id ? t(method.id as any) : method.name}
-                </span>
-              </label>
-            );
-          })}
-        </RadioGroup>
+          return (
+            <button
+              key={method.id}
+              type="button"
+              onClick={() => setPaymentMethod(method.id)}
+              className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all border text-center truncate ${
+                isSelected
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              }`}
+              title={t(method.id as any)}
+            >
+              {t(method.id as any) !== method.id ? t(method.id as any) : method.name}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

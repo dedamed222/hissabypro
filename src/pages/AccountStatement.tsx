@@ -412,14 +412,14 @@ export default function AccountStatement() {
           <span>{t('filterAccountStatement') || 'تحديد العميل وفلترة كشف الحساب'}</span>
         </div>
         <div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
             <div>
-              <label id="select-customer-label" className="block mb-2 font-medium">{t('selectCustomer')}</label>
+              <label id="select-customer-label" className="block text-xs font-bold text-slate-700 mb-1.5">{t('selectCustomer') || 'العميل'}</label>
               <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                <SelectTrigger aria-labelledby="select-customer-label">
+                <SelectTrigger aria-labelledby="select-customer-label" className="w-full py-2.5 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
                   <SelectValue placeholder={t('selectCustomer')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl">
                   {customers.map((customer: Customer) => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
@@ -429,12 +429,12 @@ export default function AccountStatement() {
               </Select>
             </div>
             <div>
-              <label id="transaction-type-label" className="block mb-2 font-medium">{t('transactionType') || 'نوع المعاملة'}</label>
+              <label id="transaction-type-label" className="block text-xs font-bold text-slate-700 mb-1.5">{t('transactionType') || 'نوع المعاملة'}</label>
               <Select value={transactionType} onValueChange={setTransactionType}>
-                <SelectTrigger aria-labelledby="transaction-type-label">
+                <SelectTrigger aria-labelledby="transaction-type-label" className="w-full py-2.5 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
                   <SelectValue placeholder={t('allTransactions')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl">
                   <SelectItem value="all">{t('allTransactions')}</SelectItem>
                   <SelectItem value="invoice">
                     <div className="flex items-center gap-2">
@@ -464,79 +464,81 @@ export default function AccountStatement() {
               </Select>
             </div>
             <div>
-              <label htmlFor="start-date" className="block mb-2 font-medium">{t('fromDate')}</label>
-              <Input
+              <label htmlFor="start-date" className="block text-xs font-bold text-slate-700 mb-1.5">{t('fromDate') || 'من تاريخ'}</label>
+              <input
                 id="start-date"
                 type="date"
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
+                className="w-full py-2.5 px-3.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-sans font-medium transition-all"
               />
             </div>
             <div>
-              <label htmlFor="end-date" className="block mb-2 font-medium">{t('toDate')}</label>
-              <Input
+              <label htmlFor="end-date" className="block text-xs font-bold text-slate-700 mb-1.5">{t('toDate') || 'إلى تاريخ'}</label>
+              <input
                 id="end-date"
                 type="date"
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
+                className="w-full py-2.5 px-3.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-sans font-medium transition-all"
               />
             </div>
           </div>
 
-          <div className="mt-4">
-            <label htmlFor="search-description" className="block mb-2 font-medium flex items-center gap-2">
-              <Search className="w-4 h-4" />
-              {t('searchDescriptionPlaceholder').split('...')[0]}
+          <div className="mt-3.5 pt-3.5 border-t border-slate-100">
+            <label htmlFor="search-description" className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <Search className="w-3.5 h-3.5 text-slate-400" />
+              <span>{t('searchDescriptionPlaceholder').split('...')[0] || 'البحث في البيان'}</span>
             </label>
-            <Input
+            <input
               id="search-description"
               type="text"
-              placeholder={t('searchDescriptionPlaceholder')}
+              placeholder={t('searchDescriptionPlaceholder') || 'اكتب للبحث في نص المعاملة...'}
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              className="max-w-xl"
+              className="w-full max-w-xl py-2.5 px-3.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
             />
           </div>
         </div>
       </div>
 
       {selectedCustomer && filteredTransactions.length > 0 && (
-        <Card className="shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
-            <div className="flex justify-between items-center">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
+        <div className="gsc-card overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              <h3 className="font-bold text-sm text-slate-900">
                 {t('accountStatementTitle')} - {selectedCustomerData?.name}
-              </CardTitle>
-              <ExportActions
-                data={filteredTransactions}
-                filename={`${t('accountStatementTitle').toLowerCase().replace(/\s+/g, '-')}-${selectedCustomerData?.name}`}
-                title={`${t('accountStatementTitle')} - ${selectedCustomerData?.name}`}
-                columns={exportColumns}
-                totals={{
-                  totalQuantity,
-                  totalDebit,
-                  totalCredit,
-                  finalBalance
-                }}
-              />
+              </h3>
             </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
-              <table className="w-full arab-table block md:table">
-                <thead className="hidden md:table-header-group">
-                  <tr className="bg-gradient-to-r from-gray-100 to-gray-200">
-                    <th className={`text-${isRTL ? 'right' : 'left'} p-3 font-bold text-gray-800`}>{t('date')}</th>
-                    <th className={`text-${isRTL ? 'right' : 'left'} p-3 font-bold text-gray-800`}>{t('description')}</th>
-                    <th className={`text-${isRTL ? 'right' : 'left'} p-3 font-bold text-gray-800`}>{t('productCode')}</th>
-                    <th className={`text-${isRTL ? 'right' : 'left'} p-3 font-bold text-gray-800`}>{t('quantity')}</th>
-                    <th className={`text-${isRTL ? 'right' : 'left'} p-3 font-bold text-red-700 bg-red-50`}>{t('debit')}</th>
-                    <th className={`text-${isRTL ? 'right' : 'left'} p-3 font-bold text-green-700 bg-green-50`}>{t('credit')}</th>
-                    <th className={`text-${isRTL ? 'right' : 'left'} p-3 font-bold text-gray-800`}>{t('runningBalance')}</th>
+            <ExportActions
+              data={filteredTransactions}
+              filename={`${t('accountStatementTitle').toLowerCase().replace(/\s+/g, '-')}-${selectedCustomerData?.name}`}
+              title={`${t('accountStatementTitle')} - ${selectedCustomerData?.name}`}
+              columns={exportColumns}
+              totals={{
+                totalQuantity,
+                totalDebit,
+                totalCredit,
+                finalBalance
+              }}
+            />
+          </div>
+          <div className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-right border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                    <th className="py-3 px-4">{t('date')}</th>
+                    <th className="py-3 px-4">{t('description')}</th>
+                    <th className="py-3 px-4 text-center">{t('productCode')}</th>
+                    <th className="py-3 px-4 text-center">{t('quantity')}</th>
+                    <th className="py-3 px-4 text-center text-rose-700 bg-rose-50/50">{t('debit')}</th>
+                    <th className="py-3 px-4 text-center text-emerald-700 bg-emerald-50/50">{t('credit')}</th>
+                    <th className="py-3 px-4 text-left">{t('runningBalance')}</th>
                   </tr>
                 </thead>
-                <tbody className="block md:table-row-group">
+                <tbody className="divide-y divide-slate-100 text-sm">
                   {startDate && filteredTransactions.length > 0 && openingBalance !== 0 && (
                     <tr className="border-b bg-blue-50/30 mobile-card-row">
                       <td data-label={t('date')} className="p-3 text-gray-700 font-medium md:col-span-4">{t('openingBalance') || 'الرصيد الافتتاحي'}</td>
@@ -759,8 +761,8 @@ export default function AccountStatement() {
                 </CardContent>
               </Card>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {selectedCustomer && filteredTransactions.length === 0 && (

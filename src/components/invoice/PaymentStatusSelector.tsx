@@ -1,10 +1,6 @@
-
 import React from "react";
-import {
-  RadioGroup,
-  RadioGroupItem
-} from "@/components/ui/radio-group";
 import { useLocale } from "@/hooks/useLocale";
+import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
 
 interface PaymentStatusSelectorProps {
   paymentStatus: "paid" | "pending" | "partial";
@@ -14,79 +10,41 @@ interface PaymentStatusSelectorProps {
 const PaymentStatusSelector = ({ paymentStatus, setPaymentStatus }: PaymentStatusSelectorProps) => {
   const { t } = useLocale();
 
+  const statuses = [
+    { id: "paid", label: t('paid') || 'مدفوع', icon: CheckCircle2, activeBg: "bg-emerald-600 text-white border-emerald-600 shadow-xs" },
+    { id: "pending", label: t('pending') || 'قيد الانتظار', icon: Clock, activeBg: "bg-amber-500 text-white border-amber-500 shadow-xs" },
+    { id: "partial", label: t('partial') || 'دفع جزئي', icon: AlertCircle, activeBg: "bg-blue-600 text-white border-blue-600 shadow-xs" },
+  ];
+
   return (
-    <div className="arab-form-group mx-[30px]">
-      <label id="payment-status-label" className="arab-label">{t('paymentStatus')}</label>
-      
-      <div className="border border-gray-200 rounded-md overflow-hidden">
-        <RadioGroup
-          aria-labelledby="payment-status-label"
-          value={paymentStatus}
-          onValueChange={(value: "paid" | "pending" | "partial") => setPaymentStatus(value)}
-          className="flex flex-col sm:flex-row gap-2"
-        >
-          <label
-            htmlFor="status-paid"
-            className={`flex-1 text-center py-3 px-4 cursor-pointer transition-all ${
-              paymentStatus === "paid"
-                ? "bg-green-500 text-white"
-                : "bg-white hover:bg-gray-50"
-            }`}
-            title={t('paid')}
-          >
-            <RadioGroupItem value="paid" id="status-paid" className="sr-only" />
-            <span className={`text-sm font-medium font-sans ${paymentStatus === "paid" ? "text-white" : "text-gray-700"}`}>
-              {t('paid')}
-            </span>
-          </label>
+    <div className="space-y-1.5">
+      <label id="payment-status-label" className="block text-xs font-bold text-slate-700">
+        {t('paymentStatus') || 'حالة السداد'}
+      </label>
 
-          <label
-            htmlFor="status-pending"
-            className={`flex-1 text-center py-3 px-4 cursor-pointer transition-all border-r border-gray-200 ${
-              paymentStatus === "pending"
-                ? "bg-orange-500 text-white"
-                : "bg-white hover:bg-gray-50"
-            }`}
-            title={t('pending')}
-          >
-            <RadioGroupItem value="pending" id="status-pending" className="sr-only" />
-            <span className={`text-sm font-medium font-sans ${paymentStatus === "pending" ? "text-white" : "text-gray-700"}`}>
-              {t('pending')}
-            </span>
-          </label>
+      <div className="grid grid-cols-3 gap-2">
+        {statuses.map((item) => {
+          const isSelected = paymentStatus === item.id;
+          const Icon = item.icon;
 
-          <label
-            htmlFor="status-partial"
-            className={`flex-1 text-center py-3 px-4 cursor-pointer transition-all rounded-md sm:rounded-none sm:rounded-r-md border border-gray-200 sm:border-l-0 ${
-              paymentStatus === "partial"
-                ? "bg-blue-500 text-white"
-                : "bg-white hover:bg-gray-50"
-            }`}
-            title={t('partiallyPaid')}
-          >
-            <RadioGroupItem value="partial" id="status-partial" className="sr-only" />
-            <span className={`text-sm font-medium font-sans ${paymentStatus === "partial" ? "text-white" : "text-gray-700"}`}>
-              {t('partiallyPaid')}
-            </span>
-          </label>
-        </RadioGroup>
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setPaymentStatus(item.id as any)}
+              className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
+                isSelected
+                  ? item.activeBg
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              }`}
+              title={item.label}
+            >
+              <Icon size={14} />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
       </div>
-      
-      {paymentStatus === "pending" && (
-        <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-md">
-          <p className="text-sm text-orange-700 font-sans">
-            {t('pendingWarning')}
-          </p>
-        </div>
-      )}
-      
-      {paymentStatus === "partial" && (
-        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-          <p className="text-sm text-blue-700 font-sans">
-            يرجى تسجيل المبلغ المدفوع بدقة عند حفظ الفاتورة.
-          </p>
-        </div>
-      )}
     </div>
   );
 };

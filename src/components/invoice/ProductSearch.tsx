@@ -1,8 +1,6 @@
-
 import React from "react";
-import { Search } from "lucide-react";
+import { Search, Plus, Check, Tag } from "lucide-react";
 import { Product } from "@/types";
-import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/utils/formatters";
 import { useLocale } from "@/hooks/useLocale";
 
@@ -30,84 +28,107 @@ const ProductSearch = ({
   const { t } = useLocale();
 
   return (
-    <div className="arab-card card-teal print:hidden mx-[30px]">
-      <h2 className="font-medium mb-4 text-arab-teal-dark">{t('addProducts')}</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div className="md:col-span-2 relative">
-          <label htmlFor="product-search-input" className="sr-only">{t('productSearch')}</label>
-          <Search className="absolute rtl:left-3 ltr:right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+    <div className="space-y-3.5">
+      <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+        <div className="w-2 h-2 rounded-full bg-indigo-600"></div>
+        <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">{t('addProducts') || 'اختيار الأصناف'}</h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="md:col-span-3 relative">
+          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
           <input
             id="product-search-input"
             type="text"
-            placeholder={t('searchProductPlaceholder')}
+            placeholder={t('searchProductPlaceholder') || 'ابحث برمز الصنف، الاسم، أو الفئة...'}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rtl:pr-10 ltr:pl-10 rtl:pl-4 ltr:pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-arab-teal font-sans"
+            className="w-full pr-10 pl-4 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-900 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
             title={t('productSearch')}
           />
         </div>
-        
+
         <div>
-          <label htmlFor="product-quantity-input" className="sr-only">{t('quantity')}</label>
-          <Input
+          <input
             id="product-quantity-input"
             type="number"
             min="1"
             value={manualQuantity !== null ? manualQuantity : quantity}
             onChange={handleQuantityChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-arab-teal font-sans"
-            placeholder={t('quantity')}
+            className="w-full p-2.5 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-900 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold font-sans text-center transition-all"
+            placeholder={t('quantity') || 'الكمية'}
             title={t('quantity')}
           />
         </div>
       </div>
-      
-      <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md mb-4">
-        <table className="arab-table">
-          <thead className="bg-arab-teal/10">
-            <tr>
-              <th className="font-medium">{t('code')}</th>
-              <th className="font-medium">{t('product')}</th>
-              <th className="font-medium">{t('productPrice')}</th>
-              <th className="font-medium">{t('stock')}</th>
-              <th className="font-medium">{t('choose')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
-                <tr 
-                  key={product.id} 
-                  className={selectedProduct?.id === product.id ? "bg-arab-teal/20 font-sans" : "font-sans"}
-                >
-                  <td>{product.code}</td>
-                  <td>{product.name}</td>
-                  <td>{formatCurrency(product.price)}</td>
-                  <td>{product.quantity}</td>
-                  <td>
-                    <button
+
+      {searchTerm && (
+        <div className="max-h-52 overflow-y-auto border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
+          <table className="w-full text-right border-collapse text-xs">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
+              <tr>
+                <th className="py-2.5 px-3">الرمز</th>
+                <th className="py-2.5 px-3">اسم المنتج</th>
+                <th className="py-2.5 px-3 text-center">سعر البيع</th>
+                <th className="py-2.5 px-3 text-center">المتوفر</th>
+                <th className="py-2.5 px-3 text-center">اختيار</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((product) => {
+                  const isSelected = selectedProduct?.id === product.id;
+                  const isOut = Number(product.quantity || 0) <= 0;
+                  return (
+                    <tr
+                      key={product.id}
                       onClick={() => setSelectedProduct(product)}
-                      className="text-arab-teal hover:text-arab-teal-dark"
-                      title={t('choose')}
+                      className={`cursor-pointer transition-colors ${
+                        isSelected ? "bg-blue-50 text-blue-900 font-bold" : "hover:bg-slate-50"
+                      }`}
                     >
-                      {t('choose')}
-                    </button>
+                      <td className="py-2.5 px-3 font-mono">{product.code}</td>
+                      <td className="py-2.5 px-3 font-semibold text-slate-800">{product.name}</td>
+                      <td className="py-2.5 px-3 text-center font-bold text-blue-600 font-sans">
+                        {formatCurrency(product.price)}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-md font-sans font-bold ${
+                          isOut ? "bg-rose-50 text-rose-600" : "bg-emerald-50 text-emerald-700"
+                        }`}>
+                          {product.quantity}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProduct(product);
+                          }}
+                          className={`p-1 rounded-lg text-xs font-bold transition-all ${
+                            isSelected
+                              ? "bg-blue-600 text-white"
+                              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          }`}
+                        >
+                          {isSelected ? <Check size={14} /> : <Plus size={14} />}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={5} className="py-6 text-center text-slate-400">
+                    لا توجد منتجات مطابقة لـ "{searchTerm}"
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} className="text-center py-4 text-gray-500">
-                  {searchTerm
-                    ? t('noSearchResults')
-                    : t('noData')}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

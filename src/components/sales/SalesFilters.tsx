@@ -1,8 +1,4 @@
-
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter, Calendar } from "lucide-react";
+import { Calendar, Filter, ChevronDown } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
 import { TranslationKey } from "@/locales";
 
@@ -24,59 +20,61 @@ export const SalesFilters = ({
   const { t } = useLocale();
 
   const translateMethod = (method: string) => {
-    if (method === 'all') return t('allPaymentMethods');
+    if (method === 'all') return t('allPaymentMethods') || 'جميع طرق الدفع';
     const methodLower = method?.toLowerCase();
-    if (methodLower === 'cash' || method === 'نقدي') return t('cash');
-    if (methodLower === 'bank' || method === 'تحويل بنكي') return t('bankTransfer');
-    if (methodLower === 'electronic' || method === 'دفع إلكتروني') return t('electronicPayment');
-    
-    // Check if it's a known key in our translations
+    if (methodLower === 'cash' || method === 'نقدي') return t('cash') || 'نقداً';
+    if (methodLower === 'bank' || method === 'تحويل بنكي') return t('bankTransfer') || 'تحويل بنكي';
+    if (methodLower === 'electronic' || method === 'دفع إلكتروني') return t('electronicPayment') || 'دفع إلكتروني';
+
     const keys: TranslationKey[] = ['cash', 'card', 'transfer', 'bankTransfer', 'electronicPayment', 'creditPayment'];
     if (keys.includes(methodLower as TranslationKey)) return t(methodLower as TranslationKey);
-    
+
     return method;
   };
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
-        <CardTitle className="flex items-center gap-2">
-          <Filter className="w-5 h-5" />
-          {t('filterSales')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block mb-2 font-medium flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              {t('date')}
-            </label>
-            <Input 
-              type="date" 
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full"
-            />
-          </div>
-          <div>
-            <label className="block mb-2 font-medium">{t('paymentMethod')}</label>
-            <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('selectPaymentMethod')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t('allPaymentMethods')}</SelectItem>
-                {paymentMethods.map((method) => (
-                  <SelectItem key={method} value={method}>
-                    {translateMethod(method)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <div className="gsc-card p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Filter size={15} className="text-blue-600" />
+        <span className="text-xs font-bold text-slate-800">{t('filterSales') || 'فلترة مبيعات اليومية'}</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div className="relative">
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <Calendar size={13} className="text-slate-400" />
+            <span>{t('date') || 'تاريخ اليومية'}</span>
+          </label>
+          <input 
+            type="date" 
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-full px-3.5 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-sans font-medium transition-all"
+          />
+        </div>
+
+        <div className="relative">
+          <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+            <Filter size={13} className="text-slate-400" />
+            <span>{t('paymentMethod') || 'تصفية حسب طريقة الدفع'}</span>
+          </label>
+          <div className="relative">
+            <select
+              value={paymentMethodFilter}
+              onChange={(e) => setPaymentMethodFilter(e.target.value)}
+              className="w-full px-3.5 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all"
+            >
+              <option value="all">{t('allPaymentMethods') || 'جميع طرق الدفع'}</option>
+              {paymentMethods.map((method) => (
+                <option key={method} value={method}>
+                  {translateMethod(method)}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

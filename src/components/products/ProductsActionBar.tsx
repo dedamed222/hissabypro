@@ -1,6 +1,5 @@
 import { useRef } from 'react';
 import { Plus, Upload, Printer, Download, BarChart3 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import * as XLSX from 'xlsx';
 import { loadStoreData, saveStoreData, generateId } from '@/utils/localStorage';
 import type { Product } from '@/types';
@@ -42,7 +41,6 @@ export default function ProductsActionBar({
       const now = new Date().toISOString();
 
       jsonData.forEach((rawRow: any) => {
-        // تطبيع مفاتيح الصف: إزالة المسافات الزائدة لتجنب عدم التطابق
         const row: any = {};
         Object.keys(rawRow).forEach((key) => {
           row[key.trim()] = rawRow[key];
@@ -55,7 +53,6 @@ export default function ProductsActionBar({
           row['اسم المنتج'] ?? row['الاسم'] ?? row['name'] ?? row['Name'] ?? row['اسم الصنف'] ?? row['الصنف'] ?? row['البيان'] ?? row['المنتج'] ?? row['المادة'] ?? row['Nom'] ?? row['Nom du produit'] ?? row['Désignation'] ?? row['Article'] ?? ''
         ).trim();
 
-        // سعر البيع: يدعم أسماء أعمدة متعددة
         const rawPrice =
           row['سعر البيع'] ??
           row['سعر_البيع'] ??
@@ -70,7 +67,6 @@ export default function ProductsActionBar({
           0;
         const price = parseFloat(String(rawPrice).replace(/[^\d.]/g, '')) || 0;
 
-        // سعر الشراء / التكلفة: يدعم أسماء أعمدة متعددة
         const rawCost =
           row['سعر الشراء'] ??
           row['التكلفة'] ??
@@ -86,7 +82,6 @@ export default function ProductsActionBar({
             ? parseFloat(String(rawCost).replace(/[^\d.]/g, '')) || 0
             : price * 0.7;
 
-        // الكمية: يدعم أسماء أعمدة متعددة
         const rawQty =
           row['الكمية'] ??
           row['كمية'] ??
@@ -99,38 +94,30 @@ export default function ProductsActionBar({
         const quantity = parseInt(String(rawQty).replace(/[^\d]/g, '')) || 0;
 
         const category = String(
-          row['الفئة'] ?? row['category'] ?? row['Category'] ?? row['Catégorie'] ?? row['Famille'] ?? ''
+          row['الفئة'] ?? row['فئة'] ?? row['التصنيف'] ?? row['category'] ?? row['Category'] ?? row['Catégorie'] ?? ''
         ).trim();
-        const lowStockThreshold =
-          parseInt(
-            row['الحد الأدنى'] ??
-              row['حد الإنذار'] ??
-              row['lowStockThreshold'] ??
-              row['Seuil minimum'] ??
-              row['Alerte stock'] ??
-              5
-          ) || 5;
 
-        if (code && name) {
-          if (!existingCodes.has(code)) {
-            const newProduct: Product = {
-              id: generateId(),
-              code,
-              name,
-              price,
-              cost,
-              quantity,
-              lowStockThreshold,
-              category: category || 'عام',
-              createdAt: now,
-              updatedAt: now,
-            };
-            newProducts.push(newProduct);
-            existingCodes.add(code);
-            importedCount++;
-          } else {
+        if (name) {
+          const finalCode = code || `P-${Date.now().toString().slice(-6)}-${importedCount}`;
+          if (existingCodes.has(finalCode)) {
             skippedCount++;
+            return;
           }
+          existingCodes.add(finalCode);
+
+          newProducts.push({
+            id: generateId(),
+            name,
+            code: finalCode,
+            price,
+            cost,
+            quantity,
+            lowStockThreshold: 5,
+            category: category || undefined,
+            createdAt: now,
+            updatedAt: now,
+          });
+          importedCount++;
         }
       });
 
@@ -138,13 +125,15 @@ export default function ProductsActionBar({
         if (onImportProducts) {
           await onImportProducts(newProducts);
         } else {
-          storeData.products = [...storeData.products, ...newProducts];
+          const updated = [...products, ...newProducts];
+          storeData.products = updated;
           saveStoreData(storeData);
-          onProductsUpdate(storeData.products);
+          onProductsUpdate(updated);
         }
+
         toast({
-          title: t('success'),
-          description: t('updateSuccess'),
+          title: t('importSuccess'),
+          description: `${t('importedProducts')}: ${importedCount}${skippedCount > 0 ? ` (${t('skippedDuplicates')}: ${skippedCount})` : ''}`,
         });
       } else {
         toast({
@@ -217,34 +206,33 @@ export default function ProductsActionBar({
     if (!printWindow) return;
     const printContent = `
       <!DOCTYPE html>
-      <html dir={t('ar') === 'العربية' ? 'rtl' : 'ltr'} lang={t('ar') === 'العربية' ? 'ar' : 'fr'}>
+      <html dir="rtl" lang="ar">
       <head>
         <meta charset="UTF-8">
         <title>${t('products')}</title>
         <style>
-          body { font-family: Arial, sans-serif; margin: 20px; direction: rtl; }
-          h1 { text-align: center; color: #333; margin-bottom: 30px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-          th { background-color: #f5f5f5; font-weight: bold; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; direction: rtl; }
+          h1 { text-align: center; color: #0f172a; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+          th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: center; font-size: 13px; }
+          th { background-color: #f8fafc; font-weight: bold; }
           .low-stock { color: #d97706; font-weight: bold; }
           .available { color: #059669; font-weight: bold; }
           @media print { body { margin: 0; } }
         </style>
       </head>
       <body>
-        <h1>${t('products')}</h1>
-        <p>${t('date')}: ${new Date().toLocaleDateString(t('ar') === 'العربية' ? 'en-GB' : 'fr-FR')}</p>
+        <h1>قائمة المنتجات والمخزون</h1>
+        <p>التاريخ: ${new Date().toLocaleDateString('ar-EG')}</p>
         <table>
           <thead>
             <tr>
-              <th>${t('code')}</th>
-              <th>${t('name')}</th>
-              <th>${t('costPrice')}</th>
-              <th>${t('sellingPrice')}</th>
-              <th>${t('quantityColumn')}</th>
-              <th>${t('productCategory')}</th>
-              <th>${t('stockStatus')}</th>
+              <th>رمز المنتج</th>
+              <th>اسم المنتج</th>
+              <th>سعر الشراء</th>
+              <th>سعر البيع</th>
+              <th>الكمية المتوفرة</th>
+              <th>الفئة</th>
             </tr>
           </thead>
           <tbody>
@@ -252,19 +240,12 @@ export default function ProductsActionBar({
               .map(
                 (product) => `
               <tr>
-                <td>${product.code}</td>
-                <td>${product.name}</td>
+                <td style="font-family: monospace;">${product.code || '---'}</td>
+                <td style="font-weight: bold;">${product.name}</td>
                 <td>${product.cost}</td>
                 <td>${product.price}</td>
-                <td>${product.quantity}</td>
+                <td class="${Number(product.quantity || 0) <= Number(product.lowStockThreshold || 5) ? 'low-stock' : 'available'}">${product.quantity}</td>
                 <td>${product.category || '-'}</td>
-                <td class="${
-                  product.quantity <= product.lowStockThreshold
-                    ? 'low-stock'
-                    : 'available'
-                }">
-                  ${product.quantity <= product.lowStockThreshold ? t('lowStock') : t('available')}
-                </td>
               </tr>
             `
               )
@@ -280,9 +261,12 @@ export default function ProductsActionBar({
   };
 
   return (
-    <div className="flex items-center justify-between mb-6">
-      <h1 className="text-2xl font-bold mx-[20px]">{t('products')}</h1>
-      <div className="flex items-center gap-3 mx-[10px] px-0 py-[10px] my-[10px]">
+    <div className="gsc-card p-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold text-slate-700">عمليات سريعة:</span>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
         <input
           ref={fileInputRef}
           type="file"
@@ -291,50 +275,51 @@ export default function ProductsActionBar({
           className="hidden"
           title={t('import') as string || 'استيراد من Excel'}
         />
-        <Button
+
+        <button
           onClick={() => fileInputRef.current?.click()}
-          variant="outline"
-          className="flex items-center gap-2"
+          className="px-3 py-2 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-all flex items-center gap-1.5 shadow-xs"
         >
-          <Upload size={18} />
-          <span>{t('import') as string || 'استيراد من Excel'}</span>
-        </Button>
-        <Button
+          <Upload size={14} className="text-slate-500" />
+          <span>{t('import') || 'استيراد Excel'}</span>
+        </button>
+
+        <button
           onClick={handlePrint}
-          variant="outline"
-          className="flex items-center gap-2"
+          className="px-3 py-2 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition-all flex items-center gap-1.5 shadow-xs"
           title={t('print')}
         >
-          <Printer size={18} />
-          <span>{t('print')}</span>
-        </Button>
-        <Button
+          <Printer size={14} className="text-slate-500" />
+          <span>{t('print') || 'طباعة'}</span>
+        </button>
+
+        <button
           onClick={handleMigrate}
-          variant="outline"
-          className="flex items-center gap-2 text-arab-blue border-arab-blue hover:bg-blue-50"
-          title="ترحيل البيانات المحلية"
+          className="px-3 py-2 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/60 hover:bg-blue-100 transition-all flex items-center gap-1.5"
+          title="ترحيل البيانات المحلية إلى السحابة"
         >
-          <Download size={18} />
-          <span>ترحيل</span>
-        </Button>
+          <Download size={14} />
+          <span>ترحيل سحابي</span>
+        </button>
+
         {onOpenReports && (
-          <Button
+          <button
             onClick={onOpenReports}
-            variant="outline"
-            className="flex items-center gap-2 text-indigo-700 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 font-bold"
-            title="تقارير ومؤشرات حركة المنتجات"
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200/60 hover:bg-purple-100 transition-all flex items-center gap-1.5"
+            title="تقارير حركة المنتجات"
           >
-            <BarChart3 size={18} />
-            <span className="hidden sm:inline">تقارير الحركة</span>
-          </Button>
+            <BarChart3 size={14} />
+            <span>تقارير الحركة</span>
+          </button>
         )}
-        <Button
+
+        <button
           onClick={onAddNew}
-          className="bg-arab-blue text-white px-4 py-2 rounded-md hover:bg-arab-blue-dark transition-colors flex items-center gap-2"
+          className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/20 transition-all flex items-center gap-1.5"
         >
-          <Plus size={18} />
-          <span>{t('addNewProduct')}</span>
-        </Button>
+          <Plus size={15} />
+          <span>{t('addNewProduct') || 'إضافة منتج'}</span>
+        </button>
       </div>
     </div>
   );

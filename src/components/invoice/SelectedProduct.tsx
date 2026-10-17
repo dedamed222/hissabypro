@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Product, Customer } from "@/types";
-import { formatCurrency, formatDate } from "@/utils/formatters";
-import { Plus, Clock, AlertTriangle, AlertCircle } from "lucide-react";
+import { formatCurrency } from "@/utils/formatters";
+import { Plus, Check, AlertTriangle, Package } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
 import { loadStoreData } from "@/utils/localStorage";
 import { getLastSaleToCustomer } from "@/utils/productMovements";
@@ -37,71 +37,41 @@ const SelectedProduct = ({
 
   if (!selectedProduct) return null;
 
-  // Warning checks
-  const isBelowCost = Boolean(
-    selectedProduct.cost &&
-    selectedProduct.cost > 0 &&
-    selectedProduct.price < selectedProduct.cost
-  );
-
-  const isSignificantlyBelowLastSale = Boolean(
-    lastSale &&
-    lastSale.unitPrice > 0 &&
-    selectedProduct.price < lastSale.unitPrice * 0.85
-  );
-
   return (
-    <div className="space-y-2 mb-4 mx-[30px]">
-      <div className="flex items-center justify-between p-3 bg-arab-teal/10 rounded-md border border-arab-teal/30">
-        <div>
-          <p className="font-medium">{selectedProduct.name}</p>
-          <p className="text-sm text-gray-500 font-sans">
-            {selectedProduct.code} - {formatCurrency(selectedProduct.price)}
-          </p>
+    <div className="gsc-card p-3.5 bg-blue-50/40 border-blue-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+          <Package size={20} />
         </div>
-        <button
-          onClick={handleAddProduct}
-          className="bg-arab-teal text-white px-3 py-1.5 rounded-md hover:bg-arab-teal-dark transition-colors flex items-center gap-1 font-sans text-sm font-medium shadow-sm"
-          title={t("add")}
-        >
-          <Plus size={16} />
-          <span>{t("add")}</span>
-        </button>
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-900 text-sm">{selectedProduct.name}</span>
+            <span className="font-mono text-[11px] px-1.5 py-0.2 bg-white rounded border border-blue-200 text-blue-700 font-bold">
+              {selectedProduct.code}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
+            <span>سعر البيع: <strong className="text-slate-800 font-sans">{formatCurrency(selectedProduct.price)}</strong></span>
+            <span>•</span>
+            <span>المتوفر: <strong className="text-slate-800 font-sans">{selectedProduct.quantity}</strong></span>
+            {lastSale && (
+              <>
+                <span>•</span>
+                <span className="text-blue-700">آخر بيع: <strong>{formatCurrency(lastSale.unitPrice)}</strong></span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Smart Hints & Warnings */}
-      {lastSale && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 text-blue-900 rounded-md text-xs font-sans">
-          <Clock size={15} className="text-blue-600 shrink-0" />
-          <span>
-            <strong>آخر مرة بيع لهذا الزبون:</strong> بتاريخ{" "}
-            {formatDate(lastSale.date)} بسعر{" "}
-            <span className="font-semibold text-blue-800">
-              {formatCurrency(lastSale.unitPrice)}
-            </span>{" "}
-            (كمية: {lastSale.quantity}
-            {lastSale.invoiceNumber ? ` - فاتورة #${lastSale.invoiceNumber}` : ""})
-          </span>
-        </div>
-      )}
-
-      {isBelowCost && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-300 text-amber-900 rounded-md text-xs font-sans">
-          <AlertTriangle size={15} className="text-amber-600 shrink-0" />
-          <span>
-            <strong>تنبيه:</strong> سعر البيع ({formatCurrency(selectedProduct.price)}) أقل من سعر التكلفة ({formatCurrency(selectedProduct.cost || 0)})
-          </span>
-        </div>
-      )}
-
-      {isSignificantlyBelowLastSale && lastSale && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-300 text-orange-900 rounded-md text-xs font-sans">
-          <AlertCircle size={15} className="text-orange-600 shrink-0" />
-          <span>
-            <strong>تنبيه:</strong> السعر الحالي أقل بأكثر من 15% من آخر سعر بيع لهذا الزبون ({formatCurrency(lastSale.unitPrice)})
-          </span>
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={handleAddProduct}
+        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-1.5 transition-all self-stretch sm:self-auto"
+      >
+        <Plus size={15} />
+        <span>إضافة إلى الفاتورة</span>
+      </button>
     </div>
   );
 };
