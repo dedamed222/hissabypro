@@ -11,6 +11,7 @@ import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persi
 import { get, set, del } from "idb-keyval";
 import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
 import { restoreRecoveredData } from "@/utils/restoreData";
+import { pushToCloud } from "@/hooks/useAutoSync";
 
 import { Suspense, lazy, useEffect, useState } from "react";
 
@@ -81,12 +82,12 @@ const persister = createAsyncStoragePersister({
 const App = () => {
   const [restoreChecked, setRestoreChecked] = useState(false);
 
+  // Step 1: On first ever load — check if localStorage is empty and restore data
   useEffect(() => {
-    // Restore recovered data on first load if localStorage is empty
     restoreRecoveredData().then(({ restored, message }) => {
       if (restored) {
         console.log("[DataRestore]", message);
-        // Reload so all contexts pick up the restored data
+        // Reload so all contexts pick up the restored data fresh
         window.location.reload();
       } else {
         setRestoreChecked(true);
@@ -95,6 +96,24 @@ const App = () => {
       console.error("[DataRestore] error:", e);
       setRestoreChecked(true);
     });
+  }, []);
+
+  // Step 2: After page reloads with restored data, push everything to cloud
+  useEffect(() => {
+    const alreadyRestored = localStorage.getItem("arab-hub-data-restored-v1") === "done";
+    const cloudPushDone = localStorage.getItem("arab-hub-cloud-push-v1") === "done";
+    if (alreadyRestored && !cloudPushDone && navigator.onLine) {
+      // Delay slightly to let contexts initialize first
+      const timer = setTimeout(() => {
+        pushToCloud(() => {}).then(() => {
+          localStorage.setItem("arab-hub-cloud-push-v1", "done");
+          console.log("[CloudSync] Restored data pushed to cloud successfully");
+        }).catch((e) => {
+          console.warn("[CloudSync] Cloud push failed (will retry next load):", e);
+        });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   if (!restoreChecked && localStorage.getItem("arab-hub-data-restored-v1") !== "done") {
