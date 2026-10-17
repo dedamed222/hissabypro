@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { loadStoreData } from "@/utils/localStorage";
 import { useToast } from "@/hooks/use-toast";
 import { useProducts } from "@/hooks/useProducts";
@@ -22,17 +22,33 @@ export default function Sales() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState<DailySale | null>(null);
   const { products, loadProducts } = useProducts();
-  const { toast } = useToast();
 
-  // The callback function will be called after a successful form submission
-  const refreshData = () => {
+  // Load daily sales reactively from localStorage
+  const [allDailySales, setAllDailySales] = useState<DailySale[]>(() => {
+    return loadStoreData().dailySales || [];
+  });
+
+  const reloadSalesData = useCallback(() => {
+    setAllDailySales(loadStoreData().dailySales || []);
+  }, []);
+
+  // Reload when storage changes (after cloud sync)
+  useEffect(() => {
+    window.addEventListener('storage', reloadSalesData);
+    return () => window.removeEventListener('storage', reloadSalesData);
+  }, [reloadSalesData]);
+
+  // Callback called after successful form submission or delete
+  const refreshData = useCallback(() => {
     loadProducts();
-  };
+    reloadSalesData();
+  }, [loadProducts, reloadSalesData]);
 
-  // Real-time sync: reload products when any device changes product data
-  useRealtimeSync(['products', 'daily_sales'], loadProducts);
+  // Real-time sync: reload when any device changes product/sales data
+  useRealtimeSync(['products', 'daily_sales'], refreshData);
 
   const salesFormData = useSalesForm(dateFilter, refreshData);
+
 
   const {
     filteredProducts,
@@ -67,9 +83,6 @@ export default function Sales() {
     setSaleToDelete(null);
     refreshData();
   };
-
-  const data = loadStoreData();
-  const allDailySales = (data.dailySales || []);
 
   // Filter sales by date and payment method
   const filteredSales = allDailySales.filter(sale => {

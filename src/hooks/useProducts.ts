@@ -69,6 +69,15 @@ export const useProducts = () => {
     loadProducts();
   }, [loadProducts]);
 
+  // Re-load products when pullFromCloud updates localStorage
+  useEffect(() => {
+    const handleStorageSync = () => {
+      loadProducts();
+    };
+    window.addEventListener('storage', handleStorageSync);
+    return () => window.removeEventListener('storage', handleStorageSync);
+  }, [loadProducts]);
+
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
