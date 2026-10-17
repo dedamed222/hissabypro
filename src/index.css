@@ -896,4 +896,32 @@
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(99,102,241,0.4);
   }
+
+  /* ══════════ GSC EXACT THEME & DASHBOARD STYLES ══════════ */
+  .gsc-header-bg {
+    background: linear-gradient(90deg, #091931 0%, #0d284e 50%, #081832 100%);
+  }
+
+  .gsc-dashboard-bg {
+    background-color: #f1f5fa;
+  }
+
+  .gsc-card {
+    background: #ffffff;
+    border-radius: 1.125rem;
+    border: 1px solid #e7eff7;
+    box-shadow: 0 2px 12px rgba(15, 34, 64, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .gsc-card:hover {
+    box-shadow: 0 6px 20px rgba(15, 34, 64, 0.07);
+  }
+
+  .gsc-bottom-nav {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 30px -5px rgba(15, 34, 64, 0.12), 0 4px 6px -2px rgba(15, 34, 64, 0.04);
+    border-radius: 1.25rem;
+  }
 }

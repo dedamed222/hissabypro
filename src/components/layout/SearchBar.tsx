@@ -78,26 +78,32 @@ export default function SearchBar() {
   const isRTL = locale === 'ar';
 
   return (
-    <div className="relative" ref={searchRef}>
-      <div className="relative">
-        <Search className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 transform -translate-y-1/2 text-gray-400`} size={18} />
+    <div className="relative w-full" ref={searchRef}>
+      <div className="relative flex items-center">
+        <Search className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} text-slate-400 pointer-events-none`} size={16} />
         <input
           type="text"
-          placeholder={t.searchPlaceholder}
+          placeholder={locale === 'ar' ? 'إبحث عن منتج ، عميل ، فاتورة...' : 'Rechercher un produit, client, facture...'}
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => setIsOpen(true)}
-          className={`w-full ${isRTL ? 'pr-12 pl-4' : 'pl-12 pr-4'} py-2.5 bg-white/90 backdrop-blur-sm border border-gray-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-300 transition-all duration-200 text-sm`}
+          className={`w-full ${isRTL ? 'pr-9 pl-14' : 'pl-9 pr-14'} py-1.5 text-xs bg-slate-800/80 border border-slate-700/60 rounded-full text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400/50 transition-all`}
         />
+        <div className={`absolute ${isRTL ? 'left-3' : 'right-3'} flex items-center gap-1 pointer-events-none`}>
+          <span className="text-[10px] text-slate-400 font-mono px-1.5 py-0.5 rounded bg-slate-700/60 border border-slate-600/40">
+            Ctrl + K
+          </span>
+        </div>
         {searchQuery && (
           <button
             onClick={clearSearch}
-            className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors`}
+            className={`absolute ${isRTL ? 'left-14' : 'right-14'} text-slate-400 hover:text-white transition-colors`}
           >
-            <X size={16} />
+            <X size={14} />
           </button>
         )}
       </div>
+
 
       {/* Search Results Dropdown */}
       {isOpen && (

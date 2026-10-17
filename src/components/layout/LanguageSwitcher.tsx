@@ -1,53 +1,50 @@
 
 import { useLocale } from "@/hooks/useLocale";
 import { translations } from "@/locales";
-import { Globe } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 
 export function LanguageSwitcher() {
   const { locale, changeLocale } = useLocale();
-  const t = translations[locale];
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 text-gray-600 transition-colors border border-gray-200/50"
+        <button
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-slate-200 hover:text-white bg-white/5 hover:bg-white/10 transition-colors border border-white/10 outline-none"
         >
-          <Globe size={18} />
-          <span className="font-medium text-sm">
+          <span className="text-sm">{locale === "ar" ? "🇸🇦" : "🇫🇷"}</span>
+          <span className="text-xs">
             {locale === "ar" ? "العربية" : "Français"}
           </span>
-        </Button>
+          <span className="text-[10px] opacity-70">▾</span>
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-white z-50 min-w-[140px]">
+      <DropdownMenuContent align="end" className="bg-slate-900 border border-slate-800 text-white z-50 min-w-[130px] rounded-xl shadow-xl p-1">
         <DropdownMenuItem
           onClick={() => changeLocale("ar")}
-          className={`flex items-center gap-2 cursor-pointer ${
-            locale === "ar" ? "bg-blue-50 text-blue-700" : ""
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs font-medium ${
+            locale === "ar" ? "bg-blue-600 text-white font-bold" : "hover:bg-slate-800 text-slate-300"
           }`}
         >
-          <span className="text-lg">🇸🇦</span>
+          <span className="text-base">🇸🇦</span>
           <span>العربية</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => changeLocale("fr")}
-          className={`flex items-center gap-2 cursor-pointer ${
-            locale === "fr" ? "bg-blue-50 text-blue-700" : ""
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-xs font-medium ${
+            locale === "fr" ? "bg-blue-600 text-white font-bold" : "hover:bg-slate-800 text-slate-300"
           }`}
         >
-          <span className="text-lg">🇫🇷</span>
+          <span className="text-base">🇫🇷</span>
           <span>Français</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
+

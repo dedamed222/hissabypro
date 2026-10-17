@@ -20,7 +20,7 @@ export default function Layout() {
   const isBottomNav = navPosition === "bottom";
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden bg-slate-50">
+    <div className="flex h-[100dvh] overflow-hidden gsc-dashboard-bg">
       {/* Sidebar / Bottom Navigation Container */}
       <Sidebar />
 
@@ -29,13 +29,9 @@ export default function Layout() {
         <Header />
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          {/* Subtle dot grid background */}
-          <div className="w-full min-h-full bg-dots">
-            <div className="min-h-full bg-gradient-to-br from-slate-50/80 via-indigo-50/20 to-purple-50/20">
-              {/* Padding bottom leaves room for navigation bar */}
-              <div className={`animate-fade-in ${isBottomNav ? "pb-28" : "pb-24 lg:pb-6"}`}>
-                <Outlet />
-              </div>
+          <div className="w-full min-h-full">
+            <div className={`animate-fade-in ${isBottomNav ? "pb-24 lg:pb-28" : "pb-24 lg:pb-6"}`}>
+              <Outlet />
             </div>
           </div>
         </main>
