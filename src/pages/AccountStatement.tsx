@@ -538,22 +538,23 @@ export default function AccountStatement() {
         });
       });
 
-    // 4. DEBTORS (Debit: Debt recorded against customer)
+    // 4. DEBTORS (Credit: Deferred debts recorded as credit balance in customer's favor 'له')
     debtors
       .filter((debt) => matchesCustomer((debt as any).customer_id || (debt as any).customerId, debt.name || debt.debtorName))
       .forEach((debt) => {
         const pList = (debt.products as any[]) || [];
         const totalQty = pList.reduce((sum, p) => sum + (Number(p.quantity) || 1), 0);
         const pCodes = pList.map(p => p.productCode || p.product_code).filter(Boolean).join(', ');
+        const debtAmount = Number(debt.totalAmount) || Number(debt.amount) || 0;
 
         allTransactions.push({
           id: debt.id,
           date: debt.date ? debt.date.split('T')[0] : '',
           type: "debtor",
-          description: `شراء آجل / قيد دين - ${pList[0]?.productName || debt.productName || 'بضاعة آجلة'}`,
+          description: `دين آجل - رصيد للعميل (له) - ${pList[0]?.productName || debt.productName || 'بضاعة آجلة'}`,
           productCode: pCodes,
-          debit: Number(debt.totalAmount) || Number(debt.amount) || 0,
-          credit: 0,
+          debit: 0,
+          credit: debtAmount,
           quantity: totalQty,
           status: debt.status,
           isArchive: false,
@@ -834,9 +835,9 @@ export default function AccountStatement() {
         );
       case 'debtor':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/60">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200/60">
             <Clock size={11} />
-            دين آجل
+            دين آجل (له)
           </span>
         );
       default:
@@ -981,7 +982,7 @@ export default function AccountStatement() {
                   >
                     <option value="all">جميع العمليات المالية والفواتير</option>
                     <option value="invoice">فواتير المبيعات والأرشيف</option>
-                    <option value="debtor">الديون والآجل</option>
+                    <option value="debtor">الديون الآجلة (له)</option>
                     <option value="creditor">الدفعات والسدادات</option>
                     <option value="return">المرتجعات</option>
                   </select>

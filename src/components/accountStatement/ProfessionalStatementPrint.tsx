@@ -99,7 +99,7 @@ export default function ProfessionalStatementPrint({
       case 'creditor':
         return 'سداد / سند قبض';
       case 'debtor':
-        return 'شراء آجل / دين';
+        return 'دين آجل (له)';
       default:
         return 'معاملة مالية';
     }
