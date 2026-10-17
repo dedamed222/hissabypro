@@ -38,10 +38,11 @@ import {
   DollarSign,
   Users,
   Warehouse,
-  Plus
+  Plus,
+  Clock
 } from "lucide-react";
 
-// Top Stat Card Component
+// Top Stat Card Component with larger icons
 interface StatCardProps {
   title: string;
   value: string;
@@ -54,8 +55,8 @@ interface StatCardProps {
 function TopStatCard({ title, value, change, isPositive, iconBg, icon }: StatCardProps) {
   return (
     <div className="gsc-card p-4 flex flex-col justify-between min-w-[155px] flex-1 hover:translate-y-[-2px]">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs shadow-xs ${iconBg}`}>
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-xs ${iconBg}`}>
           {icon}
         </div>
         <span className="text-[11px] font-medium text-slate-500 truncate" title={title}>
@@ -70,16 +71,42 @@ function TopStatCard({ title, value, change, isPositive, iconBg, icon }: StatCar
         <div className="flex items-center gap-1 mt-1 text-[11px] font-semibold">
           {isPositive ? (
             <span className="text-emerald-500 flex items-center gap-0.5">
-              <TrendingUp size={12} strokeWidth={2.5} />
+              <TrendingUp size={13} strokeWidth={2.5} />
               <span>{change}</span>
             </span>
           ) : (
             <span className="text-rose-500 flex items-center gap-0.5">
-              <TrendingDown size={12} strokeWidth={2.5} />
+              <TrendingDown size={13} strokeWidth={2.5} />
               <span>{change}</span>
             </span>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Live Clock Component
+function LiveClock() {
+  const [time, setTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const hours = String(time.getHours()).padStart(2, "0");
+  const minutes = String(time.getMinutes()).padStart(2, "0");
+  const seconds = String(time.getSeconds()).padStart(2, "0");
+
+  return (
+    <div className="gsc-card px-3 py-1.5 flex items-center gap-2 text-xs font-semibold text-slate-700 bg-white shadow-xs">
+      <Clock size={16} className="text-indigo-600 animate-pulse" />
+      <div className="flex items-center font-mono font-bold text-slate-800 text-xs tracking-wider">
+        <span>{hours}</span>
+        <span className="text-indigo-500 mx-0.5">:</span>
+        <span>{minutes}</span>
+        <span className="text-slate-400 text-[10px] ms-1">:{seconds}</span>
       </div>
     </div>
   );
@@ -283,8 +310,10 @@ export function UnifiedDashboard() {
           </p>
         </div>
 
-        {/* Date Selector Badge */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        {/* Date & Live Clock Badges */}
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <LiveClock />
+
           <div className="gsc-card px-3 py-1.5 flex items-center gap-2 text-xs font-semibold text-slate-700">
             <div className="text-end">
               <div className="text-[10px] text-slate-400 font-normal leading-tight">
@@ -294,7 +323,7 @@ export function UnifiedDashboard() {
                 16/10/2026
               </div>
             </div>
-            <Calendar size={16} className="text-blue-600 ms-1" />
+            <Calendar size={17} className="text-blue-600 ms-1" />
           </div>
         </div>
       </div>
@@ -308,7 +337,7 @@ export function UnifiedDashboard() {
           change="+12%"
           isPositive={true}
           iconBg="bg-emerald-500"
-          icon={<ShoppingCart size={14} />}
+          icon={<ShoppingCart size={18} />}
         />
 
         {/* 2. إجمالي المبيعات هذا الشهر */}
@@ -318,7 +347,7 @@ export function UnifiedDashboard() {
           change="+8%"
           isPositive={true}
           iconBg="bg-blue-600"
-          icon={<TrendingUp size={14} />}
+          icon={<TrendingUp size={18} />}
         />
 
         {/* 3. المصروفات اليوم */}
@@ -328,7 +357,7 @@ export function UnifiedDashboard() {
           change="-5%"
           isPositive={false}
           iconBg="bg-rose-500"
-          icon={<DollarSign size={14} />}
+          icon={<DollarSign size={18} />}
         />
 
         {/* 4. المصروفات هذا الشهر */}
@@ -338,7 +367,7 @@ export function UnifiedDashboard() {
           change="+15%"
           isPositive={true}
           iconBg="bg-amber-500"
-          icon={<Layers size={14} />}
+          icon={<Layers size={18} />}
         />
 
         {/* 5. الربح المتوقع */}
@@ -348,7 +377,7 @@ export function UnifiedDashboard() {
           change="+3%"
           isPositive={true}
           iconBg="bg-purple-600"
-          icon={<TrendingUp size={14} />}
+          icon={<TrendingUp size={18} />}
         />
 
         {/* 6. المنتجات في المخزون */}
@@ -358,7 +387,7 @@ export function UnifiedDashboard() {
           change="+3%"
           isPositive={true}
           iconBg="bg-cyan-500"
-          icon={<Package size={14} />}
+          icon={<Package size={18} />}
         />
 
         {/* 7. منتجات منخفضة المخزون */}
@@ -368,7 +397,7 @@ export function UnifiedDashboard() {
           change="-2"
           isPositive={false}
           iconBg="bg-red-500"
-          icon={<Package size={14} />}
+          icon={<Package size={18} />}
         />
       </div>
 
@@ -527,15 +556,15 @@ export function UnifiedDashboard() {
                 key={op.id}
                 className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/70 px-1 rounded-lg transition-colors"
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${op.iconBg}`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-2xs ${op.iconBg}`}>
                     {op.icon}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-slate-800 truncate leading-tight">
+                    <p className="text-xs font-bold text-slate-800 truncate leading-tight">
                       {op.title}
                     </p>
-                    <p className="text-[9px] text-slate-400 truncate leading-tight">
+                    <p className="text-[10px] text-slate-400 truncate leading-tight">
                       {op.subtitle}
                     </p>
                   </div>

@@ -332,23 +332,22 @@ const Sidebar = () => {
       )}
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* 2. BOTTOM NAVIGATION BAR - EXACT REPLICA OF IMAGE */}
-      {/* Floating pill navigation dock on desktop and mobile */}
+      {/* 2. BOTTOM NAVIGATION BAR - FULL WIDTH */}
       {/* ────────────────────────────────────────────────────────── */}
       <div
         className={cn(
-          "fixed bottom-3 md:bottom-5 left-0 right-0 z-40 px-3 sm:px-6 pointer-events-none print:hidden transition-all duration-300",
+          "fixed bottom-0 left-0 right-0 z-40 gsc-bottom-nav print:hidden transition-all duration-300 pb-safe",
           !isBottomMode && "lg:hidden"
         )}
       >
-        <div className="max-w-4xl mx-auto pointer-events-auto gsc-bottom-nav px-3 py-2 flex items-center justify-between gap-1 shadow-lg shadow-slate-900/10">
+        <div className="w-full px-3 sm:px-6 py-2.5 flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
           {/* Dashboard (الرئيسية) - Large active pill */}
           <NavLink
             to="/dashboard"
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all",
+                "flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex-shrink-0",
                 isActive
                   ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
                   : "text-slate-600 hover:text-blue-600 hover:bg-slate-100"
@@ -365,7 +364,7 @@ const Sidebar = () => {
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0",
                 isActive ? "text-blue-600 font-bold bg-blue-50" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               )
             }
@@ -380,7 +379,7 @@ const Sidebar = () => {
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0",
                 isActive ? "text-blue-600 font-bold bg-blue-50" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               )
             }
@@ -395,7 +394,7 @@ const Sidebar = () => {
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0",
                 isActive ? "text-blue-600 font-bold bg-blue-50" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               )
             }
@@ -410,7 +409,7 @@ const Sidebar = () => {
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0",
                 isActive ? "text-blue-600 font-bold bg-blue-50" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               )
             }
@@ -425,7 +424,7 @@ const Sidebar = () => {
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0",
                 isActive ? "text-blue-600 font-bold bg-blue-50" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               )
             }
@@ -440,7 +439,7 @@ const Sidebar = () => {
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                "hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0",
                 isActive ? "text-blue-600 font-bold bg-blue-50" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               )
             }
@@ -455,7 +454,7 @@ const Sidebar = () => {
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                "hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0",
                 isActive ? "text-blue-600 font-bold bg-blue-50" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               )
             }
@@ -470,7 +469,7 @@ const Sidebar = () => {
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                "hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0",
                 isActive ? "text-blue-600 font-bold bg-blue-50" : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               )
             }
@@ -483,7 +482,7 @@ const Sidebar = () => {
           <button
             onClick={toggleSidebar}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+              "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all flex-shrink-0",
               sidebarOpen ? "text-blue-600 font-bold bg-blue-50" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
             )}
           >
