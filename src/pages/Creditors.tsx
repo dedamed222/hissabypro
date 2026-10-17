@@ -72,7 +72,13 @@ export default function Creditors() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [creditorsList, setCreditorsList] = useState<Creditor[]>([]);
+  const [creditorsList, setCreditorsList] = useState<Creditor[]>(() => {
+    try {
+      return loadStoreData().creditors || [];
+    } catch {
+      return [];
+    }
+  });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchTermCreditor, setSearchTermCreditor] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "paid" | "archived">("all");
@@ -134,6 +140,12 @@ export default function Creditors() {
       }
     };
     fetchCreditors();
+
+    const handleStorage = () => {
+      fetchCreditors();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   // Dynamic KPIs

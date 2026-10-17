@@ -289,6 +289,11 @@ export function UnifiedDashboard() {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  useEffect(() => {
+    window.addEventListener('storage', loadDashboardData);
+    return () => window.removeEventListener('storage', loadDashboardData);
+  }, [loadDashboardData]);
+
   useRealtimeSync(["invoices", "daily_sales", "products", "expenses"], loadDashboardData);
 
   // Sales trend area chart data matching mockup curve

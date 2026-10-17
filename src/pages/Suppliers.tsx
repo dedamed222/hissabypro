@@ -74,13 +74,55 @@ export default function Suppliers() {
   const isFr = locale === 'fr';
 
   // Core State
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [debtors, setDebtors] = useState<Debtor[]>([]);
-  const [creditors, setCreditors] = useState<Creditor[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [productMovements, setProductMovements] = useState<ProductMovement[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
+    try {
+      return loadStoreData().suppliers || [];
+    } catch {
+      return [];
+    }
+  });
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+      return loadStoreData().customers || [];
+    } catch {
+      return [];
+    }
+  });
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      return loadStoreData().products || [];
+    } catch {
+      return [];
+    }
+  });
+  const [debtors, setDebtors] = useState<Debtor[]>(() => {
+    try {
+      return loadStoreData().debtors || [];
+    } catch {
+      return [];
+    }
+  });
+  const [creditors, setCreditors] = useState<Creditor[]>(() => {
+    try {
+      return loadStoreData().creditors || [];
+    } catch {
+      return [];
+    }
+  });
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    try {
+      return loadStoreData().invoices || [];
+    } catch {
+      return [];
+    }
+  });
+  const [productMovements, setProductMovements] = useState<ProductMovement[]>(() => {
+    try {
+      return loadStoreData().productMovements || [];
+    } catch {
+      return [];
+    }
+  });
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
@@ -299,6 +341,11 @@ export default function Suppliers() {
 
   useEffect(() => {
     loadData();
+    const handleStorage = () => {
+      loadData();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [loadData]);
 
   // Enrich Suppliers with Customer, Debts, Payables, and Archive Movements

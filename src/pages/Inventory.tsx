@@ -8,25 +8,32 @@ import { Button } from "@/components/ui/button";
 import { Settings, Boxes, Warehouse as WarehouseIcon } from "lucide-react";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import { useLocale } from "@/hooks/useLocale";
+import { loadStoreData } from "@/utils/localStorage";
 
 export default function Inventory() {
   const { locale } = useLocale();
   const isFr = locale === 'fr';
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      return loadStoreData().products || [];
+    } catch {
+      return [];
+    }
+  });
+  const [warehouses, setWarehouses] = useState<Warehouse[]>(() => {
+    try {
+      return loadStoreData().warehouses || [];
+    } catch {
+      return [];
+    }
+  });
   const [showWarehouseManager, setShowWarehouseManager] = useState(false);
   const { isAuthenticated, user } = useAuth();
-
-  // Load products and warehouses on component mount
-  useEffect(() => {
-    loadData();
-  }, [isAuthenticated]);
 
   const loadData = async () => {
     try {
       // 1. Immediately display locally available products and warehouses
-      const { loadStoreData } = await import("@/utils/localStorage");
       const localStore = loadStoreData();
       if (localStore.products && localStore.products.length > 0) {
         setProducts(localStore.products);
@@ -48,40 +55,56 @@ export default function Inventory() {
         warehousesData = localStore.warehouses || [];
       }
 
-      const mappedProducts: Product[] = productsData.map(p => ({
-        id: p.id,
-        name: p.name,
-        code: p.code,
-        price: p.price,
-        cost: p.cost,
-        quantity: p.quantity,
-        lowStockThreshold: p.low_stock_threshold || p.lowStockThreshold || 5,
-        category: p.category,
-        supplierId: p.supplier_id || p.supplierId,
-        warehouseId: p.warehouse_id || p.warehouseId,
-        photoUrl: p.photo_url || p.photoUrl,
-        barcode: p.barcode,
-        sold: p.sold || 0,
-        createdAt: p.created_at || p.createdAt,
-        updatedAt: p.updated_at || p.updatedAt
-      }));
+      if (productsData && productsData.length > 0) {
+        const mappedProducts: Product[] = productsData.map(p => ({
+          id: p.id,
+          name: p.name,
+          code: p.code,
+          price: p.price,
+          cost: p.cost,
+          quantity: p.quantity,
+          lowStockThreshold: p.low_stock_threshold || p.lowStockThreshold || 5,
+          category: p.category,
+          supplierId: p.supplier_id || p.supplierId,
+          warehouseId: p.warehouse_id || p.warehouseId,
+          photoUrl: p.photo_url || p.photoUrl,
+          barcode: p.barcode,
+          sold: p.sold || 0,
+          createdAt: p.created_at || p.createdAt,
+          updatedAt: p.updated_at || p.updatedAt
+        }));
+        setProducts(mappedProducts);
+      }
 
-      const mappedWarehouses: Warehouse[] = warehousesData.map(w => ({
-        id: w.id,
-        name: w.name,
-        location: w.location,
-        description: w.description,
-        isActive: w.is_active !== undefined ? w.is_active : w.isActive,
-        createdAt: w.created_at || w.createdAt,
-        updatedAt: w.updated_at || w.updatedAt
-      }));
-
-      setProducts(mappedProducts);
-      setWarehouses(mappedWarehouses);
+      if (warehousesData && warehousesData.length > 0) {
+        const mappedWarehouses: Warehouse[] = warehousesData.map(w => ({
+          id: w.id,
+          name: w.name,
+          location: w.location,
+          description: w.description,
+          isActive: w.is_active !== undefined ? w.is_active : w.isActive,
+          createdAt: w.created_at || w.createdAt,
+          updatedAt: w.updated_at || w.updatedAt
+        }));
+        setWarehouses(mappedWarehouses);
+      }
     } catch (error) {
       console.error("Error loading inventory data:", error);
     }
   };
+
+  // Load products and warehouses on component mount
+  useEffect(() => {
+    loadData();
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    const handleStorage = () => {
+      loadData();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   // Real-time sync: reload when products change on any device
   useRealtimeSync(['products'], loadData, user?.id);

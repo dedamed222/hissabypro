@@ -14,10 +14,28 @@ import { useLocale } from "@/hooks/useLocale";
 export default function Customers() {
   const { locale } = useLocale();
   const isFr = locale === 'fr';
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+      return loadStoreData().customers || [];
+    } catch {
+      return [];
+    }
+  });
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>(() => {
+    try {
+      return loadStoreData().customers || [];
+    } catch {
+      return [];
+    }
+  });
   const [searchQuery, setSearchQuery] = useState("");
-  const [movements, setMovements] = useState<ProductMovement[]>([]);
+  const [movements, setMovements] = useState<ProductMovement[]>(() => {
+    try {
+      return loadStoreData().productMovements || [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedCustomerForPurchases, setSelectedCustomerForPurchases] = useState<Customer | null>(null);
   const [isPurchasesModalOpen, setIsPurchasesModalOpen] = useState(false);
 
@@ -58,21 +76,23 @@ export default function Customers() {
     setLoading(true);
     try {
       const data = await getCustomers();
-      const mapped = data.map(c => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone || '',
-        email: c.email,
-        address: c.address,
-        company: c.company,
-        photoUrl: c.photo_url,
-        letterheadUrl: (c as any).letterhead_url,
-        notes: c.notes,
-        createdAt: c.created_at,
-        updatedAt: c.updated_at
-      }));
-      setCustomers(mapped);
-      setFilteredCustomers(mapped);
+      if (data && data.length > 0) {
+        const mapped = data.map(c => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone || '',
+          email: c.email,
+          address: c.address,
+          company: c.company,
+          photoUrl: c.photo_url,
+          letterheadUrl: (c as any).letterhead_url,
+          notes: c.notes,
+          createdAt: c.created_at,
+          updatedAt: c.updated_at
+        }));
+        setCustomers(mapped);
+        setFilteredCustomers(mapped);
+      }
     } catch (err) {
       console.error("Error loading customers:", err);
       // Keep displaying local customers
@@ -83,6 +103,11 @@ export default function Customers() {
 
   useEffect(() => {
     loadData();
+    const handleStorage = () => {
+      loadData();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const handleMigrate = async () => {

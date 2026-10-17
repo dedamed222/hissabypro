@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { loadStoreData, saveStoreData, generateId } from "@/utils/localStorage";
 import {
@@ -35,6 +35,14 @@ export default function Expenses() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
+
+  useEffect(() => {
+    const handleStorage = () => {
+      setRefreshKey(k => k + 1);
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const data = loadStoreData();
   const filteredExpenses = (data.expenses || []).filter(expense => expense.date.startsWith(dateFilter));

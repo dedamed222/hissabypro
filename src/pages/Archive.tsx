@@ -55,13 +55,49 @@ export default function Archive() {
   const [filterType, setFilterType] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [returnsList, setReturnsList] = useState<Return[]>([]);
-  const [debtorsList, setDebtorsList] = useState<Debtor[]>([]);
-  const [creditorsList, setCreditorsList] = useState<Creditor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    try {
+      return loadStoreData().invoices || [];
+    } catch {
+      return [];
+    }
+  });
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+      return loadStoreData().customers || [];
+    } catch {
+      return [];
+    }
+  });
+  const [returnsList, setReturnsList] = useState<Return[]>(() => {
+    try {
+      return loadStoreData().returns || [];
+    } catch {
+      return [];
+    }
+  });
+  const [debtorsList, setDebtorsList] = useState<Debtor[]>(() => {
+    try {
+      return loadStoreData().debtors || [];
+    } catch {
+      return [];
+    }
+  });
+  const [creditorsList, setCreditorsList] = useState<Creditor[]>(() => {
+    try {
+      return loadStoreData().creditors || [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(false);
+  const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(() => {
+    try {
+      return loadStoreData().storeInfo || null;
+    } catch {
+      return null;
+    }
+  });
 
   // Edit / Delete modals state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -82,6 +118,15 @@ export default function Archive() {
     try {
       const localData = loadStoreData();
       setStoreInfo(localData.storeInfo);
+      if (localData.invoices && localData.invoices.length > 0) {
+        setInvoices(localData.invoices);
+      }
+      if (localData.customers && localData.customers.length > 0) {
+        setCustomers(localData.customers);
+      }
+      setReturnsList(localData.returns || []);
+      setDebtorsList(localData.debtors || []);
+      setCreditorsList(localData.creditors || []);
 
       let allList: Invoice[] = [];
 
@@ -262,6 +307,11 @@ export default function Archive() {
 
   useEffect(() => {
     loadAllData();
+  }, [loadAllData]);
+
+  useEffect(() => {
+    window.addEventListener('storage', loadAllData);
+    return () => window.removeEventListener('storage', loadAllData);
   }, [loadAllData]);
 
   // Real-time sync: reload when invoices change on any device

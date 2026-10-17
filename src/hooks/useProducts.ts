@@ -4,6 +4,7 @@ import { getProducts, upsertProduct, insertProducts, deleteProduct as deleteProd
 import { useToast } from "@/hooks/use-toast";
 import type { Product } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { loadStoreData } from "@/utils/localStorage";
 
 // Map DB row (snake_case) → app Product type (camelCase)
 const mapRow = (row: any): Product => ({
@@ -26,7 +27,13 @@ const mapRow = (row: any): Product => ({
 });
 
 export const useProducts = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      return loadStoreData().products || [];
+    } catch {
+      return [];
+    }
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState("created_at-desc");
   const [error, setError] = useState("");
@@ -37,7 +44,6 @@ export const useProducts = () => {
   const loadProducts = useCallback(async () => {
     // 1. Immediately populate from local cache so the user never waits
     try {
-      const { loadStoreData } = await import("@/utils/localStorage");
       const localStore = loadStoreData();
       if (localStore.products && localStore.products.length > 0) {
         setProducts(localStore.products);
@@ -55,8 +61,15 @@ export const useProducts = () => {
     setLoading(true);
     try {
       const rows = await getProducts();
-      const mapped = rows.map(mapRow);
-      setProducts(mapped);
+      if (rows && rows.length > 0) {
+        const mapped = rows.map(mapRow);
+        setProducts(mapped);
+      } else {
+        const local = loadStoreData().products || [];
+        if (local.length > 0) {
+          setProducts(local);
+        }
+      }
     } catch (err) {
       console.error("Error loading products:", err);
       // Keep local products already loaded

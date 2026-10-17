@@ -12,8 +12,20 @@ import { useProducts } from "@/hooks/useProducts";
 import { recordInvoiceMovements } from "@/utils/productMovements";
 
 export const useInvoiceForm = () => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+      return loadStoreData().customers || [];
+    } catch {
+      return [];
+    }
+  });
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      return loadStoreData().products || [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
@@ -35,17 +47,30 @@ export const useInvoiceForm = () => {
   const [discount, setDiscount] = useState<number>(0);
   const [taxRate, setTaxRate] = useState<number>(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const { getInvoices } = await import("@/lib/database");
-        const [productsData, customersData, invoicesData] = await Promise.all([
-          getProducts(),
-          getCustomers(),
-          getInvoices()
-        ]);
+  const fetchData = async () => {
+    // 1. Immediately ensure local data is shown
+    try {
+      const localStore = loadStoreData();
+      if (localStore.products && localStore.products.length > 0) {
+        setProducts(localStore.products);
+      }
+      if (localStore.customers && localStore.customers.length > 0) {
+        setCustomers(localStore.customers);
+      }
+    } catch {
+      // Ignore local read errors
+    }
 
+    setLoading(true);
+    try {
+      const { getInvoices } = await import("@/lib/database");
+      const [productsData, customersData, invoicesData] = await Promise.all([
+        getProducts().catch(() => []),
+        getCustomers().catch(() => []),
+        getInvoices().catch(() => [])
+      ]);
+
+      if (productsData && productsData.length > 0) {
         const mappedProducts: Product[] = productsData.map(p => ({
           id: p.id,
           code: p.code,
@@ -64,7 +89,10 @@ export const useInvoiceForm = () => {
           createdAt: p.created_at,
           updatedAt: p.updated_at
         }));
+        setProducts(mappedProducts);
+      }
 
+      if (customersData && customersData.length > 0) {
         const mappedCustomers: Customer[] = customersData.map(c => ({
           id: c.id,
           name: c.name,
@@ -77,49 +105,58 @@ export const useInvoiceForm = () => {
           createdAt: c.created_at,
           updatedAt: c.updated_at
         }));
-
-        setProducts(mappedProducts);
         setCustomers(mappedCustomers);
-
-        // Check if we are converting a quote
-        const urlParams = new URLSearchParams(window.location.search);
-        const quoteId = urlParams.get('quoteId');
-
-        if (quoteId) {
-          const quote = invoicesData.find((inv: any) => inv.id === quoteId);
-          if (quote) {
-            setInvoiceType('sales');
-            const quoteItems = quote.invoice_items || [];
-
-            setInvoiceItems(quoteItems.map((item: any) => {
-              const product = mappedProducts.find(p => p.id === item.product_id);
-              return {
-                productId: item.product_id,
-                productName: item.product_name,
-                productCode: product ? product.code : '',
-                quantity: item.quantity,
-                price: item.price,
-                total: item.total
-              };
-            }));
-
-            const customer = mappedCustomers.find(c => c.name === quote.customer_name);
-            if (customer) setSelectedCustomer(customer);
-            setNotes(`محولة من عرض السعر رقم: ${quote.invoice_number}`);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching invoice form data:", err);
-        setError("فشل تحميل البيانات من السحابة");
-      } finally {
-        setLoading(false);
       }
-    };
 
+      // Check if we are converting a quote
+      const urlParams = new URLSearchParams(window.location.search);
+      const quoteId = urlParams.get('quoteId');
+
+      if (quoteId && invoicesData && invoicesData.length > 0) {
+        const quote = invoicesData.find((inv: any) => inv.id === quoteId);
+        if (quote) {
+          setInvoiceType('sales');
+          const quoteItems = quote.invoice_items || [];
+
+          setInvoiceItems(quoteItems.map((item: any) => {
+            const product = products.find(p => p.id === item.product_id);
+            return {
+              productId: item.product_id,
+              productName: item.product_name,
+              productCode: product ? product.code : '',
+              quantity: item.quantity,
+              price: item.price,
+              total: item.total
+            };
+          }));
+
+          const customer = customers.find(c => c.name === quote.customer_name);
+          if (customer) setSelectedCustomer(customer);
+          setNotes(`محولة من عرض السعر رقم: ${quote.invoice_number}`);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching invoice form data:", err);
+      // Fallback to local data
+      const localStore = loadStoreData();
+      if (localStore.products) setProducts(localStore.products);
+      if (localStore.customers) setCustomers(localStore.customers);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
 
     const newInvoiceNumber = generateInvoiceNumber("INV");
     setInvoiceNumber(newInvoiceNumber);
+
+    const handleStorage = () => {
+      fetchData();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const subtotal = invoiceItems.reduce((acc, item) => acc + item.total, 0);

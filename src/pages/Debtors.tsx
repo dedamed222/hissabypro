@@ -79,7 +79,13 @@ export default function Debtors() {
   const [loading, setLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [debtorsList, setDebtorsList] = useState<Debtor[]>([]);
+  const [debtorsList, setDebtorsList] = useState<Debtor[]>(() => {
+    try {
+      return loadStoreData().debtors || [];
+    } catch {
+      return [];
+    }
+  });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [searchTermDebtor, setSearchTermDebtor] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "paid" | "archived">("all");
@@ -132,6 +138,12 @@ export default function Debtors() {
       }
     };
     fetchDebtors();
+
+    const handleStorage = () => {
+      fetchDebtors();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   // KPIs

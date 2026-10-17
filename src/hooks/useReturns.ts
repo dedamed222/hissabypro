@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Return, Invoice, Product } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { getProducts } from "@/lib/database";
+import { loadStoreData } from "@/utils/localStorage";
 
 // Map DB row (snake_case) → app Return type (camelCase)
 const mapRow = (row: Record<string, any>): Return => ({
@@ -58,8 +59,20 @@ const mapInvoiceRow = (row: Record<string, any>): Invoice => ({
 });
 
 export const useReturns = () => {
-  const [returns, setReturns] = useState<Return[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [returns, setReturns] = useState<Return[]>(() => {
+    try {
+      return loadStoreData().returns || [];
+    } catch {
+      return [];
+    }
+  });
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    try {
+      return loadStoreData().invoices || [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [invoiceSearchQuery, setInvoiceSearchQuery] = useState("");
@@ -69,34 +82,55 @@ export const useReturns = () => {
   const { isAuthenticated } = useAuth();
 
   const loadReturns = useCallback(async () => {
+    // 1. Immediately read local data
+    try {
+      const storeData = loadStoreData();
+      if (storeData.returns && storeData.returns.length > 0) {
+        setReturns(storeData.returns);
+      }
+      if (storeData.invoices && storeData.invoices.length > 0) {
+        setInvoices(storeData.invoices);
+      }
+    } catch {
+      // Ignore local read errors
+    }
+
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      if (isAuthenticated) {
-        const rows = await getReturns();
+      const rows = await getReturns();
+      if (rows && rows.length > 0) {
         const mapped = rows.map(mapRow);
         setReturns(mapped);
-        
-        // Also load invoices for selection
-        const invoiceRows = await getInvoices();
+      }
+      
+      // Also load invoices for selection
+      const invoiceRows = await getInvoices();
+      if (invoiceRows && invoiceRows.length > 0) {
         setInvoices(invoiceRows.map(mapInvoiceRow));
-      } else {
-        // Guest mode - fallback to localStorage
-        const { loadStoreData } = await import("@/utils/localStorage");
-        const storeData = loadStoreData();
-        setReturns(storeData.returns || []);
-        setInvoices(storeData.invoices || []);
       }
     } catch (err) {
       console.error("Error loading returns data:", err);
-      setError("فشل تحميل البيانات");
-      toast({ title: "خطأ", description: "فشل تحميل البيانات", variant: "destructive" });
+      // Keep local returns already displayed
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, toast]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     loadReturns();
+  }, [loadReturns]);
+
+  useEffect(() => {
+    const handleStorage = () => {
+      loadReturns();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [loadReturns]);
 
   const filteredReturns = useMemo(() => {
