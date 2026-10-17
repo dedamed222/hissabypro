@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { loadStoreData } from "@/utils/localStorage";
-import { Customer, Invoice, Return, Creditor, Debtor, Product, StoreInfo } from "@/types";
+import { Customer, Invoice, Return, Creditor, Debtor, Product, StoreInfo, ProductMovement } from "@/types";
 import {
   FileText,
   Search,
@@ -20,8 +20,12 @@ import {
   AlertCircle,
   Clock,
   ChevronDown,
+  ChevronUp,
   ShieldCheck,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Receipt,
+  Layers,
+  History
 } from "lucide-react";
 import ExportActions from "@/components/shared/ExportActions";
 import { useLocale } from "@/hooks/useLocale";
@@ -31,7 +35,8 @@ import {
   getCreditors,
   getDebtors,
   getProducts,
-  getReturns
+  getReturns,
+  getProductMovementsDB
 } from "@/lib/database";
 
 interface AccountTransaction {
@@ -45,6 +50,14 @@ interface AccountTransaction {
   quantity?: number;
   balance?: number;
   status?: 'pending' | 'paid';
+  invoiceNumber?: string;
+  items?: Array<{
+    productName: string;
+    productCode?: string;
+    quantity: number;
+    price: number;
+    total: number;
+  }>;
 }
 
 export default function AccountStatement() {
@@ -55,6 +68,7 @@ export default function AccountStatement() {
   const [searchText, setSearchText] = useState("");
   const [transactions, setTransactions] = useState<AccountTransaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<AccountTransaction[]>([]);
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
 
   const { t, locale, isRTL } = useLocale();
 
@@ -64,6 +78,7 @@ export default function AccountStatement() {
   const [debtors, setDebtors] = useState<Debtor[]>([]);
   const [returns, setReturns] = useState<Return[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [productMovements, setProductMovements] = useState<ProductMovement[]>([]);
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -77,218 +92,573 @@ export default function AccountStatement() {
       const storeData = loadStoreData();
       setStoreInfo(storeData.storeInfo || null);
 
-      const [custs, invs, creds, debts, prods, rets] = await Promise.all([
-        getCustomers(),
-        getInvoices(),
-        getCreditors(),
-        getDebtors(),
-        getProducts(),
-        getReturns()
-      ]);
+      // 1. Fetch Supabase Data
+      let dbCusts: any[] = [];
+      let dbInvs: any[] = [];
+      let dbCreds: any[] = [];
+      let dbDebts: any[] = [];
+      let dbProds: any[] = [];
+      let dbRets: any[] = [];
+      let dbMovements: any[] = [];
 
-      setCustomers(custs.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone || '',
-        email: c.email,
-        address: c.address,
-        company: c.company,
-        notes: c.notes,
-        createdAt: c.created_at,
-        updatedAt: c.updated_at
-      })));
+      try {
+        [dbCusts, dbInvs, dbCreds, dbDebts, dbProds, dbRets, dbMovements] = await Promise.all([
+          getCustomers(),
+          getInvoices(),
+          getCreditors(),
+          getDebtors(),
+          getProducts(),
+          getReturns(),
+          getProductMovementsDB()
+        ]);
+      } catch (err) {
+        console.warn("DB fetch failed, relying on local archive:", err);
+      }
 
-      const uniqueInvs = Array.from(new Map(invs.map((i: any) => [i.id, i])).values());
-      const uniqueDebts = Array.from(new Map(debts.map((d: any) => [d.id, d])).values());
-      const uniqueCreds = Array.from(new Map(creds.map((c: any) => [c.id, c])).values());
-      const uniqueRets = Array.from(new Map(rets.map((r: any) => [r.id, r])).values());
+      // 2. Customers: merge DB with Local & unique customer names from archive
+      const custMap = new Map<string, Customer>();
 
-      setInvoices(uniqueInvs.map((i: any) => ({
-        id: i.id,
-        invoiceNumber: i.invoice_number,
-        customerId: i.customer_id,
-        customerName: i.customer_name,
-        date: i.date,
-        total: i.total,
-        status: i.status || "paid",
-        type: i.type || "sales",
-        items: i.invoice_items || [],
-        products: [],
-        paymentMethod: i.payment_method || "cash",
-        createdAt: i.created_at || new Date().toISOString()
-      })));
+      (storeData.customers || []).forEach((c: any) => {
+        if (c.id) custMap.set(c.id, {
+          id: c.id,
+          name: c.name,
+          phone: c.phone || '',
+          email: c.email,
+          address: c.address,
+          company: c.company,
+          notes: c.notes,
+          createdAt: c.createdAt || c.created_at,
+          updatedAt: c.updatedAt || c.updated_at
+        });
+      });
 
-      setCreditors(uniqueCreds.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone || '',
-        amount: c.amount,
-        date: c.date,
-        productName: c.product_name,
-        productCode: c.product_code,
-        quantity: c.quantity,
-        price: c.price,
-        total: c.total,
-        status: c.status || 'pending',
-        createdAt: c.created_at || new Date().toISOString()
-      })));
+      dbCusts.forEach((c: any) => {
+        custMap.set(c.id, {
+          id: c.id,
+          name: c.name,
+          phone: c.phone || '',
+          email: c.email,
+          address: c.address,
+          company: c.company,
+          notes: c.notes,
+          createdAt: c.created_at,
+          updatedAt: c.updated_at
+        });
+      });
 
-      setReturns(uniqueRets.map((r: any) => ({
-        id: r.id,
-        returnNumber: r.return_number,
-        invoiceId: r.invoice_id,
-        customerId: r.customer_id,
-        customerName: r.customer_name,
-        date: r.date,
-        total: r.total,
-        products: r.return_items || [],
-        createdAt: r.created_at || new Date().toISOString()
-      })));
+      // Also gather customers referenced in invoices or sales that might not have a separate customer row
+      const allInvsSources = [...(dbInvs || []), ...(storeData.invoices || []), ...(storeData.dailySales || [])];
+      allInvsSources.forEach((inv: any) => {
+        const cName = (inv.customerName || inv.customer_name || '').trim();
+        const cId = inv.customerId || inv.customer_id;
+        if (cName && cName !== "عميل نقدي" && cName !== "مبيعات يومية مباشرة") {
+          const matchExisting = Array.from(custMap.values()).find(
+            c => c.id === cId || c.name.toLowerCase() === cName.toLowerCase()
+          );
+          if (!matchExisting) {
+            const tempId = cId || `cust_${cName.replace(/\s+/g, '_')}`;
+            custMap.set(tempId, {
+              id: tempId,
+              name: cName,
+              phone: inv.customerPhone || '',
+              createdAt: inv.date || new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
+      });
 
-      setDebtors(uniqueDebts.map((d: any) => ({
-        id: d.id,
-        name: d.name,
-        debtorName: d.debtor_name || d.name,
-        phone: d.phone || '',
-        totalAmount: d.total_amount || 0,
-        amount: d.amount || 0,
-        date: d.date || '',
-        status: d.status || 'pending',
-        products: d.products || []
-      })));
+      setCustomers(Array.from(custMap.values()));
 
-      setProducts(prods.map((p: any) => ({
-        id: p.id,
-        code: p.code,
-        name: p.name,
-        price: p.price,
-        cost: p.cost || 0,
-        quantity: p.quantity || 0,
-        lowStockThreshold: p.low_stock_threshold || 5,
-        createdAt: p.created_at || new Date().toISOString()
-      })));
+      // 3. Invoices: Merge DB + Local Invoices + Daily Sales Auto Invoices (The complete Archive!)
+      const invMap = new Map<string, Invoice>();
+
+      // From DB
+      dbInvs.forEach((i: any) => {
+        invMap.set(i.id, {
+          id: i.id,
+          invoiceNumber: i.invoice_number,
+          customerId: i.customer_id,
+          customerName: i.customer_name,
+          date: i.date || (i.created_at ? i.created_at.split('T')[0] : ''),
+          total: Number(i.total) || 0,
+          status: i.status || "paid",
+          type: i.type || "sales",
+          items: (i.invoice_items || []).map((it: any) => ({
+            productId: it.product_id,
+            productName: it.product_name,
+            productCode: "",
+            quantity: Number(it.quantity) || 1,
+            price: Number(it.price) || 0,
+            total: Number(it.total) || 0
+          })),
+          products: [],
+          paymentMethod: i.payment_method || "cash",
+          createdAt: i.created_at || new Date().toISOString()
+        });
+      });
+
+      // From Local Store Invoices
+      (storeData.invoices || []).forEach((i: any) => {
+        if (!invMap.has(i.id)) {
+          invMap.set(i.id, {
+            id: i.id,
+            invoiceNumber: i.invoiceNumber,
+            customerId: i.customerId,
+            customerName: i.customerName,
+            date: i.date || (i.createdAt ? i.createdAt.split('T')[0] : ''),
+            total: Number(i.total) || 0,
+            status: i.status || "paid",
+            type: i.type || "sales",
+            items: (i.items || []).map((it: any) => ({
+              productId: it.productId,
+              productName: it.productName,
+              productCode: it.productCode || "",
+              quantity: Number(it.quantity) || 1,
+              price: Number(it.price) || 0,
+              total: Number(it.total) || 0
+            })),
+            products: [],
+            paymentMethod: i.paymentMethod || "cash",
+            createdAt: i.createdAt || new Date().toISOString()
+          });
+        }
+      });
+
+      // From Daily Sales Archive
+      (storeData.dailySales || []).forEach((ds: any) => {
+        const saleInvoiceId = ds.id || `sale_${ds.date}_${ds.productId}`;
+        const saleInvoiceNumber = `INV-SALE-${(ds.id || '').slice(0, 8).toUpperCase() || 'DAILY'}`;
+        if (!invMap.has(saleInvoiceId)) {
+          const sTotal = Number(ds.total) || (Number(ds.quantity || 1) * Number(ds.unitPrice || 0));
+          invMap.set(saleInvoiceId, {
+            id: saleInvoiceId,
+            invoiceNumber: saleInvoiceNumber,
+            customerId: ds.customerId,
+            customerName: ds.customerName || "عميل عام",
+            date: ds.date ? ds.date.split('T')[0] : new Date().toISOString().split('T')[0],
+            total: sTotal,
+            status: "paid",
+            type: "sales",
+            items: [
+              {
+                productId: ds.productId || "",
+                productName: ds.productName || "صنف",
+                productCode: ds.productCode || "",
+                quantity: Number(ds.quantity) || 1,
+                price: Number(ds.unitPrice) || sTotal,
+                total: sTotal
+              }
+            ],
+            products: [],
+            paymentMethod: ds.paymentMethod || "cash",
+            createdAt: ds.createdAt || ds.date || new Date().toISOString()
+          });
+        }
+      });
+
+      setInvoices(Array.from(invMap.values()));
+
+      // 4. Creditors (Payments received)
+      const credMap = new Map<string, Creditor>();
+      (storeData.creditors || []).forEach((c: any) => credMap.set(c.id, c));
+      dbCreds.forEach((c: any) => {
+        credMap.set(c.id, {
+          id: c.id,
+          name: c.name,
+          phone: c.phone || '',
+          amount: Number(c.amount) || 0,
+          date: c.date,
+          productName: c.product_name,
+          productCode: c.product_code,
+          quantity: c.quantity,
+          price: c.price,
+          total: c.total,
+          status: c.status || 'pending',
+          createdAt: c.created_at || new Date().toISOString()
+        });
+      });
+      setCreditors(Array.from(credMap.values()));
+
+      // 5. Debtors (Debts)
+      const debtMap = new Map<string, Debtor>();
+      (storeData.debtors || []).forEach((d: any) => debtMap.set(d.id, d));
+      dbDebts.forEach((d: any) => {
+        debtMap.set(d.id, {
+          id: d.id,
+          name: d.name,
+          debtorName: d.debtor_name || d.name,
+          phone: d.phone || '',
+          totalAmount: Number(d.total_amount) || Number(d.amount) || 0,
+          amount: Number(d.amount) || 0,
+          date: d.date || '',
+          status: d.status || 'pending',
+          products: d.products || []
+        });
+      });
+      setDebtors(Array.from(debtMap.values()));
+
+      // 6. Returns
+      const retMap = new Map<string, Return>();
+      (storeData.returns || []).forEach((r: any) => retMap.set(r.id, r));
+      dbRets.forEach((r: any) => {
+        retMap.set(r.id, {
+          id: r.id,
+          returnNumber: r.return_number,
+          invoiceId: r.invoice_id,
+          customerId: r.customer_id,
+          customerName: r.customer_name,
+          date: r.date,
+          total: Number(r.total) || 0,
+          products: r.return_items || [],
+          createdAt: r.created_at || new Date().toISOString()
+        });
+      });
+      setReturns(Array.from(retMap.values()));
+
+      // 7. Products
+      const prodMap = new Map<string, Product>();
+      (storeData.products || []).forEach((p: any) => prodMap.set(p.id, p));
+      dbProds.forEach((p: any) => {
+        prodMap.set(p.id, {
+          id: p.id,
+          code: p.code,
+          name: p.name,
+          price: p.price,
+          cost: p.cost || 0,
+          quantity: p.quantity || 0,
+          lowStockThreshold: p.low_stock_threshold || 5,
+          createdAt: p.created_at || new Date().toISOString()
+        });
+      });
+      setProducts(Array.from(prodMap.values()));
+
+      // 8. Product Movements (Archive records - local + DB)
+      // This is the key to fetching ALL transactions even from old archive
+      const movMap = new Map<string, ProductMovement>();
+
+      // From local storage first
+      (storeData.productMovements || []).forEach((m: any) => {
+        if (!m.isDeleted) {
+          movMap.set(m.id, {
+            id: m.id,
+            productId: m.productId || m.product_id,
+            productName: m.productName || m.product_name || '',
+            productCode: m.productCode || m.product_code || '',
+            customerId: m.customerId || m.customer_id,
+            customerName: m.customerName || m.customer_name || '',
+            invoiceId: m.invoiceId || m.invoice_id,
+            invoiceNumber: m.invoiceNumber || m.invoice_number || '',
+            date: m.date || '',
+            quantity: Number(m.quantity) || 0,
+            unitPrice: Number(m.unitPrice || m.unit_price) || 0,
+            total: Number(m.total) || 0,
+            costPrice: Number(m.costPrice || m.cost_price) || 0,
+            type: m.type || 'sale',
+            isManualItem: m.isManualItem || m.is_manual_item || false,
+            notes: m.notes || '',
+            createdAt: m.createdAt || m.created_at || new Date().toISOString(),
+            updatedAt: m.updatedAt || m.updated_at || new Date().toISOString(),
+            isDeleted: false
+          });
+        }
+      });
+
+      // From DB (overrides local if same ID)
+      dbMovements.forEach((m: any) => {
+        if (!m.is_deleted) {
+          movMap.set(m.id, {
+            id: m.id,
+            productId: m.product_id,
+            productName: m.product_name || '',
+            productCode: m.product_code || '',
+            customerId: m.customer_id,
+            customerName: m.customer_name || '',
+            invoiceId: m.invoice_id,
+            invoiceNumber: m.invoice_number || '',
+            date: m.date || '',
+            quantity: Number(m.quantity) || 0,
+            unitPrice: Number(m.unit_price) || 0,
+            total: Number(m.total) || 0,
+            costPrice: Number(m.cost_price) || 0,
+            type: m.type || 'sale',
+            isManualItem: m.is_manual_item || false,
+            notes: m.notes || '',
+            createdAt: m.created_at || new Date().toISOString(),
+            updatedAt: m.updated_at || new Date().toISOString(),
+            isDeleted: false
+          });
+        }
+      });
+
+      setProductMovements(Array.from(movMap.values()));
 
     } catch (err) {
-      console.error("Error loading statement data from Supabase:", err);
+      console.error("Error loading statement data:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Build the complete transaction ledger for the selected customer
   useEffect(() => {
-    if (selectedCustomer) {
-      generateAccountStatement();
+    if (!selectedCustomer) {
+      setTransactions([]);
+      setFilteredTransactions([]);
+      return;
     }
-  }, [selectedCustomer, startDate, endDate, transactionType, searchText, invoices, creditors, debtors, returns]);
 
-  const generateAccountStatement = () => {
     const customer = customers.find(c => c.id === selectedCustomer);
     if (!customer) return;
 
+    // Normalizing customer name for robust cross-source matching
+    const normalizeName = (name: string) => (name || '').trim().toLowerCase();
+    const targetName = normalizeName(customer.name);
+
+    const matchesCustomer = (itemCustomerId?: string, itemCustomerName?: string) => {
+      if (itemCustomerId && itemCustomerId === selectedCustomer) return true;
+      if (itemCustomerName && normalizeName(itemCustomerName) === targetName) return true;
+      return false;
+    };
+
     const allTransactions: AccountTransaction[] = [];
 
-    // Add invoices (Customer owes us - Debit)
+    // 1. INVOICES (Debit: Customer owes us money for purchased goods)
     invoices
-      .filter((invoice: Invoice) => invoice.customerId === selectedCustomer)
-      .forEach((invoice: Invoice) => {
-        const items = invoice.items || [];
-        const totalQuantity = items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
-        const productCodes = items.map((item: any) => {
-          const product = products.find(p => p.id === item.product_id || p.id === item.productId);
-          return product?.code || '';
-        }).filter(code => code).join(', ');
+      .filter((inv) => matchesCustomer(inv.customerId, inv.customerName))
+      .forEach((inv) => {
+        const items = inv.items || [];
+        const totalQuantity = items.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
+        const productCodes = items
+          .map(it => it.productCode || products.find(p => p.id === it.productId)?.code || '')
+          .filter(Boolean)
+          .join(', ');
 
         allTransactions.push({
-          id: invoice.id,
-          date: invoice.date || '',
+          id: inv.id,
+          date: inv.date ? inv.date.split('T')[0] : (inv.createdAt ? inv.createdAt.split('T')[0] : ''),
           type: "invoice",
-          description: `فاتورة بيع رقم #${invoice.invoiceNumber}`,
+          invoiceNumber: inv.invoiceNumber,
+          description: `فاتورة بيع رقم #${inv.invoiceNumber} (${items.length} أصناف)`,
           productCode: productCodes,
-          debit: invoice.total,
-          credit: 0,
-          quantity: totalQuantity
-        });
-      });
-
-    // Add returns (We owe customer - Credit)
-    returns
-      .filter((returnItem: Return) => returnItem.customerId === selectedCustomer)
-      .forEach((returnItem: Return) => {
-        const items = returnItem.products || [];
-        const totalQuantity = items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
-        const productCodes = items.map((item: any) => {
-          const product = products.find(p => p.id === (item.product_id || item.productId));
-          return product?.code || '';
-        }).filter(code => code).join(', ');
-
-        allTransactions.push({
-          id: returnItem.id,
-          date: returnItem.date || '',
-          type: "return",
-          description: `مرتجع بضاعة رقم #${returnItem.returnNumber}`,
-          productCode: productCodes,
-          debit: 0,
-          credit: returnItem.total,
-          quantity: totalQuantity
-        });
-      });
-
-    // Add creditors (Customer paid us / We owe customer - Credit)
-    creditors
-      .filter((creditor: Creditor) =>
-        (creditor.customer_id === selectedCustomer || (!creditor.customer_id && creditor.name === customer.name))
-      )
-      .forEach((creditor: Creditor) => {
-        allTransactions.push({
-          id: creditor.id,
-          date: creditor.date || creditor.createdAt || '',
-          type: "creditor",
-          description: `دفعة سداد / استلام نقدي - ${creditor.productName || 'تسديد حساب'}`,
-          productCode: creditor.productCode || '',
-          debit: 0,
-          credit: creditor.amount,
-          quantity: creditor.quantity || 0,
-          status: creditor.status
-        });
-      });
-
-    // Add debtors (Customer owes us - Debit)
-    debtors
-      .filter((debtor: Debtor) =>
-        (debtor.customer_id === selectedCustomer || (!debtor.customer_id && (debtor.name === customer.name || debtor.debtorName === customer.name)))
-      )
-      .forEach((debtor: Debtor) => {
-        let totalQuantity = 0;
-        let productCodes = '';
-
-        const products_list = (debtor.products as any[]) || [];
-        if (products_list.length > 0) {
-          totalQuantity = products_list.reduce((sum, product) => sum + (Number(product.quantity) || 0), 0);
-          productCodes = products_list.map(p => p.productCode || p.product_code).filter(code => code).join(', ');
-        } else {
-          totalQuantity = debtor.quantity || 0;
-          productCodes = debtor.productCode || '';
-        }
-
-        allTransactions.push({
-          id: debtor.id,
-          date: debtor.date || '',
-          type: "debtor",
-          description: `قيد دين / شراء آجل - ${(debtor.products as any[])?.[0]?.productName || debtor.productName || 'مشتريات آجلة'}`,
-          productCode: productCodes,
-          debit: debtor.totalAmount || debtor.amount || 0,
+          debit: Number(inv.total) || 0,
           credit: 0,
           quantity: totalQuantity,
-          status: debtor.status
+          items: items.map(it => ({
+            productName: it.productName,
+            productCode: it.productCode,
+            quantity: Number(it.quantity) || 1,
+            price: Number(it.price) || 0,
+            total: Number(it.total) || ((Number(it.quantity) || 1) * (Number(it.price) || 0))
+          }))
         });
       });
 
-    // Smart Deduplication
-    const uniqueById = new Map<string, AccountTransaction>();
+    // 2. RETURNS (Credit: We owe customer money / reduces their debt)
+    returns
+      .filter((ret) => matchesCustomer(ret.customerId, ret.customerName))
+      .forEach((ret) => {
+        const items = (ret.products as any[]) || [];
+        const totalQuantity = items.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
 
+        allTransactions.push({
+          id: ret.id,
+          date: ret.date ? ret.date.split('T')[0] : (ret.createdAt ? ret.createdAt.split('T')[0] : ''),
+          type: "return",
+          invoiceNumber: ret.returnNumber,
+          description: `مرتجع مبيعات رقم #${ret.returnNumber}`,
+          productCode: '',
+          debit: 0,
+          credit: Number(ret.total) || 0,
+          quantity: totalQuantity,
+          items: items.map((it: any) => ({
+            productName: it.name || it.productName || 'صنف مرتجع',
+            quantity: Number(it.quantity) || 1,
+            price: Number(it.price) || 0,
+            total: Number(it.total) || ((Number(it.quantity) || 1) * (Number(it.price) || 0))
+          }))
+        });
+      });
+
+    // 3. CREDITORS (Credit: Payments received from customer)
+    creditors
+      .filter((cred) => matchesCustomer((cred as any).customer_id || (cred as any).customerId, cred.name))
+      .forEach((cred) => {
+        allTransactions.push({
+          id: cred.id,
+          date: cred.date ? cred.date.split('T')[0] : (cred.createdAt ? cred.createdAt.split('T')[0] : ''),
+          type: "creditor",
+          description: `دفعة نقدية / سداد من العميل - ${cred.productName || 'تسديد دفعة حساب'}`,
+          productCode: cred.productCode || '',
+          debit: 0,
+          credit: Number(cred.amount) || Number(cred.total) || 0,
+          quantity: Number(cred.quantity) || 0,
+          status: cred.status
+        });
+      });
+
+    // 4. DEBTORS (Debit: Debt recorded against customer)
+    debtors
+      .filter((debt) => matchesCustomer((debt as any).customer_id || (debt as any).customerId, debt.name || debt.debtorName))
+      .forEach((debt) => {
+        const pList = (debt.products as any[]) || [];
+        const totalQty = pList.reduce((sum, p) => sum + (Number(p.quantity) || 1), 0);
+        const pCodes = pList.map(p => p.productCode || p.product_code).filter(Boolean).join(', ');
+
+        allTransactions.push({
+          id: debt.id,
+          date: debt.date ? debt.date.split('T')[0] : '',
+          type: "debtor",
+          description: `شراء آجل / قيد دين - ${pList[0]?.productName || debt.productName || 'بضاعة آجلة'}`,
+          productCode: pCodes,
+          debit: Number(debt.totalAmount) || Number(debt.amount) || 0,
+          credit: 0,
+          quantity: totalQty,
+          status: debt.status,
+          items: pList.map((p: any) => ({
+            productName: p.productName || p.name || 'صنف',
+            productCode: p.productCode,
+            quantity: Number(p.quantity) || 1,
+            price: Number(p.price) || 0,
+            total: Number(p.total) || ((Number(p.quantity) || 1) * (Number(p.price) || 0))
+          }))
+        });
+      });
+
+    // 5. PRODUCT MOVEMENTS (Archive - the key source for old/archived transactions)
+    // Group movements by invoiceNumber to reconstruct invoice-level transactions
+    // Only add movements whose invoice is NOT already in the invoices list above
+    const existingInvoiceNumbers = new Set(
+      invoices
+        .filter(inv => matchesCustomer(inv.customerId, inv.customerName))
+        .map(inv => inv.invoiceNumber)
+    );
+    const existingInvoiceIds = new Set(
+      invoices
+        .filter(inv => matchesCustomer(inv.customerId, inv.customerName))
+        .map(inv => inv.id)
+    );
+
+    // Filter customer movements that are sales (not already represented)
+    const customerMovements = productMovements.filter(m => {
+      if (m.isDeleted) return false;
+      if (!matchesCustomer(m.customerId || undefined, m.customerName)) return false;
+      if (m.type !== 'sale') return false;
+      // Skip if the invoice is already in the invoices list
+      if (m.invoiceNumber && existingInvoiceNumbers.has(m.invoiceNumber)) return false;
+      if (m.invoiceId && existingInvoiceIds.has(m.invoiceId)) return false;
+      return true;
+    });
+
+    // Group by invoice number to reconstruct invoice-level entries
+    const movByInvoice = new Map<string, ProductMovement[]>();
+    customerMovements.forEach(m => {
+      const key = m.invoiceNumber || m.invoiceId || m.id;
+      if (!movByInvoice.has(key)) movByInvoice.set(key, []);
+      movByInvoice.get(key)!.push(m);
+    });
+
+    // Convert grouped movements into invoice transactions
+    movByInvoice.forEach((movs, invKey) => {
+      const firstMov = movs[0];
+      const invoiceTotal = movs.reduce((sum, m) => sum + (Number(m.total) || 0), 0);
+      const totalQty = movs.reduce((sum, m) => sum + (Number(m.quantity) || 0), 0);
+      const movDate = firstMov.date ? firstMov.date.split('T')[0] : '';
+      const invNum = firstMov.invoiceNumber || invKey;
+      const archiveId = firstMov.invoiceId || `archive_${invKey}`;
+
+      allTransactions.push({
+        id: archiveId,
+        date: movDate,
+        type: "invoice",
+        invoiceNumber: invNum,
+        description: `فاتورة أرشيف #${invNum} (${movs.length} أصناف) - من الأرشيف`,
+        productCode: movs.map(m => m.productCode).filter(Boolean).join(', '),
+        debit: invoiceTotal,
+        credit: 0,
+        quantity: totalQty,
+        items: movs.map(m => ({
+          productName: m.productName || 'صنف',
+          productCode: m.productCode || '',
+          quantity: Number(m.quantity) || 1,
+          price: Number(m.unitPrice) || 0,
+          total: Number(m.total) || 0
+        }))
+      });
+    });
+
+    // Also add return movements from productMovements
+    const customerReturnMovements = productMovements.filter(m => {
+      if (m.isDeleted) return false;
+      if (!matchesCustomer(m.customerId || undefined, m.customerName)) return false;
+      return m.type === 'return';
+    });
+
+    const retMovByInvoice = new Map<string, ProductMovement[]>();
+    customerReturnMovements.forEach(m => {
+      const key = m.invoiceNumber || m.invoiceId || m.id;
+      if (!retMovByInvoice.has(key)) retMovByInvoice.set(key, []);
+      retMovByInvoice.get(key)!.push(m);
+    });
+
+    // Only add return movements whose return number is not already in our returns
+    const existingReturnNumbers = new Set(
+      returns
+        .filter(r => matchesCustomer(r.customerId, r.customerName))
+        .map(r => r.returnNumber)
+    );
+
+    retMovByInvoice.forEach((movs, retKey) => {
+      if (existingReturnNumbers.has(retKey)) return;
+      const firstMov = movs[0];
+      const retTotal = movs.reduce((sum, m) => sum + (Number(m.total) || 0), 0);
+      const totalQty = movs.reduce((sum, m) => sum + (Number(m.quantity) || 0), 0);
+      const movDate = firstMov.date ? firstMov.date.split('T')[0] : '';
+
+      allTransactions.push({
+        id: `ret_mov_${retKey}`,
+        date: movDate,
+        type: "return",
+        invoiceNumber: retKey,
+        description: `مرتجع أرشيف #${retKey} (${movs.length} أصناف) - من الأرشيف`,
+        productCode: movs.map(m => m.productCode).filter(Boolean).join(', '),
+        debit: 0,
+        credit: retTotal,
+        quantity: totalQty,
+        items: movs.map(m => ({
+          productName: m.productName || 'صنف مرتجع',
+          productCode: m.productCode || '',
+          quantity: Number(m.quantity) || 1,
+          price: Number(m.unitPrice) || 0,
+          total: Number(m.total) || 0
+        }))
+      });
+    });
+
+    // Smart Deduplication: ensure an invoice recorded in both invoices and debts isn't doubled
+    // Also deduplicate archive movements vs existing invoices by invoiceNumber
+    const uniqueById = new Map<string, AccountTransaction>();
+    const seenInvoiceNumbers = new Map<string, string>(); // invoiceNumber -> id
+
+    // First pass: register all real invoices and returns
     allTransactions.forEach(t => {
       if (t.type === 'invoice' || t.type === 'return') {
-        uniqueById.set(t.id, t);
+        // Check if this invoice number was already seen (prefer the non-archive version)
+        const isArchive = t.id.startsWith('archive_');
+        if (t.invoiceNumber && seenInvoiceNumbers.has(t.invoiceNumber)) {
+          // Already seen this invoice number - only add if this is not an archive duplicate
+          if (!isArchive) {
+            // Replace archive version with real invoice
+            const existingId = seenInvoiceNumbers.get(t.invoiceNumber)!;
+            uniqueById.delete(existingId);
+            uniqueById.set(t.id, t);
+            seenInvoiceNumbers.set(t.invoiceNumber, t.id);
+          }
+          // else skip - archive duplicate of existing invoice
+        } else {
+          uniqueById.set(t.id, t);
+          if (t.invoiceNumber) seenInvoiceNumbers.set(t.invoiceNumber, t.id);
+        }
       }
     });
 
@@ -301,7 +671,6 @@ export default function AccountStatement() {
             Math.abs(existing.debit - t.debit) < 0.01 &&
             Math.abs(existing.credit - t.credit) < 0.01
           );
-
           if (!isDuplicateOfInvoice) {
             uniqueById.set(t.id, t);
           }
@@ -309,33 +678,37 @@ export default function AccountStatement() {
       }
     });
 
-    const uniqueByLogicKey = new Map<string, AccountTransaction>();
+    // Unique by logical fingerprint (date + amounts)
+    const uniqueByLogic = new Map<string, AccountTransaction>();
     const finalTransactions: AccountTransaction[] = [];
 
     Array.from(uniqueById.values()).forEach(t => {
-      const logicKey = `${t.type}-${t.date}-${t.debit}-${t.credit}-${t.description}`;
-      if (!uniqueByLogicKey.has(logicKey)) {
-        uniqueByLogicKey.set(logicKey, t);
+      // Use invoiceNumber + date + amounts as fingerprint to catch any remaining duplicates
+      const logicKey = t.invoiceNumber
+        ? `${t.type}-${t.invoiceNumber}`
+        : `${t.type}-${t.date}-${t.debit}-${t.credit}`;
+      if (!uniqueByLogic.has(logicKey)) {
+        uniqueByLogic.set(logicKey, t);
         finalTransactions.push(t);
       }
     });
 
-    // Sort chronologically
+    // Sort chronologically ascending
     finalTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Compute running balance
-    let runningBalance = 0;
+    // Calculate rolling running balance
+    let rollingBalance = 0;
     const transactionsWithBalance = finalTransactions.map(transaction => {
-      runningBalance += transaction.debit - transaction.credit;
+      rollingBalance += transaction.debit - transaction.credit;
       return {
         ...transaction,
-        balance: runningBalance
+        balance: rollingBalance
       };
     });
 
     setTransactions(transactionsWithBalance);
 
-    // Filter
+    // Apply user filters
     let filtered = transactionsWithBalance;
 
     if (startDate) {
@@ -351,12 +724,14 @@ export default function AccountStatement() {
       const searchLower = searchText.toLowerCase();
       filtered = filtered.filter(t =>
         t.description.toLowerCase().includes(searchLower) ||
-        (t.productCode && t.productCode.toLowerCase().includes(searchLower))
+        (t.invoiceNumber && t.invoiceNumber.toLowerCase().includes(searchLower)) ||
+        (t.productCode && t.productCode.toLowerCase().includes(searchLower)) ||
+        (t.items && t.items.some(it => it.productName.toLowerCase().includes(searchLower)))
       );
     }
 
     setFilteredTransactions(filtered);
-  };
+  }, [selectedCustomer, startDate, endDate, transactionType, searchText, invoices, creditors, debtors, returns, customers, products, productMovements]);
 
   const totals = useMemo(() => {
     const totalQuantity = filteredTransactions.reduce((sum, t) => sum + (t.quantity || 0), 0);
@@ -378,8 +753,8 @@ export default function AccountStatement() {
 
   const exportColumns = [
     { key: 'date', header: t('date'), render: (t: AccountTransaction) => formatDate(t.date) },
+    { key: 'invoiceNumber', header: 'رقم الفاتورة/المستند', render: (t: AccountTransaction) => t.invoiceNumber || '-' },
     { key: 'description', header: 'البيان والتفاصيل' },
-    { key: 'productCode', header: t('productCode'), render: (t: AccountTransaction) => t.productCode || '-' },
     { key: 'quantity', header: t('quantity'), render: (item: AccountTransaction) => item.quantity?.toString() || '0' },
     { key: 'debit', header: 'مدين (المطلوب منه)', render: (item: AccountTransaction) => formatCurrency(item.debit) },
     { key: 'credit', header: 'دائن (المدفوع منه)', render: (item: AccountTransaction) => formatCurrency(item.credit) },
@@ -390,20 +765,28 @@ export default function AccountStatement() {
     window.print();
   };
 
-  const getTransactionTypeBadge = (type: string) => {
+  const toggleInvoiceExpand = (id: string) => {
+    setExpandedInvoiceId(prev => prev === id ? null : id);
+  };
+
+  const getTransactionTypeBadge = (type: string, transaction?: AccountTransaction) => {
+    const isFromArchive = transaction && (
+      transaction.id.startsWith('archive_') ||
+      (transaction.description && transaction.description.includes('من الأرشيف'))
+    );
     switch (type) {
       case 'invoice':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200/60">
-            <FileText size={11} />
-            فاتورة بيع
+            {isFromArchive ? <History size={11} /> : <FileText size={11} />}
+            {isFromArchive ? 'فاتورة أرشيف' : 'فاتورة بيع'}
           </span>
         );
       case 'return':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
             <TrendingDown size={11} />
-            مرتجع
+            {isFromArchive ? 'مرتجع أرشيف' : 'مرتجع'}
           </span>
         );
       case 'creditor':
@@ -436,7 +819,7 @@ export default function AccountStatement() {
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">كشف حساب العميل الشامل</h1>
             <p className="text-xs text-slate-500">
-              تقرير مالي دقيق لجميع التعاملات، الفواتير، الديون، السدادات، والرصيد النهائي المستحق
+              استجلاب وتتبع كافة معاملات الفواتير، الأرشيف السابقة، الديون، والسدادات مع تفاصيل كل فاتورة
             </p>
           </div>
         </div>
@@ -524,11 +907,11 @@ export default function AccountStatement() {
                 onChange={(e) => setTransactionType(e.target.value)}
                 className="w-full px-3.5 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all"
               >
-                <option value="all">جميع العمليات المالية</option>
-                <option value="invoice">فواتير البيع فقط</option>
-                <option value="debtor">الديون الآجلة فقط</option>
-                <option value="creditor">الدفعات والسدادات فقط</option>
-                <option value="return">المرتجعات فقط</option>
+                <option value="all">جميع العمليات المالية والفواتير</option>
+                <option value="invoice">فواتير المبيعات والأرشيف</option>
+                <option value="debtor">الديون والآجل</option>
+                <option value="creditor">الدفعات والسدادات</option>
+                <option value="return">المرتجعات</option>
               </select>
               <ChevronDown size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
             </div>
@@ -563,7 +946,7 @@ export default function AccountStatement() {
           </div>
         </div>
 
-        {/* Quick Search inside statement */}
+        {/* Quick Search */}
         {selectedCustomer && (
           <div className="pt-2">
             <div className="relative">
@@ -588,14 +971,14 @@ export default function AccountStatement() {
           </div>
           <h3 className="text-base font-bold text-slate-900 mb-1">يرجى تحديد العميل لعرض كشف الحساب</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            اختر أحد العملاء المسجلين من القائمة المنسدلة في الأعلى لاستخراج حسابه المفصل وميزانه المالي
+            اختر أحد العملاء المسجلين من القائمة المنسدلة في الأعلى لاسترجاع كافة فواتيره وحركاته السابقة من الأرشيف
           </p>
         </div>
       ) : (
         <>
           {/* ── KPI Summary Cards (The Statement Result Dashboard) ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 print:hidden">
-            {/* Debit: Total Amount Customer Owes Us */}
+            {/* Debit */}
             <div className="gsc-card p-4 flex items-center gap-3.5 border-rose-100">
               <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
                 <TrendingUp size={22} />
@@ -603,11 +986,11 @@ export default function AccountStatement() {
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-slate-500 truncate">إجمالي المدين (عليه)</p>
                 <h3 className="text-xl font-black text-rose-600 mt-0.5 font-sans">{formatCurrency(totals.totalDebit)}</h3>
-                <p className="text-[11px] font-bold text-slate-400 mt-0.5">مشتريات وفواتير</p>
+                <p className="text-[11px] font-bold text-slate-400 mt-0.5">فواتير ومشتريات</p>
               </div>
             </div>
 
-            {/* Credit: Total Customer Paid Us */}
+            {/* Credit */}
             <div className="gsc-card p-4 flex items-center gap-3.5 border-emerald-100">
               <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                 <TrendingDown size={22} />
@@ -619,7 +1002,7 @@ export default function AccountStatement() {
               </div>
             </div>
 
-            {/* Total Items Quantity */}
+            {/* Quantity */}
             <div className="gsc-card p-4 flex items-center gap-3.5">
               <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <Package size={22} />
@@ -627,11 +1010,11 @@ export default function AccountStatement() {
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-slate-500 truncate">مجموع الكميات</p>
                 <h3 className="text-xl font-black text-slate-900 mt-0.5 font-sans">{totals.totalQuantity}</h3>
-                <p className="text-[11px] font-bold text-blue-600 mt-0.5">قطعة مستلمة ومباعة</p>
+                <p className="text-[11px] font-bold text-blue-600 mt-0.5">قطعة مسجلة</p>
               </div>
             </div>
 
-            {/* Net Final Balance Result */}
+            {/* Net Final Balance */}
             <div className={`gsc-card p-4 flex items-center gap-3.5 border-2 ${
               totals.finalBalance > 0
                 ? "border-rose-300 bg-rose-50/30"
@@ -666,7 +1049,7 @@ export default function AccountStatement() {
             </div>
           </div>
 
-          {/* ── Official Print Header (Only appears when printing) ── */}
+          {/* ── Official Print Header (Only visible on print) ── */}
           <div className="hidden print:block p-4 border-b-2 border-slate-900 mb-6 font-sans">
             <div className="flex justify-between items-start">
               <div>
@@ -675,7 +1058,7 @@ export default function AccountStatement() {
                 <p className="text-xs text-slate-600">الهاتف: {storeInfo?.phone || '---'}</p>
               </div>
               <div className="text-left">
-                <h2 className="text-xl font-black text-blue-700 uppercase">كشف حساب رسمي</h2>
+                <h2 className="text-xl font-black text-blue-700 uppercase">كشف حساب رسمي مع تفاصيل الفواتير</h2>
                 <p className="text-xs text-slate-500 mt-1">تاريخ الطباعة: {new Date().toLocaleDateString('ar-EG')}</p>
                 <p className="text-xs text-slate-500">الفترة: {startDate || 'البداية'} إلى {endDate || 'الآن'}</p>
               </div>
@@ -691,7 +1074,7 @@ export default function AccountStatement() {
                 </div>
               )}
               <div>
-                <span className="text-slate-500">الرصيد النهائي:</span>{" "}
+                <span className="text-slate-500">الرصيد المستحق:</span>{" "}
                 <strong className={`text-sm ${totals.finalBalance > 0 ? "text-red-700" : "text-green-700"}`}>
                   {formatCurrency(Math.abs(totals.finalBalance))} ({totals.finalBalance > 0 ? "مطلوب منه" : "دائن"})
                 </strong>
@@ -704,17 +1087,17 @@ export default function AccountStatement() {
             <div className="p-4 border-b border-slate-100 flex items-center justify-between print:hidden">
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                 <FileSpreadsheet size={16} className="text-blue-600" />
-                <span>حركات دفتر الأستاذ للعميل ({filteredTransactions.length} معاملة)</span>
+                <span>دفتر حركات ومعاملات العميل ({filteredTransactions.length} حركة مسجلة)</span>
               </h3>
               <span className="text-xs font-medium text-slate-500">
-                الرصيد المحسوب: <strong className="text-slate-800 font-sans">{formatCurrency(Math.abs(totals.finalBalance))}</strong>
+                انقر على الفاتورة لاستعراض أصنافها بالتفصيل
               </span>
             </div>
 
             {filteredTransactions.length === 0 ? (
               <div className="p-12 text-center text-slate-400">
                 <p className="text-xs font-bold text-slate-700 mb-1">لا توجد حركات مسجلة لهذا العميل في النطاق المحدد</p>
-                <p className="text-[11px] text-slate-400">جرب توسيع نطاق التاريخ أو تغيير نوع المعاملة</p>
+                <p className="text-[11px] text-slate-400">جرب توسيع نطاق التاريخ أو التحقق من اسم العميل</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -722,16 +1105,18 @@ export default function AccountStatement() {
                   <thead>
                     <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider">
                       <th className="py-3 px-3.5">التاريخ</th>
-                      <th className="py-3 px-3.5">نوع الحركة</th>
-                      <th className="py-3 px-3.5">البيان والتفاصيل</th>
+                      <th className="py-3 px-3.5">نوع المعاملة</th>
+                      <th className="py-3 px-3.5">رقم المستند / الفاتورة</th>
+                      <th className="py-3 px-3.5">البيان والأصناف</th>
                       <th className="py-3 px-3.5 text-center">الكمية</th>
-                      <th className="py-3 px-3.5 text-center bg-rose-50/50 text-rose-700">مدين (عليه) +</th>
-                      <th className="py-3 px-3.5 text-center bg-emerald-50/50 text-emerald-700">دائن (له / سداد) -</th>
+                      <th className="py-3 px-3.5 text-center bg-rose-50/50 text-rose-700">مدين (المطلوب منه) +</th>
+                      <th className="py-3 px-3.5 text-center bg-emerald-50/50 text-emerald-700">دائن (المدفوع منه) -</th>
                       <th className="py-3 px-3.5 text-left bg-slate-100/60 font-black">الرصيد التراكمي</th>
+                      <th className="py-3 px-2 text-center print:hidden">تفاصيل</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
-                    {/* Opening balance row if filtered by date */}
+                    {/* Opening Balance */}
                     {startDate && totals.openingBalance !== 0 && (
                       <tr className="bg-blue-50/40 font-bold border-b border-blue-100">
                         <td className="py-2.5 px-3.5 text-xs text-slate-500">{startDate}</td>
@@ -740,6 +1125,7 @@ export default function AccountStatement() {
                             افتتاحي
                           </span>
                         </td>
+                        <td className="py-2.5 px-3.5 font-mono text-xs text-slate-500">---</td>
                         <td className="py-2.5 px-3.5 text-slate-800 font-semibold" colSpan={2}>
                           الرصيد الافتتاحي السابق حتى تاريخ {startDate}
                         </td>
@@ -755,67 +1141,142 @@ export default function AccountStatement() {
                             {totals.openingBalance > 0 ? "(عليه)" : "(له)"}
                           </span>
                         </td>
+                        <td className="print:hidden"></td>
                       </tr>
                     )}
 
                     {filteredTransactions.map((tx) => {
                       const isDebit = tx.debit > 0;
                       const currentBal = tx.balance || 0;
+                      const isExpanded = expandedInvoiceId === tx.id;
+                      const hasItems = tx.items && tx.items.length > 0;
 
                       return (
-                        <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-3.5 text-xs font-medium text-slate-600 font-sans">
-                            {tx.date}
-                          </td>
+                        <React.Fragment key={tx.id}>
+                          <tr
+                            onClick={() => hasItems && toggleInvoiceExpand(tx.id)}
+                            className={`hover:bg-slate-50/80 transition-colors ${
+                              hasItems ? "cursor-pointer" : ""
+                            } ${isExpanded ? "bg-blue-50/30" : ""}`}
+                          >
+                            <td className="py-3 px-3.5 text-xs font-medium text-slate-600 font-sans whitespace-nowrap">
+                              {tx.date}
+                            </td>
 
-                          <td className="py-3 px-3.5">
-                            {getTransactionTypeBadge(tx.type)}
-                          </td>
+                            <td className="py-3 px-3.5">
+                              {getTransactionTypeBadge(tx.type, tx)}
+                            </td>
 
-                          <td className="py-3 px-3.5">
-                            <span className="font-bold text-slate-900 block">{tx.description}</span>
-                            {tx.productCode && (
-                              <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
-                                كود: {tx.productCode}
-                              </span>
-                            )}
-                          </td>
+                            <td className="py-3 px-3.5 font-mono font-bold text-xs text-slate-800">
+                              {tx.invoiceNumber ? (
+                                <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                  {tx.invoiceNumber}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">---</span>
+                              )}
+                            </td>
 
-                          <td className="py-3 px-3.5 text-center font-bold font-sans text-slate-700">
-                            {tx.quantity || '-'}
-                          </td>
+                            <td className="py-3 px-3.5">
+                              <div>
+                                <span className="font-bold text-slate-900 block">{tx.description}</span>
+                                {hasItems && !isExpanded && (
+                                  <span className="text-[11px] text-blue-600 font-medium block truncate max-w-xs mt-0.5">
+                                    الأصناف: {tx.items?.map(it => `${it.productName} (${it.quantity})`).join('، ')}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
 
-                          {/* Debit */}
-                          <td className="py-3 px-3.5 text-center font-bold font-sans text-rose-600 bg-rose-50/20">
-                            {tx.debit > 0 ? formatCurrency(tx.debit) : '-'}
-                          </td>
+                            <td className="py-3 px-3.5 text-center font-bold font-sans text-slate-700">
+                              {tx.quantity || '-'}
+                            </td>
 
-                          {/* Credit */}
-                          <td className="py-3 px-3.5 text-center font-bold font-sans text-emerald-600 bg-emerald-50/20">
-                            {tx.credit > 0 ? formatCurrency(tx.credit) : '-'}
-                          </td>
+                            {/* Debit */}
+                            <td className="py-3 px-3.5 text-center font-bold font-sans text-rose-600 bg-rose-50/20">
+                              {tx.debit > 0 ? formatCurrency(tx.debit) : '-'}
+                            </td>
 
-                          {/* Running Balance */}
-                          <td className="py-3 px-3.5 text-left font-black font-sans bg-slate-50/40">
-                            <div className="flex flex-col items-start">
-                              <span className={`text-sm ${
-                                currentBal > 0 ? "text-rose-700" : currentBal < 0 ? "text-emerald-700" : "text-slate-600"
-                              }`}>
-                                {formatCurrency(Math.abs(currentBal))}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-400">
-                                {currentBal > 0 ? "عليه" : currentBal < 0 ? "له" : "خالص"}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
+                            {/* Credit */}
+                            <td className="py-3 px-3.5 text-center font-bold font-sans text-emerald-600 bg-emerald-50/20">
+                              {tx.credit > 0 ? formatCurrency(tx.credit) : '-'}
+                            </td>
+
+                            {/* Running Balance */}
+                            <td className="py-3 px-3.5 text-left font-black font-sans bg-slate-50/40">
+                              <div className="flex flex-col items-start">
+                                <span className={`text-sm ${
+                                  currentBal > 0 ? "text-rose-700" : currentBal < 0 ? "text-emerald-700" : "text-slate-600"
+                                }`}>
+                                  {formatCurrency(Math.abs(currentBal))}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400">
+                                  {currentBal > 0 ? "عليه" : currentBal < 0 ? "له" : "خالص"}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Expand toggle icon */}
+                            <td className="py-3 px-2 text-center print:hidden">
+                              {hasItems ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleInvoiceExpand(tx.id);
+                                  }}
+                                  className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                  title="عرض أصناف الفاتورة"
+                                >
+                                  {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                              ) : null}
+                            </td>
+                          </tr>
+
+                          {/* Expanded Invoice Items Row */}
+                          {(isExpanded || window.matchMedia?.('print')?.matches) && hasItems && (
+                            <tr className="bg-slate-50/90 border-b border-slate-200">
+                              <td colSpan={9} className="p-3">
+                                <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs">
+                                  <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-100">
+                                    <Receipt size={14} className="text-blue-600" />
+                                    <span className="text-xs font-bold text-slate-800">
+                                      تفاصيل أصناف الفاتورة #{tx.invoiceNumber}
+                                    </span>
+                                  </div>
+                                  <table className="w-full text-right text-xs">
+                                    <thead className="bg-slate-50 text-slate-500 font-bold">
+                                      <tr>
+                                        <th className="p-2">اسم الصنف</th>
+                                        <th className="p-2 text-center">الكمية</th>
+                                        <th className="p-2 text-center">سعر الوحدة</th>
+                                        <th className="p-2 text-left">الإجمالي</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-sans">
+                                      {tx.items?.map((it, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-50/50">
+                                          <td className="p-2 font-medium text-slate-800 font-arabic">{it.productName}</td>
+                                          <td className="p-2 text-center font-bold">{it.quantity}</td>
+                                          <td className="p-2 text-center text-slate-600">{formatCurrency(it.price)}</td>
+                                          <td className="p-2 text-left font-bold text-slate-900">{formatCurrency(it.total)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
-                  <tfoot className="bg-slate-100/80 border-t-2 border-slate-300 font-bold">
+                  <tfoot className="bg-slate-100/90 border-t-2 border-slate-300 font-bold">
                     <tr>
-                      <td colSpan={3} className="py-3.5 px-3.5 text-slate-800 text-sm">
-                        المجاميع الكلية:
+                      <td colSpan={4} className="py-3.5 px-3.5 text-slate-800 text-sm">
+                        المجاميع الكلية لكافة الحركات:
                       </td>
                       <td className="py-3.5 px-3.5 text-center font-sans text-slate-800">
                         {totals.totalQuantity}
@@ -826,9 +1287,12 @@ export default function AccountStatement() {
                       <td className="py-3.5 px-3.5 text-center font-black font-sans text-emerald-700 text-sm bg-emerald-100/50">
                         {formatCurrency(totals.totalCredit)}
                       </td>
-                      <td className="py-3.5 px-3.5 text-left font-black font-sans text-base bg-slate-200/60">
+                      <td className="py-3.5 px-3.5 text-left font-black font-sans text-base bg-slate-200/60" colSpan={2}>
                         <span className={totals.finalBalance > 0 ? "text-rose-700" : "text-emerald-700"}>
                           {formatCurrency(Math.abs(totals.finalBalance))}
+                        </span>
+                        <span className="text-[11px] font-bold text-slate-500 mr-1.5">
+                          {totals.finalBalance > 0 ? "(مطلوب منه)" : totals.finalBalance < 0 ? "(فائض له)" : "(خالص)"}
                         </span>
                       </td>
                     </tr>
@@ -844,10 +1308,10 @@ export default function AccountStatement() {
               <div className="space-y-1">
                 <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
                   <ShieldCheck size={18} className="text-blue-600" />
-                  <span>الخلاصة المحاسبية لكشف الحساب</span>
+                  <span>الخلاصة المحاسبية المعتمدة لكشف الحساب</span>
                 </h4>
                 <p className="text-xs text-slate-600">
-                  مجموع ما اشتراه العميل ({formatCurrency(totals.totalDebit)}) ناقص ما قام بسداده ({formatCurrency(totals.totalCredit)}).
+                  تم استجلاب جميع المعاملات من فواتير البيع والأرشيف السابقة والديون ({formatCurrency(totals.totalDebit)}) مع خصم السدادات والمرتجعات ({formatCurrency(totals.totalCredit)}).
                 </p>
               </div>
 
