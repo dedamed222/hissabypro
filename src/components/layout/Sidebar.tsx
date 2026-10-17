@@ -745,7 +745,9 @@ const Sidebar = () => {
       )}
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* 3. MOBILE & DESKTOP BOTTOM NAVIGATION BAR (Exact Mockup)    */}
+      {/* 3. BOTTOM NAVIGATION BAR                                  */}
+      {/* (A) MOBILE VERSION: Exact 5-tab mockup from the picture    */}
+      {/* (B) WEB VERSION: Extended full-width with ALL page icons    */}
       {/* ────────────────────────────────────────────────────────── */}
       <div
         className={cn(
@@ -753,7 +755,8 @@ const Sidebar = () => {
           !isBottomMode && "lg:hidden"
         )}
       >
-        <div className="w-full max-w-md mx-auto px-3 sm:px-4 pt-2 pb-1 flex items-center justify-between">
+        {/* MOBILE (lg:hidden): Exact 5-tab mockup from the picture */}
+        <div className="lg:hidden w-full max-w-md mx-auto px-3 sm:px-4 pt-2 pb-1 flex items-center justify-between">
           {/* Tab 1: Accueil */}
           <NavLink
             to="/dashboard"
@@ -853,8 +856,90 @@ const Sidebar = () => {
           </button>
         </div>
 
-        {/* iOS Home Indicator Line */}
-        <div className="w-32 h-1 bg-black/80 rounded-full mx-auto mt-1 mb-1" />
+        {/* Mobile iOS Home Indicator Line */}
+        <div className="lg:hidden w-32 h-1 bg-black/80 rounded-full mx-auto mt-1 mb-1" />
+
+        {/* WEB / DESKTOP (hidden lg:flex): Extended full-width with ALL page icons */}
+        <div className="hidden lg:flex w-full items-center justify-between px-3 xl:px-6 py-2 gap-1 overflow-x-auto no-scrollbar">
+          {[
+            { titleKey: "home", icon: Home, path: "/dashboard", color: "#2563eb" },
+            { titleKey: "createInvoice", icon: FileText, path: "/create-invoice", color: "#0284c7" },
+            { titleKey: "sales", icon: ShoppingCart, path: "/sales", color: "#059669" },
+            { titleKey: "products", icon: Package, path: "/products", color: "#0891b2" },
+            { titleKey: "inventory", icon: Warehouse, path: "/inventory", color: "#ea580c" },
+            { titleKey: "customers", icon: Users, path: "/customers", color: "#9333ea" },
+            { titleKey: "clientNotes", icon: StickyNote, path: "/client-notes", color: "#ca8a04" },
+            { titleKey: "suppliers", icon: Truck, path: "/suppliers", color: "#65a30d" },
+            { titleKey: "expenses", icon: DollarSign, path: "/expenses", color: "#db2777" },
+            { titleKey: "debtors", icon: UserCheck, path: "/debtors", color: "#16a34a" },
+            { titleKey: "creditors", icon: UserX, path: "/creditors", color: "#e11d48" },
+            { titleKey: "payments", icon: CreditCard, path: "/payments", color: "#8b5cf6" },
+            { titleKey: "accountStatement", icon: Receipt, path: "/account-statement", color: "#0d9488" },
+            { titleKey: "returns", icon: Undo, path: "/returns", color: "#d97706" },
+            { titleKey: "unpaidInvoices", icon: AlertCircle, path: "/unpaid-invoices", color: "#dc2626" },
+            { titleKey: "archive", icon: Archive, path: "/archive", color: "#7c3aed" },
+            { titleKey: "settings", icon: Settings, path: "/settings", color: "#475569" },
+          ].map((item) => {
+            const Icon = item.icon;
+            const itemTitle = (t[item.titleKey as keyof typeof t] as string) || item.titleKey;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={closeSidebar}
+                className={({ isActive }) =>
+                  cn(
+                    "flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all flex-1 min-w-[60px] max-w-[95px] text-center group cursor-pointer",
+                    isActive
+                      ? "bg-blue-50 text-blue-600 font-bold shadow-2xs ring-1 ring-blue-500/20"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                  )
+                }
+                title={itemTitle}
+              >
+                {({ isActive }) => (
+                  <>
+                    <div
+                      className={cn(
+                        "w-7 h-7 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110",
+                        isActive ? "shadow-2xs" : ""
+                      )}
+                      style={{
+                        backgroundColor: isActive ? item.color : "transparent",
+                        color: isActive ? "#ffffff" : item.color,
+                      }}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] leading-tight mt-1 truncate w-full">
+                      {itemTitle}
+                    </span>
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-0.5" />}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
+
+          {/* Plus / Menu Button at end */}
+          <button
+            onClick={toggleSidebar}
+            className={cn(
+              "flex flex-col items-center justify-center py-1.5 px-2 rounded-xl transition-all min-w-[55px] text-center group cursor-pointer",
+              sidebarOpen
+                ? "bg-blue-50 text-blue-600 font-bold ring-1 ring-blue-500/20"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+            )}
+            title={t.mainMenu}
+          >
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 group-hover:scale-110 transition-transform">
+              <MoreHorizontal className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] leading-tight mt-1 truncate w-full font-semibold">
+              {isFr ? "Plus" : "المزيد"}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* ────────────────────────────────────────────────────────── */}
