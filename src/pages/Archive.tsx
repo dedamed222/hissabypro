@@ -130,8 +130,19 @@ export default function Archive() {
 
       let allList: Invoice[] = [];
 
-      if (isAuthenticated) {
-        const [rows, customerRows] = await Promise.all([getInvoices(), getCustomers()]);
+      let rows: any[] = [];
+      let customerRows: any[] = [];
+      try {
+        [rows, customerRows] = await Promise.all([
+          getInvoices().catch(() => []),
+          getCustomers().catch(() => [])
+        ]);
+      } catch {
+        rows = [];
+        customerRows = [];
+      }
+
+      if (customerRows.length > 0) {
         setCustomers(customerRows.map((c: any) => ({
           id: c.id,
           name: c.name,
@@ -144,6 +155,9 @@ export default function Archive() {
           createdAt: c.created_at,
           updatedAt: c.updated_at
         })));
+      }
+
+      if (rows.length > 0) {
         const dbMapped: Invoice[] = rows.map((row: any) => ({
           id: row.id,
           invoiceNumber: row.invoice_number,

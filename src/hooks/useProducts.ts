@@ -52,11 +52,6 @@ export const useProducts = () => {
       // Ignore local read errors
     }
 
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-
     // 2. Fetch fresh data from cloud in background
     setLoading(true);
     try {

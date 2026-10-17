@@ -45,14 +45,21 @@ export default function Inventory() {
       let productsData: any[] = [];
       let warehousesData: any[] = [];
 
-      if (isAuthenticated) {
+      try {
         [productsData, warehousesData] = await Promise.all([
           getProducts().catch(() => []),
           getWarehouses().catch(() => [])
         ]);
-      } else {
-        productsData = localStore.products || [];
-        warehousesData = localStore.warehouses || [];
+      } catch {
+        productsData = [];
+        warehousesData = [];
+      }
+
+      if ((!productsData || productsData.length === 0) && localStore.products) {
+        productsData = localStore.products;
+      }
+      if ((!warehousesData || warehousesData.length === 0) && localStore.warehouses) {
+        warehousesData = localStore.warehouses;
       }
 
       if (productsData && productsData.length > 0) {

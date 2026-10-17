@@ -7,11 +7,19 @@ import { useAutoSync } from "@/hooks/useAutoSync";
 import { useSettings } from "@/contexts/SettingsContext";
 
 export default function Layout() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const { navPosition = "bottom" } = useSettings();
 
   // Run auto-sync globally
   useAutoSync();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#070b19]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
