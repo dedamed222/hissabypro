@@ -2,10 +2,12 @@ import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/hooks/useLocale";
 import { translations } from "@/locales";
-import { Menu, X, Bell } from "lucide-react";
+import { Menu, X, Search, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useSettings } from "@/contexts/SettingsContext";
+import { CircularClock } from "@/components/common/CircularClock";
+import { NotificationCenter } from "./NotificationCenter";
 import { cn } from "@/lib/utils";
 
 export default function Header() {
@@ -16,15 +18,16 @@ export default function Header() {
   const t = translations[locale];
 
   const userName = profile?.name || user?.email?.split('@')[0] || (locale === "ar" ? "المهدي صالحي" : "Mehdi Salehi");
+  const userRole = locale === "ar" ? "المسؤول" : "Administrateur";
   const isBottomMode = navPosition === "bottom";
 
   return (
-    <header className="bg-gradient-to-r from-[#0047cc] via-[#0052d9] to-[#0a2f85] text-white h-16 px-3.5 sm:px-6 flex items-center justify-between z-30 flex-shrink-0 border-b border-blue-900/40 print:hidden select-none shadow-md">
-      {/* Left: Hamburger Menu & Brand Logo */}
+    <header className="bg-gradient-to-r from-[#0047cc] via-[#0052d9] to-[#0a2f85] text-white h-16 px-3 sm:px-5 lg:px-6 flex items-center justify-between z-30 flex-shrink-0 border-b border-blue-900/40 print:hidden select-none shadow-md">
+      {/* Left: Logo & Brand */}
       <div className="flex items-center gap-2.5 sm:gap-3">
         <button
           onClick={toggleSidebar}
-          className="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-white/10 text-white transition-all cursor-pointer"
+          className="flex items-center justify-center w-9 h-9 rounded-xl hover:bg-white/10 text-white transition-all cursor-pointer lg:hidden"
           aria-label={sidebarOpen ? t.closeMenu : t.openMenu}
           title={t.mainMenu}
         >
@@ -66,44 +69,68 @@ export default function Header() {
             <span className="font-black text-lg sm:text-xl tracking-tight text-white leading-none">
               GSC<span className="text-cyan-300">.</span>
             </span>
-            <span className="text-[10px] sm:text-[11px] text-blue-100/90 font-medium leading-tight mt-0.5">
+            <span className="text-[10px] sm:text-[11px] text-blue-100/90 font-medium leading-tight mt-0.5 hidden sm:block">
               {locale === "ar" ? "نظام إدارة المتجر" : "Système de gestion de magasin"}
             </span>
           </div>
         </Link>
       </div>
 
-      {/* Right: Notification Bell, Language Pill, User Avatar */}
+      {/* Center: Search Bar */}
+      <div className="hidden md:flex flex-1 max-w-md mx-4 lg:mx-6">
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-white/50 absolute top-1/2 -translate-y-1/2 left-3.5 pointer-events-none" />
+          <input
+            type="text"
+            placeholder={locale === "ar" ? "البحث عن منتج، عميل، فاتورة..." : "Rechercher un produit, un client, une facture..."}
+            className="w-full h-9 bg-white/10 backdrop-blur-sm rounded-xl border border-white/15 text-xs text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/30 transition-all pl-10 pr-16"
+          />
+          <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-1 text-[10px] text-white/40 font-medium bg-white/10 px-1.5 py-0.5 rounded">
+            Ctrl + K
+          </div>
+        </div>
+      </div>
+
+      {/* Right: Circular Clock, Notification Center, Language Pill, User Avatar, Settings */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Notification Bell with Red Badge "3" */}
-        <button
-          className="relative flex items-center justify-center w-9 h-9 rounded-xl hover:bg-white/10 text-white transition-colors cursor-pointer"
-          aria-label="Notifications"
-        >
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1 end-1 min-w-[16px] h-[16px] flex items-center justify-center bg-rose-500 text-white text-[9.5px] font-black rounded-full px-0.5 border border-blue-900 shadow-xs">
-            3
-          </span>
-        </button>
+        {/* Real-time Circular Analog & Digital Clock */}
+        <CircularClock size={32} showDigital={true} showDate={true} variant="header" className="hidden sm:flex" />
+
+        {/* Interactive Notification Bell & Popover */}
+        <NotificationCenter />
 
         {/* Language Switcher Pill */}
         <LanguageSwitcher />
 
-        {/* Circular User Avatar with Green Online Dot */}
-        <div className="relative cursor-pointer hover:opacity-90 transition-opacity">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/60 overflow-hidden bg-slate-700 flex items-center justify-center text-white text-xs font-bold shadow-md">
-            <img
-              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
-              alt="User"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
-            />
-            <span className="select-none">{userName.charAt(0).toUpperCase()}</span>
+        {/* User Profile with Name */}
+        <div className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity">
+          <div className="relative">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full ring-2 ring-white/60 overflow-hidden bg-slate-700 flex items-center justify-center text-white text-xs font-bold shadow-md">
+              <img
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
+                alt="User"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+              <span className="select-none">{userName.charAt(0).toUpperCase()}</span>
+            </div>
+            <span className="absolute bottom-0 end-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#0047cc]" />
           </div>
-          <span className="absolute bottom-0 end-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#0047cc]" />
+          <div className="hidden xl:flex flex-col">
+            <span className="text-xs font-bold text-white leading-tight">{userName}</span>
+            <span className="text-[10px] text-blue-200/80 font-medium leading-tight">{userRole}</span>
+          </div>
         </div>
+
+        {/* Settings Gear */}
+        <Link
+          to="/settings"
+          className="hidden lg:flex items-center justify-center w-9 h-9 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+        >
+          <Settings className="w-5 h-5" />
+        </Link>
       </div>
     </header>
   );

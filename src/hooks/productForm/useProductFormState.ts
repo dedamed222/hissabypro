@@ -11,6 +11,7 @@ export interface ProductFormData {
   category: string;
   cost: string;
   warehouseId: string;
+  photoUrl: string;
 }
 
 export function useProductFormState() {
@@ -28,6 +29,7 @@ export function useProductFormState() {
     category: "",
     cost: "",
     warehouseId: "",
+    photoUrl: "",
   });
 
   const resetForm = () => {
@@ -40,6 +42,7 @@ export function useProductFormState() {
       category: "",
       cost: "",
       warehouseId: "",
+      photoUrl: "",
     });
     setError("");
     setSelectedProduct(null);

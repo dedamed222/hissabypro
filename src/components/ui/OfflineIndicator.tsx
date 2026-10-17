@@ -20,21 +20,26 @@ export function OfflineIndicator() {
     };
   }, []);
 
-  // Listen for service worker updates
+  // Listen for service worker updates safely
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                setShowUpdateBanner(true);
-              }
-            });
-          }
+      navigator.serviceWorker.ready
+        .then((registration) => {
+          if (!registration) return;
+          registration.onupdatefound = () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.onstatechange = () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  setShowUpdateBanner(true);
+                }
+              };
+            }
+          };
+        })
+        .catch((err) => {
+          console.warn('[OfflineIndicator] ServiceWorker ready error:', err);
         });
-      });
     }
   }, []);
 

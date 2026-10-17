@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { registerServiceWorker } from './utils/serviceWorker'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // Set mobile viewport
 if (document.head.querySelector('meta[name="viewport"]') === null) {
@@ -22,4 +23,9 @@ if (document.head.querySelector('meta[name="apple-mobile-web-app-capable"]') ===
 // Register service worker outside React to avoid hook conflicts
 registerServiceWorker();
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
+

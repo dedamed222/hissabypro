@@ -52,9 +52,28 @@ const queryClient = new QueryClient({
 
 const persister = createAsyncStoragePersister({
   storage: {
-    getItem: async (key) => await get(key),
-    setItem: async (key, value) => await set(key, value),
-    removeItem: async (key) => await del(key),
+    getItem: async (key) => {
+      try {
+        return await get(key);
+      } catch (e) {
+        console.warn("Error reading from IndexedDB persister:", e);
+        return null;
+      }
+    },
+    setItem: async (key, value) => {
+      try {
+        await set(key, value);
+      } catch (e) {
+        console.warn("Error saving to IndexedDB persister:", e);
+      }
+    },
+    removeItem: async (key) => {
+      try {
+        await del(key);
+      } catch (e) {
+        console.warn("Error deleting from IndexedDB persister:", e);
+      }
+    },
   },
 });
 

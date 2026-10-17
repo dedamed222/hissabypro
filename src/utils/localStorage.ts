@@ -63,11 +63,28 @@ const initialStoreData: StoreData = {
 // Load data from localStorage with decryption
 export const loadStoreData = (): StoreData => {
   try {
-    const encryptedData = localStorage.getItem(STORE_KEY);
-    if (encryptedData) {
-      const decryptedData = CryptoJS.AES.decrypt(encryptedData, getEncryptionKey()).toString(CryptoJS.enc.Utf8);
-      if (decryptedData) {
-        const parsed = JSON.parse(decryptedData);
+    const rawData = localStorage.getItem(STORE_KEY);
+    if (rawData) {
+      let parsed: any = null;
+      try {
+        const decryptedData = CryptoJS.AES.decrypt(rawData, getEncryptionKey()).toString(CryptoJS.enc.Utf8);
+        if (decryptedData) {
+          parsed = JSON.parse(decryptedData);
+        }
+      } catch (decryptErr) {
+        console.warn("Could not decrypt data with device key, attempting plain JSON parse:", decryptErr);
+      }
+
+      // If AES decryption didn't produce an object, fallback to checking if it was stored unencrypted
+      if (!parsed) {
+        try {
+          parsed = JSON.parse(rawData);
+        } catch (jsonErr) {
+          console.warn("Data in localStorage is neither valid encrypted text nor valid JSON:", jsonErr);
+        }
+      }
+
+      if (parsed && typeof parsed === "object") {
         // Ensure new arrays exist for backward compatibility
         if (!parsed.clientNotes) parsed.clientNotes = [];
         if (!parsed.priceChangeHistories) parsed.priceChangeHistories = [];

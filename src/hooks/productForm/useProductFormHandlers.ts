@@ -42,6 +42,7 @@ export function useProductFormHandlers({ state, setProducts, onSuccess, isAuthen
       category: product.category || "",
       cost: product.cost ? product.cost.toString() : "",
       warehouseId: product.warehouseId || "",
+      photoUrl: product.photoUrl || "",
     });
     state.setIsAddModalOpen(true);
   };
@@ -120,7 +121,7 @@ export function useProductFormHandlers({ state, setProducts, onSuccess, isAuthen
             category: state.formData.category,
             warehouse_id: state.formData.warehouseId,
             supplier_id: state.selectedProduct?.supplierId,
-            photo_url: state.selectedProduct?.photoUrl,
+            photo_url: state.formData.photoUrl || undefined,
             barcode: state.selectedProduct?.barcode,
             sold: state.selectedProduct?.sold || 0
           });
@@ -139,7 +140,7 @@ export function useProductFormHandlers({ state, setProducts, onSuccess, isAuthen
               category: result.category,
               warehouseId: result.warehouse_id,
               supplierId: result.supplier_id,
-              photoUrl: result.photo_url,
+              photoUrl: result.photo_url || state.formData.photoUrl || undefined,
               barcode: result.barcode,
               sold: result.sold,
               createdAt: result.created_at,
@@ -183,6 +184,7 @@ export function useProductFormHandlers({ state, setProducts, onSuccess, isAuthen
                 lowStockThreshold,
                 category: state.formData.category,
                 warehouseId: state.formData.warehouseId,
+                photoUrl: state.formData.photoUrl || undefined,
                 updatedAt: now,
               })
             : p
@@ -206,6 +208,7 @@ export function useProductFormHandlers({ state, setProducts, onSuccess, isAuthen
           lowStockThreshold,
           category: state.formData.category,
           warehouseId: state.formData.warehouseId,
+          photoUrl: state.formData.photoUrl || undefined,
           createdAt: now,
           updatedAt: now,
         };
