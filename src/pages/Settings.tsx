@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 export default function Settings() {
   const { currency, locale, navPosition = "bottom", updateSettings } = useSettings();
   const { changeLocale } = useLocale();
+  const isFr = locale === "fr";
   const t = translations[locale as keyof typeof translations];
   const [newCurrency, setNewCurrency] = useState("");
   const [newLocale, setNewLocale] = useState("");
@@ -46,8 +47,8 @@ export default function Settings() {
     });
     changeLocale(newLocale as "ar" | "fr");
     toast({
-      title: t.settingsSaved || "تم تحديث الإعدادات",
-      description: "تم حفظ الإعدادات بنجاح.",
+      title: isFr ? "Paramètres mis à jour" : (t.settingsSaved || "تم تحديث الإعدادات"),
+      description: isFr ? "Les paramètres ont été enregistrés avec succès." : "تم حفظ الإعدادات بنجاح.",
     });
   };
 
@@ -58,21 +59,21 @@ export default function Settings() {
       <Tabs defaultValue="general" className="space-y-6">
         <div className="overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible">
           <TabsList className="flex w-max min-w-full md:grid md:grid-cols-7 h-auto p-1">
-            <TabsTrigger value="general" className="px-4 py-2">الإعدادات العامة</TabsTrigger>
-            <TabsTrigger value="account" className="px-4 py-2">الحساب</TabsTrigger>
-            <TabsTrigger value="company" className="px-4 py-2">الشركة</TabsTrigger>
-            <TabsTrigger value="print" className="px-4 py-2">الطباعة</TabsTrigger>
-            <TabsTrigger value="currencies" className="px-4 py-2">العملات</TabsTrigger>
-            <TabsTrigger value="payments" className="px-4 py-2">طرق الدفع</TabsTrigger>
-            <TabsTrigger value="backup" className="px-4 py-2">النسخ الاحتياطية</TabsTrigger>
-            <TabsTrigger value="cloud" className="px-4 py-2">السحابة</TabsTrigger>
+            <TabsTrigger value="general" className="px-4 py-2">{isFr ? "Général" : "الإعدادات العامة"}</TabsTrigger>
+            <TabsTrigger value="account" className="px-4 py-2">{isFr ? "Compte" : "الحساب"}</TabsTrigger>
+            <TabsTrigger value="company" className="px-4 py-2">{isFr ? "Entreprise" : "الشركة"}</TabsTrigger>
+            <TabsTrigger value="print" className="px-4 py-2">{isFr ? "Impression" : "الطباعة"}</TabsTrigger>
+            <TabsTrigger value="currencies" className="px-4 py-2">{isFr ? "Devises" : "العملات"}</TabsTrigger>
+            <TabsTrigger value="payments" className="px-4 py-2">{isFr ? "Moyens de paiement" : "طرق الدفع"}</TabsTrigger>
+            <TabsTrigger value="backup" className="px-4 py-2">{isFr ? "Sauvegardes" : "النسخ الاحتياطية"}</TabsTrigger>
+            <TabsTrigger value="cloud" className="px-4 py-2">{isFr ? "Cloud" : "السحابة"}</TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent value="general">
           <Card>
             <CardHeader>
-              <CardTitle>الإعدادات العامة</CardTitle>
+              <CardTitle>{isFr ? "Paramètres généraux" : "الإعدادات العامة"}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="grid gap-2">
@@ -87,11 +88,11 @@ export default function Settings() {
                 <Label htmlFor="locale">{t.language}</Label>
                 <Select value={newLocale} onValueChange={(value) => setNewLocale(value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="اختر اللغة" />
+                    <SelectValue placeholder={isFr ? "Sélectionner la langue" : "اختر اللغة"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ar">العربية</SelectItem>
-                    <SelectItem value="fr">الفرنسية</SelectItem>
+                    <SelectItem value="ar">{isFr ? "Arabe (العربية)" : "العربية"}</SelectItem>
+                    <SelectItem value="fr">{isFr ? "Français (الفرنسية)" : "الفرنسية"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -139,26 +140,28 @@ export default function Settings() {
                 </div>
               </div>
 
-              <Button onClick={handleSaveSettings}>حفظ الإعدادات</Button>
+              <Button onClick={handleSaveSettings}>{isFr ? "Enregistrer les paramètres" : "حفظ الإعدادات"}</Button>
 
               {/* Push Notifications Toggle */}
               {isSupported() && (
                 <div className="mt-4 pt-4 border-t">
-                  <Label className="block mb-2">إشعارات الهاتف 🔔</Label>
+                  <Label className="block mb-2">{isFr ? "Notifications mobiles 🔔" : "إشعارات الهاتف 🔔"}</Label>
                   {notifPermission === 'granted' ? (
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-green-600 font-medium">✅ الإشعارات مفعّلة</span>
+                      <span className="text-sm text-green-600 font-medium">
+                        {isFr ? "✅ Notifications activées" : "✅ الإشعارات مفعّلة"}
+                      </span>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={async () => {
                           await unsubscribe();
                           setNotifPermission('default');
-                          toast({ title: "تم إلغاء الإشعارات" });
+                          toast({ title: isFr ? "Notifications désactivées" : "تم إلغاء الإشعارات" });
                         }}
                       >
                         <BellOff className="w-4 h-4 mr-2" />
-                        إلغاء الإشعارات
+                        {isFr ? "Désactiver les notifications" : "إلغاء الإشعارات"}
                       </Button>
                     </div>
                   ) : (
@@ -167,14 +170,21 @@ export default function Settings() {
                         const success = await subscribe();
                         if (success) {
                           setNotifPermission('granted');
-                          toast({ title: "تم تفعيل الإشعارات!", description: "ستصلك إشعارات لكل عملية بيع أو دين أو نقص في المخزون." });
+                          toast({ 
+                            title: isFr ? "Notifications activées !" : "تم تفعيل الإشعارات!", 
+                            description: isFr ? "Vous recevrez des notifications pour chaque vente, dette ou rupture de stock." : "ستصلك إشعارات لكل عملية بيع أو دين أو نقص في المخزون." 
+                          });
                         } else {
-                          toast({ title: "لم يتم تفعيل الإشعارات", description: "يرجى السماح بالإشعارات من إعدادات المتصفح.", variant: "destructive" });
+                          toast({ 
+                            title: isFr ? "Échec de l'activation des notifications" : "لم يتم تفعيل الإشعارات", 
+                            description: isFr ? "Veuillez autoriser les notifications dans les paramètres de votre navigateur." : "يرجى السماح بالإشعارات من إعدادات المتصفح.", 
+                            variant: "destructive" 
+                          });
                         }
                       }}
                     >
                       <Bell className="w-4 h-4 mr-2" />
-                      تفعيل إشعارات الهاتف
+                      {isFr ? "Activer les notifications mobiles" : "تفعيل إشعارات الهاتف"}
                     </Button>
                   )}
                 </div>
@@ -198,7 +208,7 @@ export default function Settings() {
         <TabsContent value="currencies">
           <Card>
             <CardHeader>
-              <CardTitle>العملات</CardTitle>
+              <CardTitle>{isFr ? "Devises" : "العملات"}</CardTitle>
             </CardHeader>
             <CardContent>
               <CurrencyForm />
@@ -209,7 +219,7 @@ export default function Settings() {
         <TabsContent value="payments">
           <Card>
             <CardHeader>
-              <CardTitle>طرق الدفع</CardTitle>
+              <CardTitle>{isFr ? "Moyens de paiement" : "طرق الدفع"}</CardTitle>
             </CardHeader>
             <CardContent>
               <PaymentMethodForm />

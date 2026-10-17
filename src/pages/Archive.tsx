@@ -35,7 +35,8 @@ import { saveStoreData } from "@/utils/localStorage";
 import { updateInvoiceMovements, revertInvoiceMovements } from "@/utils/productMovements";
 
 export default function Archive() {
-  const { t, isRTL } = useLocale();
+  const { t, locale, isRTL } = useLocale();
+  const isFr = locale === 'fr';
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
 
@@ -140,7 +141,7 @@ export default function Archive() {
                 id: saleInvoiceId,
                 invoiceNumber: saleInvoiceNumber,
                 customerId: undefined,
-                customerName: ds.customerName || "مبيعات يومية مباشرة",
+                customerName: (ds as any).customerName || (isFr ? "Ventes directes" : "مبيعات يومية مباشرة"),
                 total: saleTotal,
                 subtotal: saleTotal,
                 discount: 0,
@@ -148,14 +149,14 @@ export default function Archive() {
                 paymentMethod: ds.paymentMethod || "cash",
                 status: "paid",
                 type: "sales",
-                notes: `مبيعات يومية - ${ds.productName || ''}`,
+                notes: isFr ? `Ventes directes - ${ds.productName || ''}` : `مبيعات يومية - ${ds.productName || ''}`,
                 date: saleDate.split("T")[0],
                 createdAt: ds.createdAt || (saleDate.includes("T") ? saleDate : `${saleDate}T12:00:00.000Z`),
                 updatedAt: new Date().toISOString(),
                 items: [
                   {
                     productId: ds.productId || "",
-                    productName: ds.productName || "منتج",
+                    productName: ds.productName || (isFr ? "Article" : "منتج"),
                     productCode: ds.productCode || "",
                     quantity: saleQty,
                     price: salePrice,
@@ -167,7 +168,7 @@ export default function Archive() {
                     productId: ds.productId || "",
                     quantity: saleQty,
                     price: salePrice,
-                    name: ds.productName || "منتج",
+                    name: ds.productName || (isFr ? "Article" : "منتج"),
                   }
                 ]
               });
@@ -193,7 +194,7 @@ export default function Archive() {
                 id: saleInvoiceId,
                 invoiceNumber: saleInvoiceNumber,
                 customerId: undefined,
-                customerName: ds.customerName || "مبيعات يومية مباشرة",
+                customerName: (ds as any).customerName || (isFr ? "Ventes directes" : "مبيعات يومية مباشرة"),
                 total: saleTotal,
                 subtotal: saleTotal,
                 discount: 0,
@@ -201,14 +202,14 @@ export default function Archive() {
                 paymentMethod: ds.paymentMethod || "cash",
                 status: "paid",
                 type: "sales",
-                notes: `مبيعات يومية - ${ds.productName || ''}`,
+                notes: isFr ? `Ventes directes - ${ds.productName || ''}` : `مبيعات يومية - ${ds.productName || ''}`,
                 date: saleDate.split("T")[0],
                 createdAt: ds.createdAt || (saleDate.includes("T") ? saleDate : `${saleDate}T12:00:00.000Z`),
                 updatedAt: new Date().toISOString(),
                 items: [
                   {
                     productId: ds.productId || "",
-                    productName: ds.productName || "منتج",
+                    productName: ds.productName || (isFr ? "Article" : "منتج"),
                     productCode: ds.productCode || "",
                     quantity: saleQty,
                     price: salePrice,
@@ -220,7 +221,7 @@ export default function Archive() {
                     productId: ds.productId || "",
                     quantity: saleQty,
                     price: salePrice,
-                    name: ds.productName || "منتج",
+                    name: ds.productName || (isFr ? "Article" : "منتج"),
                   }
                 ]
               });
@@ -297,32 +298,32 @@ export default function Archive() {
   const exportColumns = [
     {
       key: "invoiceNumber",
-      header: "رقم الفاتورة",
+      header: isFr ? "N° Facture" : "رقم الفاتورة",
     },
     {
       key: "customerName",
-      header: "العميل",
+      header: isFr ? "Client" : "العميل",
     },
     {
       key: "type",
-      header: "النوع",
+      header: isFr ? "Type" : "النوع",
       render: (invoice: any) =>
-        (invoice.type || 'sales') === 'sales' ? 'فاتورة بيع' :
-        invoice.type === 'quotation' ? 'عرض سعر' : 'فاتورة دين'
+        (invoice.type || 'sales') === 'sales' ? (isFr ? 'Facture de vente' : 'فاتورة بيع') :
+        invoice.type === 'quotation' ? (isFr ? 'Devis' : 'عرض سعر') : (isFr ? 'Facture à terme' : 'فاتورة دين')
     },
     {
       key: "items",
-      header: "المنتجات",
+      header: isFr ? "Articles" : "المنتجات",
       render: (invoice: any) => (invoice.items || []).map((item: any) => item.productName).join(", ")
     },
     {
       key: "createdAt",
-      header: "التاريخ",
+      header: isFr ? "Date" : "التاريخ",
       render: (invoice: any) => formatDate(invoice.date || invoice.createdAt)
     },
     {
       key: "total",
-      header: "المبلغ",
+      header: isFr ? "Montant" : "المبلغ",
       render: (invoice: any) => formatCurrency(invoice.total)
     }
   ];
@@ -499,22 +500,22 @@ export default function Archive() {
       case 'paid':
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-          مدفوع
+          {isFr ? "Payée" : "مدفوع"}
         </span>;
       case 'partial':
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-          جزئي
+          {isFr ? "Partielle" : "جزئي"}
         </span>;
       case 'cancelled':
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
           <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-          ملغي
+          {isFr ? "Annulée" : "ملغي"}
         </span>;
       default:
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
           <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-          قيد الانتظار
+          {isFr ? "En attente" : "قيد الانتظار"}
         </span>;
     }
   };
@@ -524,18 +525,18 @@ export default function Archive() {
     if (tVal === 'sales') {
       return <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/60">
         <Receipt size={12} />
-        {t('salesInvoice') || 'فاتورة بيع'}
+        {t('salesInvoice') || (isFr ? 'Facture de vente' : 'فاتورة بيع')}
       </span>;
     }
     if (tVal === 'quotation') {
       return <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/60">
         <FileText size={12} />
-        {t('quotationInvoice') || 'عرض سعر'}
+        {t('quotationInvoice') || (isFr ? 'Devis' : 'عرض سعر')}
       </span>;
     }
     return <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60">
       <DollarSign size={12} />
-      {t('debtInvoice') || 'فاتورة دين'}
+      {t('debtInvoice') || (isFr ? 'Facture à terme' : 'فاتورة دين')}
     </span>;
   };
 
@@ -543,7 +544,9 @@ export default function Archive() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
         <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-        <p className="text-sm font-medium text-slate-500">جاري تحميل سجل الأرشيف والبيانات...</p>
+        <p className="text-sm font-medium text-slate-500">
+          {isFr ? "Chargement des archives et des factures..." : "جاري تحميل سجل الأرشيف والبيانات..."}
+        </p>
       </div>
     );
   }
@@ -558,9 +561,13 @@ export default function Archive() {
               <FileCheck size={22} />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">سجل الأرشيف والفواتير</h1>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                {isFr ? "Archives & Factures" : "سجل الأرشيف والفواتير"}
+              </h1>
               <p className="text-xs text-slate-500">
-                استعراض وإدارة جميع الفواتير المسجلة، عروض الأسعار، والمبيعات السابقة
+                {isFr
+                  ? "Consultez et gérez toutes vos factures enregistrées, devis et historiques de ventes"
+                  : "استعراض وإدارة جميع الفواتير المسجلة، عروض الأسعار، والمبيعات السابقة"}
               </p>
             </div>
           </div>
@@ -570,7 +577,7 @@ export default function Archive() {
           <ExportActions
             data={filteredInvoices}
             filename="archived_invoices"
-            title={`الفواتير المؤرشفة - ${year === 0 ? 'كل السنوات' : year}`}
+            title={isFr ? `Factures archivées - ${year === 0 ? 'Toutes les années' : year}` : `الفواتير المؤرشفة - ${year === 0 ? 'كل السنوات' : year}`}
             columns={exportColumns}
             totals={totals}
           />
@@ -585,7 +592,9 @@ export default function Archive() {
             <FileText size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">إجمالي الفواتير</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Total des factures" : "إجمالي الفواتير"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.totalCount}</h3>
             <p className="text-[11px] font-bold text-blue-600 mt-0.5">{formatCurrency(stats.totalAmount)}</p>
           </div>
@@ -597,7 +606,9 @@ export default function Archive() {
             <TrendingUp size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">فواتير البيع المكتملة</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Factures de vente" : "فواتير البيع المكتملة"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.salesCount}</h3>
             <p className="text-[11px] font-bold text-emerald-600 mt-0.5">{formatCurrency(stats.salesAmount)}</p>
           </div>
@@ -609,7 +620,9 @@ export default function Archive() {
             <Receipt size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">عروض الأسعار</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Devis émis" : "عروض الأسعار"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.quotationCount}</h3>
             <p className="text-[11px] font-bold text-purple-600 mt-0.5">{formatCurrency(stats.quotationAmount)}</p>
           </div>
@@ -621,7 +634,9 @@ export default function Archive() {
             <DollarSign size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">فواتير الديون / الآجل</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Factures à terme / Dettes" : "فواتير الديون / الآجل"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.debtCount}</h3>
             <p className="text-[11px] font-bold text-amber-600 mt-0.5">{formatCurrency(stats.debtAmount)}</p>
           </div>
@@ -633,18 +648,18 @@ export default function Archive() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
           {/* Search Input */}
           <div className="md:col-span-5 relative">
-            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+            <Search className={`absolute ${isRTL ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2 text-slate-400`} size={17} />
             <input
               type="text"
-              placeholder="البحث برقم الفاتورة، اسم العميل، أو اسم المنتج..."
+              placeholder={isFr ? "Rechercher par N° facture, client ou produit..." : "البحث برقم الفاتورة، اسم العميل، أو اسم المنتج..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              className={`w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm ${isRTL ? "pl-4 pr-10" : "pr-4 pl-10"} py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all`}
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className={`absolute ${isRTL ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600`}
               >
                 <X size={15} />
               </button>
@@ -653,49 +668,51 @@ export default function Archive() {
 
           {/* Type Filter */}
           <div className="md:col-span-4 relative">
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+            <div className={`absolute ${isRTL ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 pointer-events-none text-slate-400`}>
               <Filter size={16} />
             </div>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm pr-9 pl-8 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all"
+              className={`w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm ${isRTL ? "pr-9 pl-8" : "pl-9 pr-8"} py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all`}
             >
-              <option value="all">جميع أنواع الفواتير</option>
-              <option value="sales">فواتير المبيعات فقط</option>
-              <option value="quotation">عروض الأسعار فقط</option>
-              <option value="debt">فواتير الديون فقط</option>
+              <option value="all">{isFr ? "Tous les types de factures" : "جميع أنواع الفواتير"}</option>
+              <option value="sales">{isFr ? "Factures de vente uniquement" : "فواتير المبيعات فقط"}</option>
+              <option value="quotation">{isFr ? "Devis uniquement" : "عروض الأسعار فقط"}</option>
+              <option value="debt">{isFr ? "Factures de dettes uniquement" : "فواتير الديون فقط"}</option>
             </select>
-            <ChevronDown size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+            <ChevronDown size={15} className={`absolute ${isRTL ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 pointer-events-none text-slate-400`} />
           </div>
 
           {/* Year Filter */}
           <div className="md:col-span-3 relative">
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+            <div className={`absolute ${isRTL ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 pointer-events-none text-slate-400`}>
               <Calendar size={16} />
             </div>
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm pr-9 pl-8 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all"
+              className={`w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm ${isRTL ? "pr-9 pl-8" : "pl-9 pr-8"} py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all`}
             >
-              <option value={0}>كل السنوات المالية</option>
+              <option value={0}>{isFr ? "Toutes les années fiscales" : "كل السنوات المالية"}</option>
               {Array.from({ length: 8 }, (_, i) => new Date().getFullYear() - i).map(y => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
-            <ChevronDown size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+            <ChevronDown size={15} className={`absolute ${isRTL ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 pointer-events-none text-slate-400`} />
           </div>
         </div>
 
         {/* Quick Filter Tag Buttons */}
         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
-          <span className="text-xs font-semibold text-slate-400 ml-1">تصفية سريعة:</span>
+          <span className="text-xs font-semibold text-slate-400 ml-1">
+            {isFr ? "Filtrage rapide :" : "تصفية سريعة:"}
+          </span>
           {[
-            { id: 'all', label: 'الكل' },
-            { id: 'sales', label: 'المبيعات' },
-            { id: 'quotation', label: 'عروض الأسعار' },
-            { id: 'debt', label: 'الديون' }
+            { id: 'all', label: isFr ? 'Tout' : 'الكل' },
+            { id: 'sales', label: isFr ? 'Ventes' : 'المبيعات' },
+            { id: 'quotation', label: isFr ? 'Devis' : 'عروض الأسعار' },
+            { id: 'debt', label: isFr ? 'Dettes' : 'الديون' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -710,7 +727,11 @@ export default function Archive() {
             </button>
           ))}
           <div className="mr-auto text-xs font-medium text-slate-500">
-            تم العثور على <span className="font-bold text-slate-900">{filteredInvoices.length}</span> فاتورة
+            {isFr ? (
+              <><span className="font-bold text-slate-900">{filteredInvoices.length}</span> facture(s) trouvée(s)</>
+            ) : (
+              <>تم العثور على <span className="font-bold text-slate-900">{filteredInvoices.length}</span> فاتورة</>
+            )}
           </div>
         </div>
       </div>
@@ -722,29 +743,33 @@ export default function Archive() {
             <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
               <FileText size={28} />
             </div>
-            <h3 className="text-base font-bold text-slate-800 mb-1">لا توجد فواتير مطابقة</h3>
+            <h3 className="text-base font-bold text-slate-800 mb-1">
+              {isFr ? "Aucune facture correspondante" : "لا توجد فواتير مطابقة"}
+            </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              لم نعثر على أي فواتير أو عروض أسعار تطابق معايير البحث والفلترة المحددة.
+              {isFr
+                ? "Aucune facture ou devis ne correspond aux critères de recherche et filtrage sélectionnés."
+                : "لم نعثر على أي فواتير أو عروض أسعار تطابق معايير البحث والفلترة المحددة."}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse">
+            <table className={`w-full ${isRTL ? "text-right" : "text-left"} border-collapse`}>
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">رقم الفاتورة والنوع</th>
-                  <th className="py-3.5 px-4">العميل</th>
-                  <th className="py-3.5 px-4">المنتجات المباعة</th>
-                  <th className="py-3.5 px-4">تاريخ الإصدار</th>
-                  <th className="py-3.5 px-4">الحالة والدفع</th>
-                  <th className="py-3.5 px-4 text-left">المبلغ الإجمالي</th>
-                  <th className="py-3.5 px-4 text-center">الإجراءات</th>
+                  <th className="py-3.5 px-4">{isFr ? "N° Facture & Type" : "رقم الفاتورة والنوع"}</th>
+                  <th className="py-3.5 px-4">{isFr ? "Client" : "العميل"}</th>
+                  <th className="py-3.5 px-4">{isFr ? "Articles vendus" : "المنتجات المباعة"}</th>
+                  <th className="py-3.5 px-4">{isFr ? "Date d'émission" : "تاريخ الإصدار"}</th>
+                  <th className="py-3.5 px-4">{isFr ? "Statut & Paiement" : "الحالة والدفع"}</th>
+                  <th className={`py-3.5 px-4 ${isRTL ? "text-left" : "text-right"}`}>{isFr ? "Montant total" : "المبلغ الإجمالي"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Actions" : "الإجراءات"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
                 {filteredInvoices.map((invoice) => {
                   const itemsList = invoice.items || [];
-                  const itemsSummary = itemsList.map(it => it.productName).filter(Boolean).join("، ") || "بدون منتجات محددة";
+                  const itemsSummary = itemsList.map(it => it.productName).filter(Boolean).join("، ") || (isFr ? "Aucun article spécifié" : "بدون منتجات محددة");
                   const totalItemsQty = itemsList.reduce((acc, it) => acc + (Number(it.quantity) || 1), 0);
 
                   return (
@@ -769,7 +794,7 @@ export default function Archive() {
                             <User size={14} />
                           </div>
                           <div>
-                            <span className="font-bold text-slate-900 block">{invoice.customerName || "عميل عام"}</span>
+                            <span className="font-bold text-slate-900 block">{invoice.customerName || (isFr ? "Client divers" : "عميل عام")}</span>
                             {invoice.notes && (
                               <span className="text-[11px] text-slate-400 block truncate max-w-[180px]">{invoice.notes}</span>
                             )}
@@ -785,7 +810,7 @@ export default function Archive() {
                           </p>
                           <span className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
                             <Package size={11} />
-                            {itemsList.length} أصناف ({totalItemsQty} قطعة)
+                            {itemsList.length} {isFr ? "articles" : "أصناف"} ({totalItemsQty} {isFr ? "unités" : "قطعة"})
                           </span>
                         </div>
                       </td>
@@ -807,14 +832,14 @@ export default function Archive() {
                         <div className="flex flex-col gap-1 items-start">
                           {getStatusBadge(invoice.status || 'paid')}
                           <span className="text-[11px] font-medium text-slate-500">
-                            {invoice.paymentMethod === 'bank' ? 'تحويل بنكي' :
-                             invoice.paymentMethod === 'check' ? 'شيك بنكي' : 'نقداً'}
+                            {invoice.paymentMethod === 'bank' ? (isFr ? 'Virement bancaire' : 'تحويل بنكي') :
+                             invoice.paymentMethod === 'check' ? (isFr ? 'Chèque' : 'شيك بنكي') : (isFr ? 'Espèces' : 'نقداً')}
                           </span>
                         </div>
                       </td>
 
                       {/* Total Amount */}
-                      <td className="py-3.5 px-4 text-left">
+                      <td className={`py-3.5 px-4 ${isRTL ? "text-left" : "text-right"}`}>
                         <span className="font-black text-slate-900 text-base font-sans block">
                           {formatCurrency(invoice.total)}
                         </span>
@@ -834,7 +859,7 @@ export default function Archive() {
                               setTimeout(() => window.print(), 100);
                             }}
                             className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="طباعة الفاتورة"
+                            title={isFr ? "Imprimer la facture" : "طباعة الفاتورة"}
                           >
                             <Printer size={16} />
                           </button>
@@ -842,7 +867,7 @@ export default function Archive() {
                           <button
                             onClick={() => handleOpenEdit(invoice)}
                             className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title="تعديل الفاتورة"
+                            title={isFr ? "Modifier la facture" : "تعديل الفاتورة"}
                           >
                             <Edit size={16} />
                           </button>
@@ -851,9 +876,9 @@ export default function Archive() {
                             <button
                               onClick={() => navigate(`/create-invoice?quoteId=${invoice.id}`)}
                               className="text-[11px] font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/60 px-2 py-1 rounded-md transition-colors"
-                              title="تحويل هذا العرض إلى فاتورة بيع مباشرة"
+                              title={isFr ? "Convertir ce devis en vente directe" : "تحويل هذا العرض إلى فاتورة بيع مباشرة"}
                             >
-                              تحويل لبيع
+                              {isFr ? "Convertir en vente" : "تحويل لبيع"}
                             </button>
                           )}
 
@@ -863,7 +888,7 @@ export default function Archive() {
                               setIsDeleteModalOpen(true);
                             }}
                             className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                            title="حذف الفاتورة"
+                            title={isFr ? "Supprimer la facture" : "حذف الفاتورة"}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -889,9 +914,11 @@ export default function Archive() {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">
-                    تعديل الفاتورة #{editingInvoice.invoiceNumber}
+                    {isFr ? `Modifier la facture #${editingInvoice.invoiceNumber}` : `تعديل الفاتورة #${editingInvoice.invoiceNumber}`}
                   </h3>
-                  <p className="text-xs text-slate-400">تحديث بيانات العميل، الأصناف وتفاصيل السعر</p>
+                  <p className="text-xs text-slate-400">
+                    {isFr ? "Mise à jour du client, des articles et des détails du montant" : "تحديث بيانات العميل، الأصناف وتفاصيل السعر"}
+                  </p>
                 </div>
               </div>
               <button
@@ -915,7 +942,7 @@ export default function Archive() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">{t("date") || "تاريخ الفاتورة"}</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">{t("date") || (isFr ? "Date de facturation" : "تاريخ الفاتورة")}</label>
                   <input
                     type="date"
                     value={editDate}
@@ -948,20 +975,20 @@ export default function Archive() {
                     className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                   >
                     <option value="cash">{t("cash")}</option>
-                    <option value="bank">{(t as any)("bank") || "تحويل بنكي"}</option>
-                    <option value="check">{(t as any)("check") || "شيك"}</option>
+                    <option value="bank">{(t as any)("bank") || (isFr ? "Virement bancaire" : "تحويل بنكي")}</option>
+                    <option value="check">{(t as any)("check") || (isFr ? "Chèque" : "شيك")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">{t("invoiceTypeLabel") || "نوع الفاتورة"}</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">{t("invoiceTypeLabel") || (isFr ? "Type de facture" : "نوع الفاتورة")}</label>
                   <select
                     value={editType}
                     onChange={(e) => setEditType(e.target.value as any)}
                     className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                   >
-                    <option value="sales">{t("salesInvoice") || "فاتورة بيع"}</option>
-                    <option value="quotation">{t("quotationInvoice") || "عرض سعر"}</option>
-                    <option value="debt">{t("debtInvoice") || "فاتورة دين"}</option>
+                    <option value="sales">{t("salesInvoice") || (isFr ? "Facture de vente" : "فاتورة بيع")}</option>
+                    <option value="quotation">{t("quotationInvoice") || (isFr ? "Devis" : "عرض سعر")}</option>
+                    <option value="debt">{t("debtInvoice") || (isFr ? "Facture à terme" : "فاتورة دين")}</option>
                   </select>
                 </div>
               </div>
@@ -969,8 +996,10 @@ export default function Archive() {
               {/* Items editing table */}
               <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
                 <div className="bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 border-b border-slate-200 flex justify-between items-center">
-                  <span>{t("noteItems")} ({editItems.length})</span>
-                  <span className="text-[11px] text-slate-400">الكمية × السعر = الإجمالي</span>
+                  <span>{isFr ? "Articles" : t("noteItems")} ({editItems.length})</span>
+                  <span className="text-[11px] text-slate-400">
+                    {isFr ? "Qté × Prix = Total" : "الكمية × السعر = الإجمالي"}
+                  </span>
                 </div>
                 <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
                   {editItems.map((item, idx) => (
@@ -984,7 +1013,7 @@ export default function Archive() {
                             setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, productName: val } : it));
                           }}
                           className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 font-medium"
-                          placeholder="اسم المنتج"
+                          placeholder={isFr ? "Nom de l'article" : "اسم المنتج"}
                         />
                       </div>
                       <div className="col-span-3">
@@ -998,7 +1027,7 @@ export default function Archive() {
                             setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: qty, total: qty * it.price } : it));
                           }}
                           className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 font-sans"
-                          placeholder="الكمية"
+                          placeholder={isFr ? "Quantité" : "الكمية"}
                         />
                       </div>
                       <div className="col-span-3">
@@ -1012,7 +1041,7 @@ export default function Archive() {
                             setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, price: pr, total: pr * it.quantity } : it));
                           }}
                           className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 font-sans"
-                          placeholder="السعر"
+                          placeholder={isFr ? "Prix" : "السعر"}
                         />
                       </div>
                       <div className="col-span-1 text-center">
@@ -1028,7 +1057,9 @@ export default function Archive() {
                   ))}
                 </div>
                 <div className="bg-emerald-50 px-4 py-3 flex justify-between items-center border-t border-emerald-100 text-xs">
-                  <span className="font-bold text-emerald-800">المجموع النهائي المعدل:</span>
+                  <span className="font-bold text-emerald-800">
+                    {isFr ? "Total révisé :" : "المجموع النهائي المعدل:"}
+                  </span>
                   <span className="font-black text-emerald-700 text-base font-sans">
                     {formatCurrency(editItems.reduce((acc, it) => acc + (it.total || 0), 0))}
                   </span>
@@ -1037,7 +1068,9 @@ export default function Archive() {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">ملاحظات الفاتورة</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  {isFr ? "Notes de la facture" : "ملاحظات الفاتورة"}
+                </label>
                 <textarea
                   rows={2}
                   value={editNotes}
@@ -1059,7 +1092,7 @@ export default function Archive() {
                 className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20 transition-all"
               >
                 <CheckCircle size={16} />
-                <span>{t("saveEdits")}</span>
+                <span>{isFr ? "Enregistrer" : t("saveEdits")}</span>
               </button>
             </div>
           </div>
@@ -1075,7 +1108,9 @@ export default function Archive() {
             </div>
             <h3 className="text-lg font-black text-slate-900">{t("confirmDeleteInvoice")}</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              {t("confirmDeleteInvoiceMsg")} "<span className="font-bold text-slate-800">#{invoiceToDelete.invoiceNumber}</span>" للعميل {invoiceToDelete.customerName}؟ سيتم إلغاء الحركات وإرجاع المخزون المخصوم تلقائياً.
+              {isFr
+                ? `Êtes-vous sûr de vouloir supprimer définitivement la facture "#${invoiceToDelete.invoiceNumber}" du client ${invoiceToDelete.customerName} ? Les mouvements de stock seront annulés et les articles réintégrés automatiquement.`
+                : `${t("confirmDeleteInvoiceMsg")} "#${invoiceToDelete.invoiceNumber}" للعميل ${invoiceToDelete.customerName}؟ سيتم إلغاء الحركات وإرجاع المخزون المخصوم تلقائياً.`}
             </p>
             <div className="flex gap-3 pt-2">
               <button

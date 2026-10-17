@@ -20,6 +20,7 @@ import type { Debtor } from "@/types";
 import ExportActions from "@/components/shared/ExportActions";
 import { Badge } from "@/components/ui/badge";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useLocale } from "@/hooks/useLocale";
 
 interface DebtorsListProps {
   debtors: Debtor[];
@@ -31,6 +32,9 @@ interface DebtorsListProps {
 }
 
 const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setDeleteId }: DebtorsListProps) => {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const { sendNotification } = usePushNotifications();
 
@@ -107,29 +111,29 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
   const groupedDebtorsArray = Object.values(groupedDebtors);
 
   const exportColumns = [
-    { key: 'name', header: 'اسم المدين' },
-    { key: 'phone', header: 'الهاتف' },
+    { key: 'name', header: isFr ? 'Nom du débiteur' : 'اسم المدين' },
+    { key: 'phone', header: isFr ? 'Téléphone' : 'الهاتف' },
     {
       key: 'productsCount',
-      header: 'عدد المنتجات',
+      header: isFr ? 'Nombre de produits' : 'عدد المنتجات',
       render: (debtor: Debtor) => String(Array.isArray(debtor.products) ? debtor.products.length : 1)
     },
     {
       key: 'totalAmount',
-      header: 'المبلغ المتبقي',
+      header: isFr ? 'Montant restant' : 'المبلغ المتبقي',
       render: (debtor: Debtor) => formatCurrency(debtor.totalAmount || debtor.amount || 0)
     },
     {
       key: 'status',
-      header: 'الحالة',
-      render: (debtor: Debtor) => debtor.status === 'paid' ? 'تم التسديد' : 'قيد الانتظار'
+      header: isFr ? 'Statut' : 'الحالة',
+      render: (debtor: Debtor) => debtor.status === 'paid' ? (isFr ? 'Payé' : 'تم التسديد') : (isFr ? 'En attente' : 'قيد الانتظار')
     },
     {
       key: 'date',
-      header: 'التاريخ',
+      header: isFr ? 'Date' : 'التاريخ',
       render: (debtor: Debtor) => formatDate(debtor.date)
     },
-    { key: 'notes', header: 'ملاحظات' }
+    { key: 'notes', header: isFr ? 'Notes' : 'ملاحظات' }
   ];
 
   return (
@@ -138,12 +142,12 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
-            قائمة المديونين
+            {isFr ? "Liste des débiteurs" : "قائمة المديونين"}
           </CardTitle>
           <ExportActions
             data={debtors}
-            filename="المديونين"
-            title="قائمة المديونين"
+            filename={isFr ? "debiteurs" : "المديونين"}
+            title={isFr ? "Liste des débiteurs" : "قائمة المديونين"}
             columns={exportColumns}
           />
         </div>
@@ -152,7 +156,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
         {groupedDebtorsArray.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>لا توجد مديونين مسجلين حتى الآن</p>
+            <p>{isFr ? "Aucun débiteur enregistré pour le moment" : "لا توجد مديونين مسجلين حتى الآن"}</p>
           </div>
         ) : (
           <div className="grid gap-4">
@@ -184,7 +188,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                             </CardTitle>
                             {debtor.totalAmount === 0 && (
                               <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200">
-                                تم تسديد الكل
+                                {isFr ? "Tout est payé" : "تم تسديد الكل"}
                               </Badge>
                             )}
                           </div>
@@ -208,30 +212,30 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                               status: tx.status
                             }))
                           )}
-                          filename={`المدين_${debtor.name}`}
-                          title={`نشاطات المدين: ${debtor.name}`}
+                          filename={isFr ? `debiteur_${debtor.name}` : `المدين_${debtor.name}`}
+                          title={isFr ? `Activités du débiteur: ${debtor.name}` : `نشاطات المدين: ${debtor.name}`}
                           columns={[
-                            { key: 'productName', header: 'اسم المنتج' },
-                            { key: 'productCode', header: 'كود المنتج' },
-                            { key: 'quantity', header: 'الكمية' },
+                            { key: 'productName', header: isFr ? 'Nom du produit' : 'اسم المنتج' },
+                            { key: 'productCode', header: isFr ? 'Code produit' : 'كود المنتج' },
+                            { key: 'quantity', header: isFr ? 'Quantité' : 'الكمية' },
                             {
                               key: 'price',
-                              header: 'السعر',
+                              header: isFr ? 'Prix' : 'السعر',
                               render: (item: any) => formatCurrency(item.price)
                             },
                             {
                               key: 'total',
-                              header: 'الإجمالي',
+                              header: isFr ? 'Total' : 'الإجمالي',
                               render: (item: any) => formatCurrency(item.total)
                             },
                             {
                               key: 'status',
-                              header: 'الحالة',
-                              render: (item: any) => item.status === 'paid' ? 'تم التسديد' : 'قيد الانتظار'
+                              header: isFr ? 'Statut' : 'الحالة',
+                              render: (item: any) => item.status === 'paid' ? (isFr ? 'Payé' : 'تم التسديد') : (isFr ? 'En attente' : 'قيد الانتظار')
                             },
                             {
                               key: 'date',
-                              header: 'التاريخ',
+                              header: isFr ? 'Date' : 'التاريخ',
                               render: (item: any) => formatDate(item.date)
                             }
                           ]}
@@ -257,6 +261,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                           }}
                           className="h-8 w-8 p-0"
                           disabled={debtor.totalAmount === 0}
+                          title={isFr ? "Modifier" : "تعديل"}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -265,13 +270,15 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                           size="sm"
                           onClick={() => {
                             sendNotification(
-                              "تذكير بالدين ⏰",
-                              `تذكير: المدين ${debtor.name} عليه مبلغ ${formatCurrency(debtor.totalAmount)}`
+                              isFr ? "Rappel de dette ⏰" : "تذكير بالدين ⏰",
+                              isFr 
+                                ? `Rappel : Le débiteur ${debtor.name} doit un montant de ${formatCurrency(debtor.totalAmount)}`
+                                : `تذكير: المدين ${debtor.name} عليه مبلغ ${formatCurrency(debtor.totalAmount)}`
                             );
                           }}
                           className="h-8 w-8 p-0 text-amber-500 hover:text-amber-600"
                           disabled={debtor.totalAmount === 0}
-                          title="إرسال تذكير"
+                          title={isFr ? "Envoyer un rappel" : "إرسال تذكير"}
                         >
                           <Bell className="h-4 w-4" />
                         </Button>
@@ -280,6 +287,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                           size="sm"
                           onClick={() => setDeleteId(debtor.id)}
                           className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          title={isFr ? "Supprimer" : "حذف"}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -292,7 +300,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                       <div className="flex flex-col md:flex-row items-center gap-2 text-sm justify-center md:justify-start">
                         <Package className="h-4 w-4 text-muted-foreground" />
                         <div className="text-center md:text-right">
-                          <div className="text-xs text-muted-foreground">المنتجات</div>
+                          <div className="text-xs text-muted-foreground">{isFr ? "Produits" : "المنتجات"}</div>
                           <div className="font-semibold">{debtor.totalProducts}</div>
                         </div>
                       </div>
@@ -300,7 +308,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                       <div className="flex flex-col md:flex-row items-center gap-2 text-sm justify-center md:justify-start">
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                         <div className="text-center md:text-right">
-                          <div className="text-xs text-muted-foreground">المبلغ المتبقي</div>
+                          <div className="text-xs text-muted-foreground">{isFr ? "Montant restant" : "المبلغ المتبقي"}</div>
                           <div className={`font-semibold ${debtor.totalAmount > 0 ? 'text-destructive' : 'text-green-600'}`}>
                             {formatCurrency(debtor.totalAmount)}
                           </div>
@@ -310,7 +318,7 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                       <div className="flex flex-col md:flex-row items-center gap-2 text-sm justify-center md:justify-start">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <div className="text-center md:text-right">
-                          <div className="text-xs text-muted-foreground">آخر نشاط</div>
+                          <div className="text-xs text-muted-foreground">{isFr ? "Dernière activité" : "آخر نشاط"}</div>
                           <div className="font-semibold">
                             {formatDate(debtor.date)}
                           </div>
@@ -320,9 +328,9 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
 
                     {isExpanded && (
                       <div className="border-t pt-4 mt-4">
-                        <h4 className="font-semibold mb-3 text-sm">تفاصيل النشاطات</h4>
+                        <h4 className="font-semibold mb-3 text-sm">{isFr ? "Détails des activités" : "تفاصيل النشاطات"}</h4>
                         <div className="space-y-3">
-                          {debtor.transactions.map((transaction: any, txIndex: number) => (
+                          {debtor.transactions.map((transaction: any) => (
                             <div key={transaction.id} className={`border rounded-lg p-3 ${transaction.status === 'paid' ? 'bg-green-50/50 border-green-100' : 'bg-muted/30'}`}>
                               <div className="flex justify-between items-center mb-2">
                                 <div className="flex items-center gap-3">
@@ -332,12 +340,12 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                                   {transaction.status === 'paid' ? (
                                     <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">
                                       <CheckCircle2 className="w-3 h-3 mr-1" />
-                                      تم التسديد
+                                      {isFr ? "Payé" : "تم التسديد"}
                                     </Badge>
                                   ) : (
                                     <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
                                       <Clock className="w-3 h-3 mr-1" />
-                                      قيد الانتظار
+                                      {isFr ? "En attente" : "قيد الانتظار"}
                                     </Badge>
                                   )}
                                 </div>
@@ -352,9 +360,9 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                                     className={`h-8 px-2 text-xs flex gap-1 ${transaction.status === 'paid' ? 'text-amber-600 hover:text-amber-700' : 'text-green-600 hover:text-green-700'}`}
                                   >
                                     {transaction.status === 'paid' ? (
-                                      <>إلغاء التسديد</>
+                                      <>{isFr ? "Annuler le paiement" : "إلغاء التسديد"}</>
                                     ) : (
-                                      <><CheckCircle2 className="w-3 h-3" /> تم التسديد</>
+                                      <><CheckCircle2 className="w-3 h-3" /> {isFr ? "Marquer payé" : "تم التسديد"}</>
                                     )}
                                   </Button>
                                 </div>
@@ -370,10 +378,10 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                      <span>الكمية: {product.quantity}</span>
-                                      <span>السعر: {formatCurrency(product.price)}</span>
+                                      <span>{isFr ? "Qté : " : "الكمية: "}{product.quantity}</span>
+                                      <span>{isFr ? "Prix : " : "السعر: "}{formatCurrency(product.price)}</span>
                                       <span className={`font-semibold ${transaction.status === 'paid' ? 'text-muted-foreground' : 'text-foreground'}`}>
-                                        الإجمالي: {formatCurrency(product.total)}
+                                        {isFr ? "Total : " : "الإجمالي: "}{formatCurrency(product.total)}
                                       </span>
                                     </div>
                                   </div>
@@ -385,11 +393,11 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                         <div className="mt-4 p-3 bg-primary/10 rounded-lg">
                           <div className="flex justify-between items-center gap-4">
                             <div className="flex-1">
-                              <span className="font-bold text-sm">إجمالي المبلغ المدفوع:</span>
+                              <span className="font-bold text-sm">{isFr ? "Total montant payé :" : "إجمالي المبلغ المدفوع:"}</span>
                               <span className="block text-green-600 font-bold">{formatCurrency(debtor.totalPaid)}</span>
                             </div>
                             <div className="flex-1 text-left">
-                              <span className="font-bold text-sm">المجموع المتبقي:</span>
+                              <span className="font-bold text-sm">{isFr ? "Total restant :" : "المجموع المتبقي:"}</span>
                               <span className="block text-primary text-lg font-bold">
                                 {formatCurrency(debtor.totalAmount)}
                               </span>
@@ -408,8 +416,15 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
         {deleteId && (
           <div className="fixed z-50 inset-0 flex items-center justify-center bg-black/50">
             <div className="bg-background rounded-lg shadow-xl p-6 flex flex-col gap-4 min-w-[350px] mx-4">
-              <h3 className="text-lg font-semibold text-destructive">تأكيد الحذف</h3>
-              <p className="text-muted-foreground">هل أنت متأكد من حذف جميع معاملات هذا المدين؟</p>
+              <h3 className="text-lg font-semibold text-destructive">
+                {isFr ? "Confirmer la suppression" : "تأكيد الحذف"}
+              </h3>
+              <p className="text-muted-foreground">
+                {isFr 
+                  ? "Êtes-vous sûr de vouloir supprimer toutes les transactions de ce débiteur ?" 
+                  : "هل أنت متأكد من حذف جميع معاملات هذا المدين؟"
+                }
+              </p>
               <div className="flex gap-3 justify-end">
                 <Button
                   variant="destructive"
@@ -423,10 +438,10 @@ const DebtorsList = ({ debtors, onEdit, onDelete, onToggleStatus, deleteId, setD
                     setDeleteId(null);
                   }}
                 >
-                  حذف الكل
+                  {isFr ? "Tout supprimer" : "حذف الكل"}
                 </Button>
                 <Button variant="outline" onClick={() => setDeleteId(null)}>
-                  إلغاء
+                  {isFr ? "Annuler" : "إلغاء"}
                 </Button>
               </div>
             </div>

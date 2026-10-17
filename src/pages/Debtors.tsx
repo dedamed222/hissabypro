@@ -13,6 +13,7 @@ import ProductSearch from "@/components/sales/ProductSearch";
 import { useProductSearch } from "@/hooks/useProductSearch";
 import { useToast } from "@/hooks/use-toast";
 import { getDebtors, upsertDebtor, deleteDebtor, updateDebtorStatus } from "@/lib/database";
+import { useLocale } from "@/hooks/useLocale";
 
 interface DebtorProductItem {
   productId: string;
@@ -26,6 +27,8 @@ interface DebtorProductItem {
 export default function Debtors() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
   const [formData, setFormData] = useState({
     debtorName: "",
     phone: "",
@@ -122,14 +125,18 @@ export default function Debtors() {
       }
 
       toast({
-        title: newStatus === 'paid' ? "تم التسديد" : "تمت إعادة التعيين",
-        description: newStatus === 'paid' ? "تم وضع علامة مسدد على المديونية" : "تمت إعادة المديونية إلى قائمة الانتظار"
+        title: newStatus === 'paid'
+          ? (isFr ? "Payé" : "تم التسديد")
+          : (isFr ? "Réinitialisé" : "تمت إعادة التعيين"),
+        description: newStatus === 'paid'
+          ? (isFr ? "La dette a été marquée comme payée" : "تم وضع علامة مسدد على المديونية")
+          : (isFr ? "La dette a été remise en attente" : "تمت إعادة المديونية إلى قائمة الانتظار")
       });
     } catch (err) {
       console.error("Error toggling debtor status:", err);
-      const errorMessage = err instanceof Error ? err.message : "فشل تحديث حالة المديونية";
+      const errorMessage = err instanceof Error ? err.message : (isFr ? "Échec de la mise à jour du statut de la dette" : "فشل تحديث حالة المديونية");
       toast({
-        title: "خطأ في المزامنة",
+        title: isFr ? "Erreur de synchronisation" : "خطأ في المزامنة",
         description: errorMessage,
         variant: "destructive"
       });
@@ -173,15 +180,15 @@ export default function Debtors() {
 
   const handleAddProduct = () => {
     if (!formData.productCode.trim() || !formData.productName.trim()) {
-      setError("يرجى إدخال معلومات المنتج");
+      setError(isFr ? "Veuillez saisir les informations du produit" : "يرجى إدخال معلومات المنتج");
       return;
     }
     if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
-      setError("يرجى إدخال سعر صحيح");
+      setError(isFr ? "Veuillez saisir un prix valide" : "يرجى إدخال سعر صحيح");
       return;
     }
     if (!formData.quantity || isNaN(Number(formData.quantity)) || Number(formData.quantity) <= 0) {
-      setError("يرجى إدخال كمية صحيحة");
+      setError(isFr ? "Veuillez saisir une quantité valide" : "يرجى إدخال كمية صحيحة");
       return;
     }
 
@@ -192,7 +199,7 @@ export default function Debtors() {
     const storeData = loadStoreData();
     const product = storeData.products?.find(p => p.code === formData.productCode.trim());
     if (product && product.quantity < quantity) {
-      setError(`الكمية المتاحة في المخزون: ${product.quantity} فقط`);
+      setError(isFr ? `Quantité disponible en stock : ${product.quantity} seulement` : `الكمية المتاحة في المخزون: ${product.quantity} فقط`);
       return;
     }
     
@@ -228,15 +235,15 @@ export default function Debtors() {
 
   const handleSubmit = async () => {
     if (!formData.debtorName.trim()) {
-      setError("يرجى إدخال اسم المدين");
+      setError(isFr ? "Veuillez entrer le nom du débiteur" : "يرجى إدخال اسم المدين");
       return;
     }
     if (!formData.phone.trim()) {
-      setError("يرجى إدخال رقم الهاتف");
+      setError(isFr ? "Veuillez entrer le numéro de téléphone" : "يرجى إدخال رقم الهاتف");
       return;
     }
     if (selectedProducts.length === 0) {
-      setError("يرجى إضافة منتج واحد على الأقل");
+      setError(isFr ? "Veuillez ajouter au moins un produit" : "يرجى إضافة منتج واحد على الأقل");
       return;
     }
 
@@ -254,7 +261,7 @@ export default function Debtors() {
         if (debtorProduct) {
           const newQuantity = product.quantity - debtorProduct.quantity;
           if (newQuantity < 0) {
-            throw new Error(`الكمية المتاحة للمنتج "${product.name}" غير كافية`);
+            throw new Error(isFr ? `Quantité insuffisante pour le produit "${product.name}"` : `الكمية المتاحة للمنتج "${product.name}" غير كافية`);
           }
           return {
             ...product,
@@ -306,8 +313,8 @@ export default function Debtors() {
       // -------------------------------------
 
       toast({
-        title: "تم بنجاح",
-        description: "تمت إضافة المدين وتحديث المخزون بنجاح"
+        title: isFr ? "Ajouté avec succès" : "تم بنجاح",
+        description: isFr ? "Le débiteur a été ajouté et le stock mis à jour" : "تمت إضافة المدين وتحديث المخزون بنجاح"
       });
 
       // Reset form
@@ -324,10 +331,10 @@ export default function Debtors() {
       setSelectedCustomer(null);
     } catch (err) {
       console.error("Error adding debtor:", err);
-      const errorMessage = err instanceof Error ? err.message : "حدث خطأ أثناء إضافة المدين";
+      const errorMessage = err instanceof Error ? err.message : (isFr ? "Une erreur est survenue lors de l'ajout de la dette" : "حدث خطأ أثناء إضافة المدين");
       setError(errorMessage);
       toast({
-        title: "خطأ",
+        title: isFr ? "Erreur" : "خطأ",
         description: errorMessage,
         variant: "destructive"
       });
@@ -372,7 +379,7 @@ export default function Debtors() {
 
   const handleEditSubmit = (id: string) => {
     if (!editForm.debtorName.trim() || !editForm.phone.trim() || editProducts.length === 0) {
-      setError("يرجى إدخال بيانات صحيحة عند التعديل");
+      setError(isFr ? "Veuillez saisir des données valides pour la modification" : "يرجى إدخال بيانات صحيحة عند التعديل");
       return;
     }
 
@@ -473,8 +480,8 @@ export default function Debtors() {
     }
 
     toast({
-      title: "تم الحذف",
-      description: "تم حذف المديونية واسترجاع المنتجات للمخزون"
+      title: isFr ? "Supprimé" : "تم الحذف",
+      description: isFr ? "La dette a été supprimée et les produits restitués au stock" : "تم حذف المديونية واسترجاع المنتجات للمخزون"
     });
 
     setDeleteId(null);
@@ -489,14 +496,14 @@ export default function Debtors() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <User className="w-6 h-6" />
-          إدارة المديونين
+          {isFr ? "Gestion des Débiteurs" : "إدارة المديونين"}
         </h1>
         <Button
           onClick={() => navigate("/debtors/overview")}
           className="flex items-center gap-2"
         >
           <BarChart3 className="w-4 h-4" />
-          الملخص الشامل
+          {isFr ? "Vue d'ensemble" : "الملخص الشامل"}
         </Button>
       </div>
 
@@ -506,7 +513,7 @@ export default function Debtors() {
           <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              المديونين الحاليين
+              {isFr ? "Débiteurs actuels" : "المديونين الحاليين"}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
@@ -532,7 +539,7 @@ export default function Debtors() {
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
-            إضافة مدين جديد
+            {isFr ? "Ajouter un nouveau débiteur" : "إضافة مدين جديد"}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -547,7 +554,7 @@ export default function Debtors() {
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <User className="w-5 h-5" />
-                بيانات المدين
+                {isFr ? "Informations du débiteur" : "بيانات المدين"}
               </h3>
               <CustomerSelector
                 selectedCustomer={selectedCustomer}
@@ -556,29 +563,29 @@ export default function Debtors() {
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
-                  <label className="block mb-2 font-medium">اسم المدين</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Nom du débiteur" : "اسم المدين"}</label>
                   <Input 
                     value={formData.debtorName} 
                     onChange={e => setFormData({...formData, debtorName: e.target.value})} 
-                    placeholder="أدخل اسم المدين أو اختر من القائمة" 
+                    placeholder={isFr ? "Saisir le nom ou choisir dans la liste" : "أدخل اسم المدين أو اختر من القائمة"} 
                     className="focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-medium">رقم الهاتف</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Téléphone" : "رقم الهاتف"}</label>
                   <Input 
                     value={formData.phone} 
                     onChange={e => setFormData({...formData, phone: e.target.value})} 
-                    placeholder="رقم الهاتف" 
+                    placeholder={isFr ? "Numéro de téléphone" : "رقم الهاتف"} 
                     className="focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block mb-2 font-medium">ملاحظات</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Notes" : "ملاحظات"}</label>
                   <Input 
                     value={formData.notes} 
                     onChange={e => setFormData({...formData, notes: e.target.value})} 
-                    placeholder="ملاحظات إضافية (اختياري)" 
+                    placeholder={isFr ? "Notes supplémentaires (facultatif)" : "ملاحظات إضافية (اختياري)"} 
                     className="focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -589,11 +596,11 @@ export default function Debtors() {
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <Package className="w-5 h-5" />
-                معلومات المنتج
+                {isFr ? "Informations sur le produit" : "معلومات المنتج"}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
-                  <label className="block mb-2 font-medium">رمز المنتج</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Code produit" : "رمز المنتج"}</label>
                   <Input 
                     value={formData.productCode} 
                     onChange={e => {
@@ -602,7 +609,7 @@ export default function Debtors() {
                       setShowProductSearch(true);
                     }}
                     onFocus={() => setShowProductSearch(true)}
-                    placeholder="أدخل رمز المنتج أو ابحث" 
+                    placeholder={isFr ? "Saisir le code produit ou chercher" : "أدخل رمز المنتج أو ابحث"} 
                     className="focus:ring-2 focus:ring-blue-500"
                   />
                   <ProductSearch
@@ -614,26 +621,26 @@ export default function Debtors() {
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-medium">اسم المنتج</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Nom du produit" : "اسم المنتج"}</label>
                   <Input 
                     value={formData.productName} 
                     onChange={e => setFormData({...formData, productName: e.target.value})} 
-                    placeholder="اسم المنتج" 
+                    placeholder={isFr ? "Nom du produit" : "اسم المنتج"} 
                     className="focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-medium">الكمية</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Quantité" : "الكمية"}</label>
                   <Input 
                     type="number" 
                     value={formData.quantity} 
                     onChange={e => setFormData({...formData, quantity: e.target.value})} 
-                    placeholder="الكمية" 
+                    placeholder={isFr ? "Quantité" : "الكمية"} 
                     className="focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-medium">سعر الوحدة</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Prix unitaire" : "سعر الوحدة"}</label>
                   <Input 
                     type="number" 
                     value={formData.price} 
@@ -649,33 +656,33 @@ export default function Debtors() {
                 className="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                إضافة منتج
+                {isFr ? "Ajouter un produit" : "إضافة منتج"}
               </Button>
             </div>
 
             {/* Selected Products Display */}
             {selectedProducts.length > 0 && (
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold mb-3">المنتجات المحددة</h3>
+                <h3 className="text-lg font-semibold mb-3">{isFr ? "Produits sélectionnés" : "المنتجات المحددة"}</h3>
                 <div className="space-y-2">
                   {selectedProducts.map((product, index) => (
                     <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border">
                       <div className="flex-1">
                         <div className="font-medium">{product.productName}</div>
                         <div className="text-sm text-gray-600">
-                          الرمز: {product.productCode} | الكمية: {product.quantity} | السعر: {product.price}
+                          {isFr ? "Code" : "الرمز"}: {product.productCode} | {isFr ? "Qté" : "الكمية"}: {product.quantity} | {isFr ? "Prix" : "السعر"}: {product.price}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-green-600">
-                          {(product.total).toFixed(2)} د.ج
+                          {(product.total).toFixed(2)} {isFr ? "DZD" : "د.ج"}
                         </span>
                         <Button
                           size="sm"
                           variant="destructive"
                           onClick={() => handleRemoveProduct(index)}
                         >
-                          حذف
+                          {isFr ? "Supprimer" : "حذف"}
                         </Button>
                       </div>
                     </div>
@@ -683,9 +690,9 @@ export default function Debtors() {
                 </div>
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold">المجموع الكلي:</span>
+                    <span className="font-semibold">{isFr ? "Total :" : "المجموع الكلي:"}</span>
                     <span className="text-xl font-bold text-blue-600">
-                      {selectedProducts.reduce((sum, item) => sum + item.total, 0).toFixed(2)} د.ج
+                      {selectedProducts.reduce((sum, item) => sum + item.total, 0).toFixed(2)} {isFr ? "DZD" : "د.ج"}
                     </span>
                   </div>
                 </div>
@@ -698,7 +705,7 @@ export default function Debtors() {
               className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
             >
               <Plus className="mr-2" size={18} />
-              {loading ? "جاري الإضافة..." : "إضافة مدين"}
+              {loading ? (isFr ? "Ajout en cours..." : "جاري الإضافة...") : (isFr ? "Ajouter un débiteur" : "إضافة مدين")}
             </Button>
           </div>
         </CardContent>
@@ -720,7 +727,7 @@ export default function Debtors() {
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              تعديل بيانات المدين
+              {isFr ? "Modifier les données du débiteur" : "تعديل بيانات المدين"}
             </h3>
             
             <div className="space-y-4">
@@ -732,27 +739,27 @@ export default function Debtors() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-2 font-medium">اسم المدين</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Nom du débiteur" : "اسم المدين"}</label>
                   <Input 
                     value={editForm.debtorName} 
                     onChange={e => setEditForm(prev => ({...prev, debtorName: e.target.value}))} 
-                    placeholder="اسم المدين"
+                    placeholder={isFr ? "Nom du débiteur" : "اسم المدين"}
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-medium">رقم الهاتف</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Téléphone" : "رقم الهاتف"}</label>
                   <Input 
                     value={editForm.phone} 
                     onChange={e => setEditForm(prev => ({...prev, phone: e.target.value}))} 
-                    placeholder="رقم الهاتف"
+                    placeholder={isFr ? "Numéro de téléphone" : "رقم الهاتف"}
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block mb-2 font-medium">ملاحظات</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Notes" : "ملاحظات"}</label>
                   <Input 
                     value={editForm.notes} 
                     onChange={e => setEditForm(prev => ({...prev, notes: e.target.value}))} 
-                    placeholder="ملاحظات إضافية"
+                    placeholder={isFr ? "Notes supplémentaires" : "ملاحظات إضافية"}
                   />
                 </div>
               </div>
@@ -769,10 +776,10 @@ export default function Debtors() {
                 onClick={() => handleEditSubmit(editId)} 
                 className="bg-green-600 hover:bg-green-700"
               >
-                حفظ التعديلات
+                {isFr ? "Enregistrer les modifications" : "حفظ التعديلات"}
               </Button>
               <Button variant="outline" onClick={() => setEditId(null)}>
-                إلغاء
+                {isFr ? "Annuler" : "إلغاء"}
               </Button>
             </div>
           </div>

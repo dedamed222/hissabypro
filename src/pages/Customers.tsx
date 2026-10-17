@@ -9,8 +9,11 @@ import {
 import { getCustomers, upsertCustomer, deleteCustomer } from "@/lib/database";
 import { useDropzone } from "react-dropzone";
 import CustomerPurchasedProductsModal from "@/components/customers/CustomerPurchasedProductsModal";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function Customers() {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,7 +64,7 @@ export default function Customers() {
       setMovements(store.productMovements || []);
     } catch (err) {
       console.error("Error loading customers:", err);
-      setError("فشل تحميل البيانات من السحابة");
+      setError(isFr ? "Échec du chargement des données" : "فشل تحميل البيانات من السحابة");
     } finally {
       setLoading(false);
     }
@@ -74,11 +77,14 @@ export default function Customers() {
   const handleMigrate = async () => {
     const storeData = loadStoreData();
     if (storeData.customers.length === 0) {
-      alert("لا توجد بيانات محلية لترحيلها");
+      alert(isFr ? "Aucune donnée locale à migrer" : "لا توجد بيانات محلية لترحيلها");
       return;
     }
 
-    if (!confirm(`هل تريد ترحيل ${storeData.customers.length} عميل من الجهاز إلى السحابة؟`)) {
+    if (!confirm(isFr
+      ? `Voulez-vous migrer ${storeData.customers.length} client(s) vers le cloud ?`
+      : `هل تريد ترحيل ${storeData.customers.length} عميل من الجهاز إلى السحابة؟`
+    )) {
       return;
     }
 
@@ -94,11 +100,11 @@ export default function Customers() {
           notes: customer.notes
         });
       }
-      alert("تم ترحيل البيانات بنجاح");
+      alert(isFr ? "Migration des données réussie" : "تم ترحيل البيانات بنجاح");
       loadData();
     } catch (err) {
       console.error("Migration error:", err);
-      setError("حدث خطأ أثناء ترحيل البيانات");
+      setError(isFr ? "Erreur lors de la migration des données" : "حدث خطأ أثناء ترحيل البيانات");
     } finally {
       setLoading(false);
     }
@@ -182,7 +188,7 @@ export default function Customers() {
 
     // Validate form
     if (!formData.name.trim()) {
-      setError("يرجى إدخال اسم العميل");
+      setError(isFr ? "Veuillez saisir le nom du client" : "يرجى إدخال اسم العميل");
       return;
     }
 
@@ -213,7 +219,7 @@ export default function Customers() {
       setSelectedCustomer(null);
     } catch (err) {
       console.error("Error saving customer:", err);
-      setError("حدث خطأ أثناء حفظ بيانات العميل في السحابة");
+      setError(isFr ? "Erreur lors de la sauvegarde du client" : "حدث خطأ أثناء حفظ بيانات العميل في السحابة");
     } finally {
       setLoading(false);
     }
@@ -234,7 +240,7 @@ export default function Customers() {
       setSelectedCustomer(null);
     } catch (err) {
       console.error("Error deleting customer:", err);
-      setError("حدث خطأ أثناء حذف العميل من السحابة");
+      setError(isFr ? "Erreur lors de la suppression du client" : "حدث خطأ أثناء حذف العميل من السحابة");
     } finally {
       setLoading(false);
     }
@@ -243,12 +249,12 @@ export default function Customers() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">إدارة العملاء</h1>
+        <h1 className="text-2xl font-bold">{isFr ? "Gestion des Clients" : "إدارة العملاء"}</h1>
 
         <div className="flex items-center gap-3">
           <button
             onClick={handleMigrate}
-            title="ترحيل البيانات المحلية"
+            title={isFr ? "Migrer les données locales" : "ترحيل البيانات المحلية"}
             className="p-2 text-arab-blue hover:bg-blue-50 rounded-full transition-colors"
           >
             <Download size={20} />
@@ -258,7 +264,7 @@ export default function Customers() {
             className="bg-arab-blue text-white px-4 py-2 rounded-md hover:bg-arab-blue-dark transition-colors flex items-center gap-2"
           >
             <Plus size={18} />
-            <span>إضافة عميل</span>
+            <span>{isFr ? "Ajouter un client" : "إضافة عميل"}</span>
           </button>
         </div>
       </div>
@@ -268,7 +274,7 @@ export default function Customers() {
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
         <input
           type="text"
-          placeholder="البحث عن عميل..."
+          placeholder={isFr ? "Rechercher un client..." : "البحث عن عميل..."}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-arab-blue bg-white"
@@ -280,34 +286,34 @@ export default function Customers() {
         <table className="arab-table block md:table">
           <thead className="bg-gray-50 hidden md:table-header-group">
             <tr>
-              <th className="font-medium">الاسم</th>
-              <th className="font-medium">الشركة</th>
-              <th className="font-medium">رقم الهاتف</th>
-              <th className="font-medium">البريد الإلكتروني</th>
-              <th className="font-medium">آخر تحديث</th>
-              <th className="font-medium">الإجراءات</th>
+              <th className="font-medium">{isFr ? "Nom" : "الاسم"}</th>
+              <th className="font-medium">{isFr ? "Société" : "الشركة"}</th>
+              <th className="font-medium">{isFr ? "Téléphone" : "رقم الهاتف"}</th>
+              <th className="font-medium">{isFr ? "E-mail" : "البريد الإلكتروني"}</th>
+              <th className="font-medium">{isFr ? "Mis à jour" : "آخر تحديث"}</th>
+              <th className="font-medium">{isFr ? "Actions" : "الإجراءات"}</th>
             </tr>
           </thead>
           <tbody className="block md:table-row-group">
             {filteredCustomers.length > 0 ? (
               filteredCustomers.map((customer) => (
                 <tr key={customer.id} className="mobile-card-row">
-                  <td data-label="الاسم">
+                  <td data-label={isFr ? "Nom" : "الاسم"}>
                     <div className="font-bold md:font-normal text-gray-900 md:text-gray-700">{customer.name}</div>
                   </td>
-                  <td data-label="الشركة">
+                  <td data-label={isFr ? "Société" : "الشركة"}>
                     <div>{customer.company || "-"}</div>
                   </td>
-                  <td data-label="رقم الهاتف">
+                  <td data-label={isFr ? "Téléphone" : "رقم الهاتف"}>
                     <div dir="ltr" className="text-right">{customer.phone || "-"}</div>
                   </td>
-                  <td data-label="البريد الإلكتروني">
+                  <td data-label={isFr ? "E-mail" : "البريد الإلكتروني"}>
                     <div>{customer.email || "-"}</div>
                   </td>
-                  <td data-label="آخر تحديث">
+                  <td data-label={isFr ? "Mis à jour" : "آخر تحديث"}>
                     <div>{formatShortDate(customer.updatedAt)}</div>
                   </td>
-                  <td data-label="الإجراءات">
+                  <td data-label={isFr ? "Actions" : "الإجراءات"}>
                     <div className="flex items-center gap-1.5 justify-end">
                       <button
                         onClick={() => {
@@ -315,22 +321,22 @@ export default function Customers() {
                           setIsPurchasesModalOpen(true);
                         }}
                         className="text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs border border-purple-100"
-                        title="المنتجات المشتراة وتاريخ الأسعار"
+                        title={isFr ? "Produits achetés et historique des prix" : "المنتجات المشتراة وتاريخ الأسعار"}
                       >
                         <ShoppingBag size={15} />
-                        <span className="hidden sm:inline">المشتريات</span>
+                        <span className="hidden sm:inline">{isFr ? "Achats" : "المشتريات"}</span>
                       </button>
                       <button
                         onClick={() => handleEdit(customer)}
                         className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
-                        title="تعديل"
+                        title={isFr ? "Modifier" : "تعديل"}
                       >
                         <Edit size={18} />
                       </button>
                       <button
                         onClick={() => handleDeleteClick(customer)}
                         className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
-                        title="حذف"
+                        title={isFr ? "Supprimer" : "حذف"}
                       >
                         <Trash2 size={18} />
                       </button>
@@ -342,8 +348,8 @@ export default function Customers() {
               <tr className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
                 <td colSpan={6} className="text-center py-8 text-gray-500 block md:table-cell">
                   {searchQuery
-                    ? "لا يوجد عملاء مطابقين لبحثك"
-                    : "لا يوجد عملاء مسجلين بعد"}
+                    ? (isFr ? "Aucun client ne correspond à votre recherche" : "لا يوجد عملاء مطابقين لبحثك")
+                    : (isFr ? "Aucun client enregistré" : "لا يوجد عملاء مسجلين بعد")}
                 </td>
               </tr>
             )}
@@ -357,7 +363,9 @@ export default function Customers() {
           <div className="bg-white rounded-lg shadow-lg w-full max-w-lg">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="font-medium text-lg">
-                {selectedCustomer ? "تعديل بيانات العميل" : "إضافة عميل جديد"}
+                {selectedCustomer
+                  ? (isFr ? "Modifier le client" : "تعديل بيانات العميل")
+                  : (isFr ? "Ajouter un nouveau client" : "إضافة عميل جديد")}
               </h3>
               <button
                 onClick={() => {
@@ -366,7 +374,7 @@ export default function Customers() {
                   setSelectedCustomer(null);
                 }}
                 className="text-gray-500 hover:text-gray-700"
-                title="إغلاق"
+                title={isFr ? "Fermer" : "إغلاق"}
               >
                 <X size={20} />
               </button>
@@ -384,7 +392,7 @@ export default function Customers() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="arab-form-group">
                     <label htmlFor="name" className="arab-label">
-                      الاسم <span className="text-red-500">*</span>
+                      {isFr ? "Nom" : "الاسم"} <span className="text-red-500">*</span>
                     </label>
                     <input
                       id="name"
@@ -399,7 +407,7 @@ export default function Customers() {
 
                   <div className="arab-form-group">
                     <label htmlFor="company" className="arab-label">
-                      الشركة
+                      {isFr ? "Société" : "الشركة"}
                     </label>
                     <input
                       id="company"
@@ -415,7 +423,7 @@ export default function Customers() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="arab-form-group">
                     <label htmlFor="phone" className="arab-label">
-                      رقم الهاتف
+                      {isFr ? "Téléphone" : "رقم الهاتف"}
                     </label>
                     <input
                       id="phone"
@@ -430,7 +438,7 @@ export default function Customers() {
 
                   <div className="arab-form-group">
                     <label htmlFor="email" className="arab-label">
-                      البريد الإلكتروني
+                      {isFr ? "E-mail" : "البريد الإلكتروني"}
                     </label>
                     <input
                       id="email"
@@ -446,7 +454,7 @@ export default function Customers() {
 
                 <div className="arab-form-group">
                   <label htmlFor="address" className="arab-label">
-                    العنوان
+                    {isFr ? "Adresse" : "العنوان"}
                   </label>
                   <input
                     id="address"
@@ -460,7 +468,7 @@ export default function Customers() {
 
                 <div className="arab-form-group">
                   <label htmlFor="notes" className="arab-label">
-                    ملاحظات
+                    {isFr ? "Notes" : "ملاحظات"}
                   </label>
                   <textarea
                     id="notes"
@@ -473,7 +481,7 @@ export default function Customers() {
                 </div>
 
                 <div className="arab-form-group">
-                  <label className="arab-label">راسية العميل (اختياري)</label>
+                  <label className="arab-label">{isFr ? "En-tête du client (facultatif)" : "راسية العميل (اختياري)"}</label>
                   <div
                     onClick={() => document.getElementById('customer-letterhead-input')?.click()}
                     className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-arab-blue transition-colors"
@@ -492,7 +500,7 @@ export default function Customers() {
                     ) : (
                       <div className="text-gray-500 flex flex-col items-center gap-1">
                         <ImagePlus size={24} className="text-gray-400" />
-                        <span className="text-sm">انقر لرفع صورة الراسية</span>
+                        <span className="text-sm">{isFr ? "Cliquez pour télécharger l'en-tête" : "انقر لرفع صورة الراسية"}</span>
                         <span className="text-xs text-gray-400">PNG, JPG, PDF</span>
                       </div>
                     )}
@@ -530,7 +538,7 @@ export default function Customers() {
                       }
                     }}
                   />
-                  {letterheadUploading && <p className="text-sm text-arab-blue mt-2">جاري تحميل الصورة...</p>}
+                  {letterheadUploading && <p className="text-sm text-arab-blue mt-2">{isFr ? "Téléchargement en cours..." : "جاري تحميل الصورة..."}</p>}
                 </div>
               </div>
 
@@ -544,7 +552,7 @@ export default function Customers() {
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 >
-                  إلغاء
+                  {isFr ? "Annuler" : "إلغاء"}
                 </button>
                 <button
                   type="submit"
@@ -554,12 +562,12 @@ export default function Customers() {
                   {loading ? (
                     <>
                       <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                      <span>جاري الحفظ...</span>
+                      <span>{isFr ? "Enregistrement..." : "جاري الحفظ..."}</span>
                     </>
                   ) : (
                     <>
                       <Save size={18} />
-                      <span>حفظ</span>
+                      <span>{isFr ? "Enregistrer" : "حفظ"}</span>
                     </>
                   )}
                 </button>
@@ -574,31 +582,31 @@ export default function Customers() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
             <div className="p-4 border-b">
-              <h3 className="font-medium text-lg">تأكيد الحذف</h3>
+              <h3 className="font-medium text-lg">{isFr ? "Confirmer la suppression" : "تأكيد الحذف"}</h3>
             </div>
 
             <div className="p-4">
               <div className="flex items-center gap-3 text-amber-600 mb-4">
                 <AlertCircle size={24} />
-                <p>هل أنت متأكد من حذف هذا العميل؟</p>
+                <p>{isFr ? "Êtes-vous sûr de vouloir supprimer ce client ?" : "هل أنت متأكد من حذف هذا العميل؟"}</p>
               </div>
 
               <p className="mb-2">
-                <strong>الاسم:</strong> {selectedCustomer.name}
+                <strong>{isFr ? "Nom" : "الاسم"} :</strong> {selectedCustomer.name}
               </p>
               {selectedCustomer.company && (
                 <p className="mb-2">
-                  <strong>الشركة:</strong> {selectedCustomer.company}
+                  <strong>{isFr ? "Société" : "الشركة"} :</strong> {selectedCustomer.company}
                 </p>
               )}
               {selectedCustomer.phone && (
                 <p>
-                  <strong>رقم الهاتف:</strong> {selectedCustomer.phone}
+                  <strong>{isFr ? "Téléphone" : "رقم الهاتف"} :</strong> {selectedCustomer.phone}
                 </p>
               )}
 
               <p className="mt-4 text-red-600 text-sm">
-                لا يمكن التراجع عن هذا الإجراء.
+                {isFr ? "Cette action est irréversible." : "لا يمكن التراجع عن هذا الإجراء."}
               </p>
             </div>
 
@@ -610,7 +618,7 @@ export default function Customers() {
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
               >
-                إلغاء
+                {isFr ? "Annuler" : "إلغاء"}
               </button>
               <button
                 onClick={handleDeleteConfirm}
@@ -620,12 +628,12 @@ export default function Customers() {
                 {loading ? (
                   <>
                     <span className="inline-block h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    <span>جاري الحذف...</span>
+                    <span>{isFr ? "Suppression..." : "جاري الحذف..."}</span>
                   </>
                 ) : (
                   <>
                     <Trash2 size={18} />
-                    <span>حذف العميل</span>
+                    <span>{isFr ? "Supprimer le client" : "حذف العميل"}</span>
                   </>
                 )}
               </button>

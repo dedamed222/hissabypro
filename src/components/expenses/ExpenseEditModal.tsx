@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -7,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Expense } from "@/types";
 import { loadStoreData, saveStoreData } from "@/utils/localStorage";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/hooks/useLocale";
 
 interface ExpenseEditModalProps {
   expense: Expense | null;
@@ -16,6 +16,9 @@ interface ExpenseEditModalProps {
 }
 
 export function ExpenseEditModal({ expense, isOpen, onClose, onUpdate }: ExpenseEditModalProps) {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [description, setDescription] = useState(expense?.description || "");
   const [amount, setAmount] = useState(expense?.amount?.toString() || "");
   const [category, setCategory] = useState(expense?.category || "general");
@@ -29,8 +32,8 @@ export function ExpenseEditModal({ expense, isOpen, onClose, onUpdate }: Expense
     
     if (!description.trim()) {
       toast({
-        title: "خطأ",
-        description: "يرجى إدخال وصف المصروف",
+        title: isFr ? "Erreur" : "خطأ",
+        description: isFr ? "Veuillez entrer une description de la dépense" : "يرجى إدخال وصف المصروف",
         variant: "destructive",
       });
       return;
@@ -38,8 +41,8 @@ export function ExpenseEditModal({ expense, isOpen, onClose, onUpdate }: Expense
 
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       toast({
-        title: "خطأ",
-        description: "يرجى إدخال مبلغ صحيح",
+        title: isFr ? "Erreur" : "خطأ",
+        description: isFr ? "Veuillez entrer un montant valide" : "يرجى إدخال مبلغ صحيح",
         variant: "destructive",
       });
       return;
@@ -65,15 +68,15 @@ export function ExpenseEditModal({ expense, isOpen, onClose, onUpdate }: Expense
         onClose();
         
         toast({
-          title: "تم التحديث",
-          description: "تم تحديث المصروف بنجاح",
+          title: isFr ? "Mis à jour" : "تم التحديث",
+          description: isFr ? "La dépense a été mise à jour avec succès" : "تم تحديث المصروف بنجاح",
         });
       }
     } catch (error) {
       console.error("Error updating expense:", error);
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء تحديث المصروف",
+        title: isFr ? "Erreur" : "خطأ",
+        description: isFr ? "Une erreur est survenue lors de la mise à jour" : "حدث خطأ أثناء تحديث المصروف",
         variant: "destructive",
       });
     } finally {
@@ -85,22 +88,22 @@ export function ExpenseEditModal({ expense, isOpen, onClose, onUpdate }: Expense
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>تعديل المصروف</DialogTitle>
+          <DialogTitle>{isFr ? "Modifier la dépense" : "تعديل المصروف"}</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
           <div>
-            <Label htmlFor="description">الوصف</Label>
+            <Label htmlFor="description">{isFr ? "Description" : "الوصف"}</Label>
             <Input
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="وصف المصروف"
+              placeholder={isFr ? "Description de la dépense" : "وصف المصروف"}
             />
           </div>
           
           <div>
-            <Label htmlFor="amount">المبلغ</Label>
+            <Label htmlFor="amount">{isFr ? "Montant" : "المبلغ"}</Label>
             <Input
               id="amount"
               type="number"
@@ -111,30 +114,30 @@ export function ExpenseEditModal({ expense, isOpen, onClose, onUpdate }: Expense
           </div>
           
           <div>
-            <Label htmlFor="category">الفئة</Label>
+            <Label htmlFor="category">{isFr ? "Catégorie" : "الفئة"}</Label>
             <select
               id="category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full p-2 border rounded"
             >
-              <option value="general">عام</option>
-              <option value="utilities">مرافق</option>
-              <option value="salary">رواتب</option>
-              <option value="rent">إيجار</option>
-              <option value="supplies">مستلزمات</option>
+              <option value="general">{isFr ? "Général" : "عام"}</option>
+              <option value="utilities">{isFr ? "Services" : "مرافق"}</option>
+              <option value="salary">{isFr ? "Salaires" : "رواتب"}</option>
+              <option value="rent">{isFr ? "Loyer" : "إيجار"}</option>
+              <option value="supplies">{isFr ? "Fournitures" : "مستلزمات"}</option>
             </select>
           </div>
           
           <div>
-            <Label htmlFor="paymentMethod">طريقة الدفع</Label>
+            <Label htmlFor="paymentMethod">{isFr ? "Mode de paiement" : "طريقة الدفع"}</Label>
             <select
               id="paymentMethod"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
               className="w-full p-2 border rounded"
             >
-              <option value="cash">نقداً</option>
+              <option value="cash">{isFr ? "Espèces" : "نقداً"}</option>
               <option value="BANKILY">BANKILY</option>
               <option value="MASRVI">MASRVI</option>
               <option value="SEDAD">SEDAD</option>
@@ -146,10 +149,10 @@ export function ExpenseEditModal({ expense, isOpen, onClose, onUpdate }: Expense
           
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={onClose}>
-              إلغاء
+              {isFr ? "Annuler" : "إلغاء"}
             </Button>
             <Button onClick={handleSave} disabled={loading}>
-              {loading ? "جاري الحفظ..." : "حفظ التغييرات"}
+              {loading ? (isFr ? "Enregistrement..." : "جاري الحفظ...") : (isFr ? "Enregistrer" : "حفظ التغييرات")}
             </Button>
           </div>
         </div>

@@ -94,7 +94,7 @@ export default function Sales() {
   // Data is loaded from localStorage
 
   return (
-    <div className="space-y-6 p-6" dir="rtl">
+    <div className="space-y-6 p-6">
       <SalesHeader totalSales={totalSales} />
 
       <PaymentMethodCards

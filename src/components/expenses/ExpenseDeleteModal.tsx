@@ -1,10 +1,9 @@
-
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Expense } from "@/types";
 import { loadStoreData, saveStoreData } from "@/utils/localStorage";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/hooks/useLocale";
 
 interface ExpenseDeleteModalProps {
   expense: Expense | null;
@@ -14,6 +13,8 @@ interface ExpenseDeleteModalProps {
 }
 
 export function ExpenseDeleteModal({ expense, isOpen, onClose, onDelete }: ExpenseDeleteModalProps) {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
@@ -29,14 +30,14 @@ export function ExpenseDeleteModal({ expense, isOpen, onClose, onDelete }: Expen
       onClose();
       
       toast({
-        title: "تم الحذف",
-        description: "تم حذف المصروف بنجاح",
+        title: isFr ? "Supprimé" : "تم الحذف",
+        description: isFr ? "La dépense a été supprimée avec succès" : "تم حذف المصروف بنجاح",
       });
     } catch (error) {
       console.error("Error deleting expense:", error);
       toast({
-        title: "خطأ",
-        description: "حدث خطأ أثناء حذف المصروف",
+        title: isFr ? "Erreur" : "خطأ",
+        description: isFr ? "Une erreur est survenue lors de la suppression" : "حدث خطأ أثناء حذف المصروف",
         variant: "destructive",
       });
     } finally {
@@ -48,19 +49,24 @@ export function ExpenseDeleteModal({ expense, isOpen, onClose, onDelete }: Expen
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+          <AlertDialogTitle>{isFr ? "Confirmer la suppression" : "تأكيد الحذف"}</AlertDialogTitle>
           <AlertDialogDescription>
-            هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء.
+            {isFr 
+              ? "Êtes-vous sûr de vouloir supprimer cette dépense ? Cette action est irréversible."
+              : "هل أنت متأكد من حذف هذا المصروف؟ لا يمكن التراجع عن هذا الإجراء."
+            }
             <br />
-            <strong>الوصف:</strong> {expense?.description}
+            <strong>{isFr ? "Description :" : "الوصف:"}</strong> {expense?.description}
             <br />
-            <strong>المبلغ:</strong> {expense?.amount}
+            <strong>{isFr ? "Montant :" : "المبلغ:"}</strong> {expense?.amount}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>إلغاء</AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose}>
+            {isFr ? "Annuler" : "إلغاء"}
+          </AlertDialogCancel>
           <AlertDialogAction onClick={handleDelete} disabled={loading}>
-            {loading ? "جاري الحذف..." : "حذف"}
+            {loading ? (isFr ? "Suppression..." : "جاري الحذف...") : (isFr ? "Supprimer" : "حذف")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

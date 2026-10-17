@@ -65,7 +65,8 @@ interface AccountTransaction {
 }
 
 export default function AccountStatement() {
-  const { t } = useLocale();
+  const { t, locale, isRTL, formatDate } = useLocale();
+  const isFr = locale === 'fr';
 
   // Filters & Selected State
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
@@ -477,14 +478,16 @@ export default function AccountStatement() {
           date: inv.date ? inv.date.split('T')[0] : (inv.createdAt ? inv.createdAt.split('T')[0] : ''),
           type: "invoice",
           invoiceNumber: inv.invoiceNumber,
-          description: `فاتورة بيع رقم #${inv.invoiceNumber} (${items.length} أصناف)`,
+          description: isFr
+            ? `Facture de vente #${inv.invoiceNumber || inv.id} (${items.length} articles)`
+            : `فاتورة بيع رقم #${inv.invoiceNumber} (${items.length} أصناف)`,
           productCode: productCodes,
           debit: Number(inv.total) || 0,
           credit: 0,
           quantity: totalQuantity,
           isArchive: false,
           items: items.map(it => ({
-            productName: it.productName,
+            productName: it.productName || (isFr ? 'Article' : 'صنف'),
             productCode: it.productCode,
             quantity: Number(it.quantity) || 1,
             price: Number(it.price) || 0,
@@ -505,14 +508,16 @@ export default function AccountStatement() {
           date: ret.date ? ret.date.split('T')[0] : (ret.createdAt ? ret.createdAt.split('T')[0] : ''),
           type: "return",
           invoiceNumber: ret.returnNumber,
-          description: `مرتجع مبيعات رقم #${ret.returnNumber}`,
+          description: isFr
+            ? `Retour sur vente #${ret.returnNumber}`
+            : `مرتجع مبيعات رقم #${ret.returnNumber}`,
           productCode: '',
           debit: 0,
           credit: Number(ret.total) || 0,
           quantity: totalQuantity,
           isArchive: false,
           items: items.map((it: any) => ({
-            productName: it.name || it.productName || 'صنف مرتجع',
+            productName: it.name || it.productName || (isFr ? 'Article retourné' : 'صنف مرتجع'),
             quantity: Number(it.quantity) || 1,
             price: Number(it.price) || 0,
             total: Number(it.total) || ((Number(it.quantity) || 1) * (Number(it.price) || 0))
@@ -528,7 +533,9 @@ export default function AccountStatement() {
           id: cred.id,
           date: cred.date ? cred.date.split('T')[0] : (cred.createdAt ? cred.createdAt.split('T')[0] : ''),
           type: "creditor",
-          description: `دفعة نقدية / سند قبض من العميل - ${cred.productName || 'تسديد دفعة حساب'}`,
+          description: isFr
+            ? `Règlement espèces / Reçu - ${cred.productName || 'Acompte'}`
+            : `دفعة نقدية / سند قبض من العميل - ${cred.productName || 'تسديد دفعة حساب'}`,
           productCode: cred.productCode || '',
           debit: 0,
           credit: Number(cred.amount) || Number(cred.total) || 0,
@@ -551,7 +558,9 @@ export default function AccountStatement() {
           id: debt.id,
           date: debt.date ? debt.date.split('T')[0] : '',
           type: "debtor",
-          description: `دين آجل - رصيد للعميل (له) - ${pList[0]?.productName || debt.productName || 'بضاعة آجلة'}`,
+          description: isFr
+            ? `Dette à terme - Solde client (Lui) - ${pList[0]?.productName || debt.productName || 'Marchandise'}`
+            : `دين آجل - رصيد للعميل (له) - ${pList[0]?.productName || debt.productName || 'بضاعة آجلة'}`,
           productCode: pCodes,
           debit: 0,
           credit: debtAmount,
@@ -559,7 +568,7 @@ export default function AccountStatement() {
           status: debt.status,
           isArchive: false,
           items: pList.map((p: any) => ({
-            productName: p.productName || p.name || 'صنف',
+            productName: p.productName || p.name || (isFr ? 'Article' : 'صنف'),
             productCode: p.productCode,
             quantity: Number(p.quantity) || 1,
             price: Number(p.price) || 0,
@@ -614,14 +623,16 @@ export default function AccountStatement() {
         date: movDate,
         type: "invoice",
         invoiceNumber: invNum,
-        description: `فاتورة أرشيف #${invNum} (${movs.length} أصناف)`,
+        description: isFr
+          ? `Facture archive #${invNum} (${movs.length} articles)`
+          : `فاتورة أرشيف #${invNum} (${movs.length} أصناف)`,
         productCode: movs.map(m => m.productCode).filter(Boolean).join(', '),
         debit: invoiceTotal,
         credit: 0,
         quantity: totalQty,
         isArchive: true,
         items: movs.map(m => ({
-          productName: m.productName || 'صنف',
+          productName: m.productName || (isFr ? 'Article' : 'صنف'),
           productCode: m.productCode || '',
           quantity: Number(m.quantity) || 1,
           price: Number(m.unitPrice) || 0,
@@ -663,14 +674,16 @@ export default function AccountStatement() {
         date: movDate,
         type: "return",
         invoiceNumber: retKey,
-        description: `مرتجع أرشيف #${retKey} (${movs.length} أصناف)`,
+        description: isFr
+          ? `Retour archive #${retKey} (${movs.length} articles)`
+          : `مرتجع أرشيف #${retKey} (${movs.length} أصناف)`,
         productCode: movs.map(m => m.productCode).filter(Boolean).join(', '),
         debit: 0,
         credit: retTotal,
         quantity: totalQty,
         isArchive: true,
         items: movs.map(m => ({
-          productName: m.productName || 'صنف مرتجع',
+          productName: m.productName || (isFr ? 'Article retourné' : 'صنف مرتجع'),
           productCode: m.productCode || '',
           quantity: Number(m.quantity) || 1,
           price: Number(m.unitPrice) || 0,
@@ -749,7 +762,7 @@ export default function AccountStatement() {
     }
 
     setFilteredTransactions(filtered);
-  }, [selectedCustomer, startDate, endDate, transactionType, searchText, invoices, creditors, debtors, returns, customers, products, productMovements]);
+  }, [selectedCustomer, startDate, endDate, transactionType, searchText, invoices, creditors, debtors, returns, customers, products, productMovements, locale]);
 
   // Accurate Financial Totals
   const totals = useMemo(() => {
@@ -789,13 +802,13 @@ export default function AccountStatement() {
   }, [customers, customerSearchInput]);
 
   const exportColumns = [
-    { key: 'date', header: t('date'), render: (t: AccountTransaction) => formatDate(t.date) },
-    { key: 'invoiceNumber', header: 'رقم الفاتورة/المستند', render: (t: AccountTransaction) => t.invoiceNumber || '-' },
-    { key: 'description', header: 'البيان والتفاصيل' },
-    { key: 'quantity', header: t('quantity'), render: (item: AccountTransaction) => item.quantity?.toString() || '0' },
-    { key: 'debit', header: 'مدين (المطلوب منه)', render: (item: AccountTransaction) => formatCurrency(item.debit) },
-    { key: 'credit', header: 'دائن (المدفوع منه)', render: (item: AccountTransaction) => formatCurrency(item.credit) },
-    { key: 'balance', header: 'الرصيد التراكمي', render: (item: AccountTransaction) => formatCurrency(item.balance || 0) }
+    { key: 'date', header: t('date') || (isFr ? 'Date' : 'التاريخ'), render: (t: AccountTransaction) => formatDate(t.date) },
+    { key: 'invoiceNumber', header: isFr ? 'N° Réf / Facture' : 'رقم الفاتورة/المستند', render: (t: AccountTransaction) => t.invoiceNumber || '-' },
+    { key: 'description', header: isFr ? 'Libellé & Détails' : 'البيان والتفاصيل' },
+    { key: 'quantity', header: t('quantity') || (isFr ? 'Quantité' : 'الكمية'), render: (item: AccountTransaction) => item.quantity?.toString() || '0' },
+    { key: 'debit', header: isFr ? 'Débit (Dû par le client)' : 'مدين (المطلوب منه)', render: (item: AccountTransaction) => formatCurrency(item.debit) },
+    { key: 'credit', header: isFr ? 'Crédit (Payé / En sa faveur)' : 'دائن (المدفوع منه)', render: (item: AccountTransaction) => formatCurrency(item.credit) },
+    { key: 'balance', header: isFr ? 'Solde Cumulé' : 'الرصيد التراكمي', render: (item: AccountTransaction) => formatCurrency(item.balance || 0) }
   ];
 
   const handlePrintStatement = () => {
@@ -816,28 +829,28 @@ export default function AccountStatement() {
               : 'bg-blue-50 text-blue-700 border border-blue-200/60'
           }`}>
             {isArchive ? <History size={11} /> : <FileText size={11} />}
-            {isArchive ? 'فاتورة أرشيف' : 'فاتورة بيع'}
+            {isArchive ? (isFr ? 'Facture Archive' : 'فاتورة أرشيف') : (isFr ? 'Facture Vente' : 'فاتورة بيع')}
           </span>
         );
       case 'return':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
             <TrendingDown size={11} />
-            {isArchive ? 'مرتجع أرشيف' : 'مرتجع'}
+            {isArchive ? (isFr ? 'Retour Archive' : 'مرتجع أرشيف') : (isFr ? 'Retour' : 'مرتجع')}
           </span>
         );
       case 'creditor':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
             <CheckCircle2 size={11} />
-            سداد / سند قبض
+            {isFr ? 'Règlement / Reçu' : 'سداد / سند قبض'}
           </span>
         );
       case 'debtor':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200/60">
             <Clock size={11} />
-            دين آجل (له)
+            {isFr ? 'Dette à terme (Lui)' : 'دين آجل (له)'}
           </span>
         );
       default:
@@ -854,9 +867,13 @@ export default function AccountStatement() {
             <FileText size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">كشف حساب العميل الشامل</h1>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              {isFr ? "Relevé de Compte Client Global" : "كشف حساب العميل الشامل"}
+            </h1>
             <p className="text-xs text-slate-500">
-              استجلاب وتتبع كافة معاملات الفواتير، الأرشيف السابقة، الديون، والسدادات مع تفاصيل كل فاتورة
+              {isFr
+                ? "Suivi et rapprochement de toutes les transactions : factures, archives, dettes et règlements avec le détail de chaque facture"
+                : "استجلاب وتتبع كافة معاملات الفواتير، الأرشيف السابقة، الديون، والسدادات مع تفاصيل كل فاتورة"}
             </p>
           </div>
         </div>
@@ -866,7 +883,7 @@ export default function AccountStatement() {
             <ExportActions
               data={filteredTransactions}
               filename={`statement_${selectedCustomerData?.name || 'customer'}`}
-              title={`كشف حساب - ${selectedCustomerData?.name || ''}`}
+              title={isFr ? `Relevé de compte - ${selectedCustomerData?.name || ''}` : `كشف حساب - ${selectedCustomerData?.name || ''}`}
               columns={exportColumns}
               totals={{
                 totalQuantity: totals.totalQuantity,
@@ -880,7 +897,7 @@ export default function AccountStatement() {
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-500/20 transition-all cursor-pointer"
             >
               <Printer size={15} />
-              <span>معاينة وطباعة كشف الحساب</span>
+              <span>{isFr ? "Aperçu & Impression du relevé" : "معاينة وطباعة كشف الحساب"}</span>
             </button>
           </div>
         )}
@@ -892,8 +909,12 @@ export default function AccountStatement() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 mb-3 animate-pulse">
             <Loader2 size={24} className="animate-spin" />
           </div>
-          <h3 className="text-sm font-bold text-slate-800">جاري تحميل واستجلاب بيانات الحسابات والأرشيف...</h3>
-          <p className="text-xs text-slate-400 mt-1">يتم دمج الفواتير السابقة وحركات الأرشيف والديون والمدفوعات</p>
+          <h3 className="text-sm font-bold text-slate-800">
+            {isFr ? "Chargement et synchronisation des comptes et de l'archive..." : "جاري تحميل واستجلاب بيانات الحسابات والأرشيف..."}
+          </h3>
+          <p className="text-xs text-slate-400 mt-1">
+            {isFr ? "Consolidation des factures antérieures, mouvements d'archive, dettes et règlements" : "يتم دمج الفواتير السابقة وحركات الأرشيف والديون والمدفوعات"}
+          </p>
         </div>
       ) : (
         <>
@@ -903,7 +924,9 @@ export default function AccountStatement() {
               <div className="flex items-center gap-2">
                 <Search size={16} className="text-blue-600" />
                 <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wider">
-                  تحديد العميل وفلترة كشف الحساب ({customers.length} عميل مسجل)
+                  {isFr
+                    ? `Sélection du client et filtrage (${customers.length} clients enregistrés)`
+                    : `تحديد العميل وفلترة كشف الحساب (${customers.length} عميل مسجل)`}
                 </h3>
               </div>
               {selectedCustomerData && (
@@ -927,11 +950,11 @@ export default function AccountStatement() {
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <User size={13} className="text-slate-400" />
-                    <span>اختر العميل *</span>
+                    <span>{isFr ? "Choisir le client *" : "اختر العميل *"}</span>
                   </span>
                   {customers.length > 5 && (
                     <span className="text-[10px] text-slate-400 font-normal">
-                      ابحث بالاسم أو اختر مباشرة
+                      {isFr ? "Rechercher par nom ou choisir directement" : "ابحث بالاسم أو اختر مباشرة"}
                     </span>
                   )}
                 </label>
@@ -942,26 +965,30 @@ export default function AccountStatement() {
                       onChange={(e) => setSelectedCustomer(e.target.value)}
                       className="w-full px-3.5 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-bold transition-all"
                     >
-                      <option value="">-- اضغط لاختيار العميل من القائمة ({searchableCustomers.length}) --</option>
+                      <option value="">
+                        {isFr
+                          ? `-- Cliquez pour choisir le client (${searchableCustomers.length}) --`
+                          : `-- اضغط لاختيار العميل من القائمة (${searchableCustomers.length}) --`}
+                      </option>
                       {searchableCustomers.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name} {c.company ? `(${c.company})` : ''} {c.phone ? `- ${c.phone}` : ''}
                         </option>
                       ))}
                     </select>
-                    <ChevronDown size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+                    <ChevronDown size={15} className={`absolute ${isRTL ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 pointer-events-none text-slate-400`} />
                   </div>
 
                   {/* Customer Quick Search input */}
                   {customers.length > 5 && (
                     <div className="relative">
-                      <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <Search size={13} className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-slate-400`} />
                       <input
                         type="text"
-                        placeholder="فلترة قائمة العملاء بالاسم أو الهاتف..."
+                        placeholder={isFr ? "Filtrer la liste des clients..." : "فلترة قائمة العملاء بالاسم أو الهاتف..."}
                         value={customerSearchInput}
                         onChange={(e) => setCustomerSearchInput(e.target.value)}
-                        className="w-full pr-8 pl-3 py-1.5 text-xs bg-white text-slate-700 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-blue-500"
+                        className={`w-full ${isRTL ? 'pr-8 pl-3' : 'pl-8 pr-3'} py-1.5 text-xs bg-white text-slate-700 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-blue-500`}
                       />
                     </div>
                   )}
@@ -972,7 +999,7 @@ export default function AccountStatement() {
               <div className="md:col-span-3">
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                   <ArrowUpDown size={13} className="text-slate-400" />
-                  <span>نوع المعاملات</span>
+                  <span>{isFr ? "Type d'opération" : "نوع المعاملات"}</span>
                 </label>
                 <div className="relative">
                   <select
@@ -980,13 +1007,13 @@ export default function AccountStatement() {
                     onChange={(e) => setTransactionType(e.target.value)}
                     className="w-full px-3.5 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all"
                   >
-                    <option value="all">جميع العمليات المالية والفواتير</option>
-                    <option value="invoice">فواتير المبيعات والأرشيف</option>
-                    <option value="debtor">الديون الآجلة (له)</option>
-                    <option value="creditor">الدفعات والسدادات</option>
-                    <option value="return">المرتجعات</option>
+                    <option value="all">{isFr ? "Toutes les opérations financières" : "جميع العمليات المالية والفواتير"}</option>
+                    <option value="invoice">{isFr ? "Factures de vente et archives" : "فواتير المبيعات والأرشيف"}</option>
+                    <option value="debtor">{isFr ? "Dettes à terme (En sa faveur)" : "الديون الآجلة (له)"}</option>
+                    <option value="creditor">{isFr ? "Règlements et encaissements" : "الدفعات والسدادات"}</option>
+                    <option value="return">{isFr ? "Retours marchandises" : "المرتجعات"}</option>
                   </select>
-                  <ChevronDown size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+                  <ChevronDown size={15} className={`absolute ${isRTL ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 pointer-events-none text-slate-400`} />
                 </div>
               </div>
 
@@ -994,7 +1021,7 @@ export default function AccountStatement() {
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                   <Calendar size={13} className="text-slate-400" />
-                  <span>من تاريخ</span>
+                  <span>{isFr ? "Du" : "من تاريخ"}</span>
                 </label>
                 <input
                   type="date"
@@ -1008,7 +1035,7 @@ export default function AccountStatement() {
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
                   <Calendar size={13} className="text-slate-400" />
-                  <span>إلى تاريخ</span>
+                  <span>{isFr ? "Au" : "إلى تاريخ"}</span>
                 </label>
                 <input
                   type="date"
@@ -1023,13 +1050,13 @@ export default function AccountStatement() {
             {selectedCustomer && (
               <div className="pt-2 flex items-center gap-3">
                 <div className="relative flex-1">
-                  <Search size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search size={14} className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-400`} />
                   <input
                     type="text"
-                    placeholder="بحث سريع برقم الفاتورة، اسم الصنف، أو البيان..."
+                    placeholder={isFr ? "Recherche rapide par n° facture, désignation ou libellé..." : "بحث سريع برقم الفاتورة، اسم الصنف، أو البيان..."}
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
-                    className="w-full pr-9 pl-3.5 py-2 text-xs bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+                    className={`w-full ${isRTL ? 'pr-9 pl-3.5' : 'pl-9 pr-3.5'} py-2 text-xs bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium`}
                   />
                 </div>
                 {(startDate || endDate || transactionType !== 'all' || searchText) && (
@@ -1042,7 +1069,7 @@ export default function AccountStatement() {
                     }}
                     className="px-3 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
                   >
-                    إعادة تعيين الفلاتر
+                    {isFr ? "Réinitialiser les filtres" : "إعادة تعيين الفلاتر"}
                   </button>
                 )}
               </div>
@@ -1054,9 +1081,13 @@ export default function AccountStatement() {
               <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4">
                 <User size={30} />
               </div>
-              <h3 className="text-base font-bold text-slate-800 mb-1">يرجى اختيار العميل لعرض كشف حسابه</h3>
+              <h3 className="text-base font-bold text-slate-800 mb-1">
+                {isFr ? "Veuillez sélectionner un client pour afficher son relevé" : "يرجى اختيار العميل لعرض كشف حسابه"}
+              </h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                اختر العميل من القائمة المنسدلة بالأعلى لاستخراج جميع الفواتير والحركات المالية المرتبطة به بدقة متناهية، متضمنةً الفواتير المؤرشفة والمبيعات السابقة.
+                {isFr
+                  ? "Choisissez un client dans la liste ci-dessus pour extraire toutes ses factures et mouvements financiers avec précision, y compris les factures archivées."
+                  : "اختر العميل من القائمة المنسدلة بالأعلى لاستخراج جميع الفواتير والحركات المالية المرتبطة به بدقة متناهية، متضمنةً الفواتير المؤرشفة والمبيعات السابقة."}
               </p>
             </div>
           ) : (
@@ -1069,9 +1100,13 @@ export default function AccountStatement() {
                     <TrendingUp size={22} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-slate-500 truncate">إجمالي المدين (عليه)</p>
+                    <p className="text-xs font-semibold text-slate-500 truncate">
+                      {isFr ? "Total Débit (Dû)" : "إجمالي المدين (عليه)"}
+                    </p>
                     <h3 className="text-xl font-black text-rose-600 mt-0.5 font-sans">{formatCurrency(totals.totalDebit)}</h3>
-                    <p className="text-[11px] font-bold text-slate-400 mt-0.5">فواتير ومشتريات الفترة</p>
+                    <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                      {isFr ? "Factures et ventes" : "فواتير ومشتريات الفترة"}
+                    </p>
                   </div>
                 </div>
 
@@ -1081,9 +1116,13 @@ export default function AccountStatement() {
                     <TrendingDown size={22} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-slate-500 truncate">إجمالي الدائن (له / سداداته)</p>
+                    <p className="text-xs font-semibold text-slate-500 truncate">
+                      {isFr ? "Total Crédit (Payé / Lui)" : "إجمالي الدائن (له / سداداته)"}
+                    </p>
                     <h3 className="text-xl font-black text-emerald-600 mt-0.5 font-sans">{formatCurrency(totals.totalCredit)}</h3>
-                    <p className="text-[11px] font-bold text-slate-400 mt-0.5">مدفوعات وسندات قبض</p>
+                    <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                      {isFr ? "Règlements et dettes à terme" : "مدفوعات وسندات قبض"}
+                    </p>
                   </div>
                 </div>
 
@@ -1093,9 +1132,13 @@ export default function AccountStatement() {
                     <Package size={22} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-slate-500 truncate">مجموع الكميات</p>
+                    <p className="text-xs font-semibold text-slate-500 truncate">
+                      {isFr ? "Total des pièces" : "مجموع الكميات"}
+                    </p>
                     <h3 className="text-xl font-black text-slate-900 mt-0.5 font-sans">{totals.totalQuantity}</h3>
-                    <p className="text-[11px] font-bold text-blue-600 mt-0.5">قطعة مسجلة بالفترة</p>
+                    <p className="text-[11px] font-bold text-blue-600 mt-0.5">
+                      {isFr ? "unités enregistrées" : "قطعة مسجلة بالفترة"}
+                    </p>
                   </div>
                 </div>
 
@@ -1114,7 +1157,11 @@ export default function AccountStatement() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-700 truncate">
-                      {totals.finalBalance > 0 ? "صافي الرصيد (مطلوب منه)" : totals.finalBalance < 0 ? "صافي الرصيد (فائض له)" : "الحساب خالص ومتزن"}
+                      {totals.finalBalance > 0
+                        ? (isFr ? "Solde Net (Dû par client)" : "صافي الرصيد (مطلوب منه)")
+                        : totals.finalBalance < 0
+                        ? (isFr ? "Solde Net (Excédent en sa faveur)" : "صافي الرصيد (فائض له)")
+                        : (isFr ? "Compte soldé et équilibré" : "الحساب خالص ومتزن")}
                     </p>
                     <h3 className={`text-xl font-black mt-0.5 font-sans ${
                       totals.finalBalance > 0 ? "text-rose-700" : totals.finalBalance < 0 ? "text-emerald-700" : "text-slate-800"
@@ -1123,11 +1170,17 @@ export default function AccountStatement() {
                     </h3>
                     <p className="text-[11px] font-bold mt-0.5">
                       {totals.finalBalance > 0 ? (
-                        <span className="text-rose-600 font-extrabold">العميل مَدين بالمبلغ</span>
+                        <span className="text-rose-600 font-extrabold">
+                          {isFr ? "Client débiteur du montant" : "العميل مَدين بالمبلغ"}
+                        </span>
                       ) : totals.finalBalance < 0 ? (
-                        <span className="text-emerald-600 font-extrabold">العميل دَائن بالمبلغ</span>
+                        <span className="text-emerald-600 font-extrabold">
+                          {isFr ? "Client créditeur du montant" : "العميل دَائن بالمبلغ"}
+                        </span>
                       ) : (
-                        <span className="text-slate-500">لا توجد مبالغ معلقة</span>
+                        <span className="text-slate-500">
+                          {isFr ? "Aucun solde en suspens" : "لا توجد مبالغ معلقة"}
+                        </span>
                       )}
                     </p>
                   </div>
@@ -1138,30 +1191,40 @@ export default function AccountStatement() {
               <div className="hidden print:block p-4 border-b-2 border-slate-900 mb-6 font-sans">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h1 className="text-2xl font-black text-slate-900">{storeInfo?.name || 'مؤسسة حسابي برو التجارية'}</h1>
-                    <p className="text-xs text-slate-600 mt-1">{storeInfo?.address || 'العنوان الرئيسي'}</p>
-                    <p className="text-xs text-slate-600">الهاتف: {storeInfo?.phone || '---'}</p>
+                    <h1 className="text-2xl font-black text-slate-900">{storeInfo?.name || (isFr ? 'Hissaby Pro SARL' : 'مؤسسة حسابي برو التجارية')}</h1>
+                    <p className="text-xs text-slate-600 mt-1">{storeInfo?.address || (isFr ? 'Siège Principal' : 'العنوان الرئيسي')}</p>
+                    <p className="text-xs text-slate-600">{isFr ? 'Tél : ' : 'الهاتف: '}{storeInfo?.phone || '---'}</p>
                   </div>
                   <div className="text-left">
-                    <h2 className="text-xl font-black text-blue-700 uppercase">كشف حساب رسمي مع تفاصيل الفواتير</h2>
-                    <p className="text-xs text-slate-500 mt-1">تاريخ الطباعة: {new Date().toLocaleDateString('ar-EG')}</p>
-                    <p className="text-xs text-slate-500">الفترة: {startDate || 'البداية'} إلى {endDate || 'الآن'}</p>
+                    <h2 className="text-xl font-black text-blue-700 uppercase">
+                      {isFr ? "Relevé de Compte Officiel Détaillé" : "كشف حساب رسمي مع تفاصيل الفواتير"}
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {isFr ? "Date d'impression : " : "تاريخ الطباعة: "}
+                      {new Date().toLocaleDateString(isFr ? 'fr-FR' : 'ar-EG')}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {isFr ? "Période : " : "الفترة: "}
+                      {startDate || (isFr ? 'Début' : 'البداية')} {isFr ? 'au' : 'إلى'} {endDate || (isFr ? 'Présent' : 'الآن')}
+                    </p>
                   </div>
                 </div>
 
                 <div className="mt-4 p-3 bg-slate-100 rounded-lg flex justify-between items-center text-xs">
                   <div>
-                    <span className="text-slate-500">اسم العميل:</span> <strong className="text-slate-900 text-sm">{selectedCustomerData?.name}</strong>
+                    <span className="text-slate-500">{isFr ? "Client : " : "اسم العميل: "}</span>
+                    <strong className="text-slate-900 text-sm">{selectedCustomerData?.name}</strong>
                   </div>
                   {selectedCustomerData?.phone && (
                     <div>
-                      <span className="text-slate-500">رقم الهاتف:</span> <strong className="text-slate-900">{selectedCustomerData.phone}</strong>
+                      <span className="text-slate-500">{isFr ? "Téléphone : " : "رقم الهاتف: "}</span>
+                      <strong className="text-slate-900">{selectedCustomerData.phone}</strong>
                     </div>
                   )}
                   <div>
-                    <span className="text-slate-500">الرصيد المستحق:</span>{" "}
+                    <span className="text-slate-500">{isFr ? "Solde dû : " : "الرصيد المستحق: "}</span>{" "}
                     <strong className={`text-sm ${totals.finalBalance > 0 ? "text-red-700" : "text-green-700"}`}>
-                      {formatCurrency(Math.abs(totals.finalBalance))} ({totals.finalBalance > 0 ? "مطلوب منه" : "دائن"})
+                      {formatCurrency(Math.abs(totals.finalBalance))} ({totals.finalBalance > 0 ? (isFr ? "Dû par client" : "مطلوب منه") : (isFr ? "Créditeur" : "دائن")})
                     </strong>
                   </div>
                 </div>
@@ -1172,32 +1235,52 @@ export default function AccountStatement() {
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between print:hidden">
                   <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                     <FileSpreadsheet size={16} className="text-blue-600" />
-                    <span>دفتر حركات ومعاملات العميل ({filteredTransactions.length} حركة مسجلة)</span>
+                    <span>
+                      {isFr
+                        ? `Grand livre des opérations (${filteredTransactions.length} mouvements)`
+                        : `دفتر حركات ومعاملات العميل (${filteredTransactions.length} حركة مسجلة)`}
+                    </span>
                   </h3>
                   <span className="text-xs font-medium text-slate-500">
-                    انقر على أي فاتورة لاستعراض أصنافها وتفاصيلها الكاملة
+                    {isFr
+                      ? "Cliquez sur une facture pour afficher le détail complet de ses articles"
+                      : "انقر على أي فاتورة لاستعراض أصنافها وتفاصيلها الكاملة"}
                   </span>
                 </div>
 
                 {filteredTransactions.length === 0 ? (
                   <div className="p-12 text-center text-slate-400">
-                    <p className="text-xs font-bold text-slate-700 mb-1">لا توجد حركات مسجلة لهذا العميل في النطاق المحدد</p>
-                    <p className="text-[11px] text-slate-400">جرب توسيع نطاق التاريخ أو إعادة تعيين الفلاتر</p>
+                    <p className="text-xs font-bold text-slate-700 mb-1">
+                      {isFr
+                        ? "Aucun mouvement enregistré pour ce client dans la période sélectionnée"
+                        : "لا توجد حركات مسجلة لهذا العميل في النطاق المحدد"}
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      {isFr
+                        ? "Essayez d'élargir la plage de dates ou de réinitialiser les filtres"
+                        : "جرب توسيع نطاق التاريخ أو إعادة تعيين الفلاتر"}
+                    </p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-right border-collapse text-xs">
+                    <table className={`w-full ${isRTL ? 'text-right' : 'text-left'} border-collapse text-xs`}>
                       <thead>
                         <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider">
-                          <th className="py-3 px-3.5">التاريخ</th>
-                          <th className="py-3 px-3.5">نوع المعاملة</th>
-                          <th className="py-3 px-3.5">رقم المستند / الفاتورة</th>
-                          <th className="py-3 px-3.5">البيان والأصناف</th>
-                          <th className="py-3 px-3.5 text-center">الكمية</th>
-                          <th className="py-3 px-3.5 text-center bg-rose-50/50 text-rose-700">مدين (المطلوب منه) +</th>
-                          <th className="py-3 px-3.5 text-center bg-emerald-50/50 text-emerald-700">دائن (المدفوع منه) -</th>
-                          <th className="py-3 px-3.5 text-left bg-slate-100/60 font-black">الرصيد التراكمي</th>
-                          <th className="py-3 px-2 text-center print:hidden">تفاصيل</th>
+                          <th className="py-3 px-3.5">{isFr ? "Date" : "التاريخ"}</th>
+                          <th className="py-3 px-3.5">{isFr ? "Type" : "نوع المعاملة"}</th>
+                          <th className="py-3 px-3.5">{isFr ? "N° Réf / Facture" : "رقم المستند / الفاتورة"}</th>
+                          <th className="py-3 px-3.5">{isFr ? "Libellé & Articles" : "البيان والأصناف"}</th>
+                          <th className="py-3 px-3.5 text-center">{isFr ? "Qté" : "الكمية"}</th>
+                          <th className="py-3 px-3.5 text-center bg-rose-50/50 text-rose-700">
+                            {isFr ? "Débit (+ Dû)" : "مدين (المطلوب منه) +"}
+                          </th>
+                          <th className="py-3 px-3.5 text-center bg-emerald-50/50 text-emerald-700">
+                            {isFr ? "Crédit (- Payé)" : "دائن (المدفوع منه) -"}
+                          </th>
+                          <th className={`py-3 px-3.5 ${isRTL ? 'text-left' : 'text-right'} bg-slate-100/60 font-black`}>
+                            {isFr ? "Solde Cumulé" : "الرصيد التراكمي"}
+                          </th>
+                          <th className="py-3 px-2 text-center print:hidden">{isFr ? "Détails" : "تفاصيل"}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-sm">
@@ -1207,12 +1290,14 @@ export default function AccountStatement() {
                             <td className="py-2.5 px-3.5 text-xs text-slate-500 font-sans">{startDate}</td>
                             <td className="py-2.5 px-3.5">
                               <span className="px-2 py-0.5 rounded text-[11px] bg-blue-100 text-blue-800 font-bold">
-                                رصيد سابق
+                                {isFr ? "Solde Antérieur" : "رصيد سابق"}
                               </span>
                             </td>
                             <td className="py-2.5 px-3.5 font-mono text-xs text-slate-500">---</td>
                             <td className="py-2.5 px-3.5 text-slate-800 font-semibold" colSpan={2}>
-                              الرصيد الافتتاحي المنقول السابق حتى تاريخ {startDate}
+                              {isFr
+                                ? `Solde d'ouverture reporté jusqu'au ${startDate}`
+                                : `الرصيد الافتتاحي المنقول السابق حتى تاريخ ${startDate}`}
                             </td>
                             <td className="py-2.5 px-3.5 text-center font-sans text-rose-700">
                               {totals.openingBalance > 0 ? formatCurrency(totals.openingBalance) : '-'}
@@ -1220,10 +1305,10 @@ export default function AccountStatement() {
                             <td className="py-2.5 px-3.5 text-center font-sans text-emerald-700">
                               {totals.openingBalance < 0 ? formatCurrency(Math.abs(totals.openingBalance)) : '-'}
                             </td>
-                            <td className="py-2.5 px-3.5 text-left font-sans font-black text-slate-900">
+                            <td className={`py-2.5 px-3.5 ${isRTL ? 'text-left' : 'text-right'} font-sans font-black text-slate-900`}>
                               {formatCurrency(Math.abs(totals.openingBalance))}
-                              <span className="text-[10px] text-slate-500 mr-1">
-                                {totals.openingBalance > 0 ? "(عليه)" : "(له)"}
+                              <span className="text-[10px] text-slate-500 mr-1 ml-1">
+                                {totals.openingBalance > 0 ? (isFr ? "(Dû)" : "(عليه)") : (isFr ? "(Crédit)" : "(له)")}
                               </span>
                             </td>
                             <td className="print:hidden"></td>
@@ -1266,7 +1351,8 @@ export default function AccountStatement() {
                                     <span className="font-bold text-slate-900 block">{tx.description}</span>
                                     {hasItems && !isExpanded && (
                                       <span className="text-[11px] text-blue-600 font-medium block truncate max-w-xs mt-0.5 print:hidden">
-                                        الأصناف: {tx.items?.map(it => `${it.productName} (${it.quantity})`).join('، ')}
+                                        {isFr ? "Articles : " : "الأصناف: "}
+                                        {tx.items?.map(it => `${it.productName} (${it.quantity})`).join('، ')}
                                       </span>
                                     )}
                                   </div>
@@ -1287,7 +1373,7 @@ export default function AccountStatement() {
                                 </td>
 
                                 {/* Running Balance */}
-                                <td className="py-3 px-3.5 text-left font-black font-sans bg-slate-50/40">
+                                <td className={`py-3 px-3.5 ${isRTL ? 'text-left' : 'text-right'} font-black font-sans bg-slate-50/40`}>
                                   <div className="flex flex-col items-start">
                                     <span className={`text-sm ${
                                       currentBal > 0 ? "text-rose-700" : currentBal < 0 ? "text-emerald-700" : "text-slate-600"
@@ -1295,7 +1381,7 @@ export default function AccountStatement() {
                                       {formatCurrency(Math.abs(currentBal))}
                                     </span>
                                     <span className="text-[10px] font-bold text-slate-400">
-                                      {currentBal > 0 ? "عليه" : currentBal < 0 ? "له" : "خالص"}
+                                      {currentBal > 0 ? (isFr ? "Dû" : "عليه") : currentBal < 0 ? (isFr ? "Crédit" : "له") : (isFr ? "Soldé" : "خالص")}
                                     </span>
                                   </div>
                                 </td>
@@ -1310,7 +1396,7 @@ export default function AccountStatement() {
                                         toggleInvoiceExpand(tx.id);
                                       }}
                                       className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                                      title="عرض تفاصيل الفاتورة"
+                                      title={isFr ? "Afficher le détail de la facture" : "عرض تفاصيل الفاتورة"}
                                     >
                                       {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                     </button>
@@ -1326,16 +1412,18 @@ export default function AccountStatement() {
                                       <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-100">
                                         <Receipt size={14} className="text-blue-600" />
                                         <span className="text-xs font-bold text-slate-800">
-                                          تفاصيل أصناف الفاتورة #{tx.invoiceNumber}
+                                          {isFr
+                                            ? `Détail des articles de la facture #${tx.invoiceNumber}`
+                                            : `تفاصيل أصناف الفاتورة #${tx.invoiceNumber}`}
                                         </span>
                                       </div>
-                                      <table className="w-full text-right text-xs">
+                                      <table className={`w-full ${isRTL ? 'text-right' : 'text-left'} text-xs`}>
                                         <thead className="bg-slate-50 text-slate-500 font-bold">
                                           <tr>
-                                            <th className="p-2">اسم الصنف</th>
-                                            <th className="p-2 text-center">الكمية</th>
-                                            <th className="p-2 text-center">سعر الوحدة</th>
-                                            <th className="p-2 text-left">الإجمالي</th>
+                                            <th className="p-2">{isFr ? "Désignation" : "اسم الصنف"}</th>
+                                            <th className="p-2 text-center">{isFr ? "Quantité" : "الكمية"}</th>
+                                            <th className="p-2 text-center">{isFr ? "Prix Unitaire" : "سعر الوحدة"}</th>
+                                            <th className={`p-2 ${isRTL ? 'text-left' : 'text-right'}`}>{isFr ? "Total" : "الإجمالي"}</th>
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 font-sans">
@@ -1344,7 +1432,7 @@ export default function AccountStatement() {
                                               <td className="p-2 font-medium text-slate-800">{it.productName}</td>
                                               <td className="p-2 text-center font-bold">{it.quantity}</td>
                                               <td className="p-2 text-center text-slate-600">{formatCurrency(it.price)}</td>
-                                              <td className="p-2 text-left font-bold text-slate-900">{formatCurrency(it.total)}</td>
+                                              <td className={`p-2 ${isRTL ? 'text-left' : 'text-right'} font-bold text-slate-900`}>{formatCurrency(it.total)}</td>
                                             </tr>
                                           ))}
                                         </tbody>
@@ -1360,7 +1448,7 @@ export default function AccountStatement() {
                       <tfoot className="bg-slate-100/90 border-t-2 border-slate-300 font-bold">
                         <tr>
                           <td colSpan={4} className="py-3.5 px-3.5 text-slate-800 text-sm">
-                            المجاميع الكلية لكافة الحركات:
+                            {isFr ? "Totaux généraux de toutes les opérations :" : "المجاميع الكلية لكافة الحركات:"}
                           </td>
                           <td className="py-3.5 px-3.5 text-center font-sans text-slate-800">
                             {totals.totalQuantity}
@@ -1371,12 +1459,16 @@ export default function AccountStatement() {
                           <td className="py-3.5 px-3.5 text-center font-black font-sans text-emerald-700 text-sm bg-emerald-100/50">
                             {formatCurrency(totals.totalCredit)}
                           </td>
-                          <td className="py-3.5 px-3.5 text-left font-black font-sans text-base bg-slate-200/60" colSpan={2}>
+                          <td className={`py-3.5 px-3.5 ${isRTL ? 'text-left' : 'text-right'} font-black font-sans text-base bg-slate-200/60`} colSpan={2}>
                             <span className={totals.finalBalance > 0 ? "text-rose-700" : "text-emerald-700"}>
                               {formatCurrency(Math.abs(totals.finalBalance))}
                             </span>
-                            <span className="text-[11px] font-bold text-slate-500 mr-1.5">
-                              {totals.finalBalance > 0 ? "(مطلوب منه)" : totals.finalBalance < 0 ? "(فائض له)" : "(خالص)"}
+                            <span className="text-[11px] font-bold text-slate-500 mr-1.5 ml-1.5">
+                              {totals.finalBalance > 0
+                                ? (isFr ? "(Dû par client)" : "(مطلوب منه)")
+                                : totals.finalBalance < 0
+                                ? (isFr ? "(Excédent client)" : "(فائض له)")
+                                : (isFr ? "(Soldé)" : "(خالص)")}
                             </span>
                           </td>
                         </tr>
@@ -1392,27 +1484,37 @@ export default function AccountStatement() {
                   <div className="space-y-1">
                     <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
                       <ShieldCheck size={18} className="text-blue-600" />
-                      <span>الخلاصة المحاسبية المعتمدة لكشف الحساب</span>
+                      <span>{isFr ? "Synthèse comptable certifiée du relevé de compte" : "الخلاصة المحاسبية المعتمدة لكشف الحساب"}</span>
                     </h4>
                     <p className="text-xs text-slate-600">
-                      تم استجلاب وتدقيق جميع المعاملات من فواتير البيع والأرشيف السابقة والديون ({formatCurrency(totals.totalDebit)}) مع خصم السدادات والمرتجعات ({formatCurrency(totals.totalCredit)}).
+                      {isFr
+                        ? `Toutes les opérations ont été consolidées et vérifiées à partir des factures de vente, de l'archive et des dettes (${formatCurrency(totals.totalDebit)}) sous déduction des règlements et avoirs (${formatCurrency(totals.totalCredit)}).`
+                        : `تم استجلاب وتدقيق جميع المعاملات من فواتير البيع والأرشيف السابقة والديون (${formatCurrency(totals.totalDebit)}) مع خصم السدادات والمرتجعات (${formatCurrency(totals.totalCredit)}).`}
                     </p>
                     {totals.allTimeBalance !== totals.finalBalance && (
                       <p className="text-[11px] text-blue-700 font-bold mt-1">
-                        * إجمالي رصيد العميل عبر كل الأوقات: {formatCurrency(Math.abs(totals.allTimeBalance))} ({totals.allTimeBalance > 0 ? "عليه" : totals.allTimeBalance < 0 ? "له" : "خالص"})
+                        {isFr
+                          ? `* Solde historique global du client : ${formatCurrency(Math.abs(totals.allTimeBalance))} (${totals.allTimeBalance > 0 ? "Dû" : totals.allTimeBalance < 0 ? "Crédit" : "Soldé"})`
+                          : `* إجمالي رصيد العميل عبر كل الأوقات: ${formatCurrency(Math.abs(totals.allTimeBalance))} (${totals.allTimeBalance > 0 ? "عليه" : totals.allTimeBalance < 0 ? "له" : "خالص"})`}
                       </p>
                     )}
                   </div>
 
                   <div className="bg-white px-5 py-3 rounded-xl border border-blue-200 text-center shadow-xs">
-                    <p className="text-[11px] font-bold text-slate-500 mb-0.5">الحالة الختامية لكشف الحساب</p>
+                    <p className="text-[11px] font-bold text-slate-500 mb-0.5">
+                      {isFr ? "État final du compte" : "الحالة الختامية لكشف الحساب"}
+                    </p>
                     <div className={`text-xl font-black font-sans ${totals.finalBalance > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                       {formatCurrency(Math.abs(totals.finalBalance))}
                     </div>
                     <span className={`inline-block text-[11px] font-extrabold px-2 py-0.5 rounded-full mt-1 ${
                       totals.finalBalance > 0 ? "bg-rose-100 text-rose-800" : totals.finalBalance < 0 ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"
                     }`}>
-                      {totals.finalBalance > 0 ? "مطلوب سداده من العميل" : totals.finalBalance < 0 ? "رصيد دائن للعميل" : "الحساب مسدد بالكامل"}
+                      {totals.finalBalance > 0
+                        ? (isFr ? "Montant à régler par le client" : "مطلوب سداده من العميل")
+                        : totals.finalBalance < 0
+                        ? (isFr ? "Solde créditeur en faveur du client" : "رصيد دائن للعميل")
+                        : (isFr ? "Compte entièrement soldé" : "الحساب مسدد بالكامل")}
                     </span>
                   </div>
                 </div>

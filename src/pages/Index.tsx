@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,8 +6,12 @@ import { Mail, Phone, Store, Upload } from "lucide-react";
 import { loadStoreData, saveStoreData } from "@/utils/localStorage";
 import { useToast } from "@/components/ui/use-toast";
 import { StoreInfo } from "@/types";
+import { useLocale } from "@/hooks/useLocale";
 
 const Index = () => {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [storeInfo, setStoreInfo] = useState<StoreInfo>({
     name: "",
     phone: "",
@@ -38,8 +41,8 @@ const Index = () => {
         saveStoreData(data);
         
         toast({
-          title: "تم رفع الصورة بنجاح",
-          description: "تم حفظ صورة المتجر",
+          title: isFr ? "Image téléchargée avec succès" : "تم رفع الصورة بنجاح",
+          description: isFr ? "L'image du magasin a été enregistrée" : "تم حفظ صورة المتجر",
         });
       };
       reader.readAsDataURL(file);
@@ -53,8 +56,8 @@ const Index = () => {
     saveStoreData(data);
     
     toast({
-      title: "تم حفظ المعلومات",
-      description: "تم تحديث معلومات المتجر بنجاح",
+      title: isFr ? "Informations enregistrées" : "تم حفظ المعلومات",
+      description: isFr ? "Les informations du magasin ont été mises à jour avec succès" : "تم تحديث معلومات المتجر بنجاح",
     });
   };
 
@@ -63,7 +66,7 @@ const Index = () => {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">
-            معلومات المتجر
+            {isFr ? "Informations de l'établissement" : "معلومات المتجر"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -85,7 +88,7 @@ const Index = () => {
                       onClick={() => document.getElementById("photo-upload")?.click()}
                     >
                       <Upload className="w-4 h-4 ml-2" />
-                      تغيير الصورة
+                      {isFr ? "Changer" : "تغيير الصورة"}
                     </Button>
                   </div>
                 ) : (
@@ -98,7 +101,7 @@ const Index = () => {
                     >
                       <div className="flex flex-col items-center">
                         <Upload className="w-8 h-8 mb-2" />
-                        <span>اضغط لرفع صورة المتجر</span>
+                        <span>{isFr ? "Télécharger le logo" : "اضغط لرفع صورة المتجر"}</span>
                       </div>
                     </Button>
                   </div>
@@ -109,15 +112,15 @@ const Index = () => {
                   className="hidden"
                   accept="image/*"
                   onChange={handleImageUpload}
-                  title="تحميل صورة المتجر"
-                  aria-label="تحميل صورة المتجر"
+                  title={isFr ? "Télécharger le logo" : "تحميل صورة المتجر"}
+                  aria-label={isFr ? "Télécharger le logo" : "تحميل صورة المتجر"}
                 />
               </div>
 
               <div className="flex items-center space-x-4">
                 <Store className="w-5 h-5" />
                 <Input
-                  placeholder="اسم المتجر"
+                  placeholder={isFr ? "Nom du magasin" : "اسم المتجر"}
                   value={storeInfo.name}
                   onChange={(e) => setStoreInfo(prev => ({ ...prev, name: e.target.value }))}
                   className="flex-1"
@@ -127,7 +130,7 @@ const Index = () => {
               <div className="flex items-center space-x-4">
                 <Phone className="w-5 h-5" />
                 <Input
-                  placeholder="رقم الهاتف"
+                  placeholder={isFr ? "Numéro de téléphone" : "رقم الهاتف"}
                   value={storeInfo.phone}
                   onChange={(e) => setStoreInfo(prev => ({ ...prev, phone: e.target.value }))}
                   className="flex-1"
@@ -138,7 +141,7 @@ const Index = () => {
               <div className="flex items-center space-x-4">
                 <Mail className="w-5 h-5 text-gray-500" />
                 <Input
-                  placeholder="البريد الإلكتروني"
+                  placeholder={isFr ? "Adresse e-mail" : "البريد الإلكتروني"}
                   value={storeInfo.email}
                   onChange={(e) => setStoreInfo(prev => ({ ...prev, email: e.target.value }))}
                   className="flex-1"
@@ -149,7 +152,7 @@ const Index = () => {
               <div className="flex items-center space-x-4">
                 <Store className="w-5 h-5 text-gray-500" />
                 <Input
-                  placeholder="العنوان الكامل"
+                  placeholder={isFr ? "Adresse complète" : "العنوان الكامل"}
                   value={storeInfo.address || ""}
                   onChange={(e) => setStoreInfo(prev => ({ ...prev, address: e.target.value }))}
                   className="flex-1"
@@ -159,7 +162,7 @@ const Index = () => {
               <div className="flex items-center space-x-4">
                 <Store className="w-5 h-5 text-gray-500" />
                 <Input
-                  placeholder="رقم السجل التجاري (اختياري)"
+                  placeholder={isFr ? "N° Registre de Commerce (optionnel)" : "رقم السجل التجاري (اختياري)"}
                   value={storeInfo.commercialRegister || ""}
                   onChange={(e) => setStoreInfo(prev => ({ ...prev, commercialRegister: e.target.value }))}
                   className="flex-1"
@@ -168,7 +171,7 @@ const Index = () => {
             </div>
 
             <Button type="submit" className="w-full">
-              حفظ المعلومات
+              {isFr ? "Enregistrer les informations" : "حفظ المعلومات"}
             </Button>
           </form>
         </CardContent>

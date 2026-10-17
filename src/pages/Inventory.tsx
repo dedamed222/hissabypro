@@ -7,8 +7,12 @@ import WarehouseManager from "@/components/inventory/WarehouseManager";
 import { Button } from "@/components/ui/button";
 import { Settings, Boxes, Warehouse as WarehouseIcon } from "lucide-react";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function Inventory() {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [showWarehouseManager, setShowWarehouseManager] = useState(false);
@@ -84,9 +88,14 @@ export default function Inventory() {
             <Boxes size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">إدارة المخزون والمستودعات</h1>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              {isFr ? "Gestion des stocks et entrepôts" : "إدارة المخزون والمستودعات"}
+            </h1>
             <p className="text-xs text-slate-500">
-              متابعة الكميات، قيمة المخزون، تنبيهات النواقص وإدارة المستودعات
+              {isFr 
+                ? "Suivi des quantités, valeur du stock, alertes de réapprovisionnement et gestion des entrepôts"
+                : "متابعة الكميات، قيمة المخزون، تنبيهات النواقص وإدارة المستودعات"
+              }
             </p>
           </div>
         </div>
@@ -102,12 +111,12 @@ export default function Inventory() {
           {showWarehouseManager ? (
             <>
               <Boxes size={15} />
-              <span>العودة لجدول المخزون</span>
+              <span>{isFr ? "Retour au tableau des stocks" : "العودة لجدول المخزون"}</span>
             </>
           ) : (
             <>
               <WarehouseIcon size={15} />
-              <span>إدارة وتخصيص المخازن</span>
+              <span>{isFr ? "Gérer les entrepôts" : "إدارة وتخصيص المخازن"}</span>
             </>
           )}
         </button>

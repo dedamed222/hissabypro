@@ -52,6 +52,7 @@ const Sidebar = () => {
   const { sidebarOpen, closeSidebar, sidebarCollapsed, toggleCollapse, toggleSidebar } = useApp();
   const { logout, isAuthenticated, user, profile } = useAuth();
   const { locale } = useLocale();
+  const isFr = locale === 'fr';
   const { navPosition = "bottom", updateSettings } = useSettings();
   const t = translations[locale];
   const navigate = useNavigate();
@@ -117,7 +118,7 @@ const Sidebar = () => {
     const nextMode = isBottomMode ? "sidebar" : "bottom";
     updateSettings({ navPosition: nextMode });
     toast({
-      title: t.settingsSaved || "تم تحديث موضع شريط التنقل",
+      title: isFr ? "Position du menu mise à jour" : (t.settingsSaved || "تم تحديث موضع شريط التنقل"),
       description: nextMode === "bottom" ? t.navPositionBottom : t.navPositionSidebar,
     });
   };
@@ -292,7 +293,7 @@ const Sidebar = () => {
                   <PanelBottom className="w-3.5 h-3.5" />
                   <span>{t.navPositionBottom}</span>
                 </span>
-                <span className="text-[10px] text-indigo-500">تبديل</span>
+                <span className="text-[10px] text-indigo-500">{isFr ? "Basculer" : "تبديل"}</span>
               </button>
             )}
 
@@ -415,7 +416,7 @@ const Sidebar = () => {
             }
           >
             <FileText className="w-4 h-4 text-blue-500" />
-            <span className="hidden sm:inline truncate">{t.invoices || "الفواتير"}</span>
+            <span className="hidden sm:inline truncate">{t.invoices || (isFr ? "Factures" : "الفواتير")}</span>
           </NavLink>
 
           {/* Customers (العملاء) */}
@@ -475,7 +476,7 @@ const Sidebar = () => {
             }
           >
             <Receipt className="w-4 h-4 text-purple-500" />
-            <span className="truncate">{t.reports || "التقارير"}</span>
+            <span className="truncate">{t.reports || (isFr ? "Rapports" : "التقارير")}</span>
           </NavLink>
 
           {/* More Menu (...) */}
@@ -528,7 +529,7 @@ const Sidebar = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-gray-900 leading-tight">
-                    {t.mainMenu || "القائمة الرئيسية"}
+                    {t.mainMenu || (isFr ? "Menu principal" : "القائمة الرئيسية")}
                   </h3>
                   <p className="text-xs text-gray-400">Hissaby Pro</p>
                 </div>
@@ -542,7 +543,7 @@ const Sidebar = () => {
                   title={t.navPosition}
                 >
                   {isBottomMode ? <PanelLeft className="w-3.5 h-3.5" /> : <PanelBottom className="w-3.5 h-3.5" />}
-                  <span>{isBottomMode ? "تحويل لشريط جانبي" : "تثبيت في الأسفل"}</span>
+                  <span>{isBottomMode ? (isFr ? "Passer en barre latérale" : "تحويل لشريط جانبي") : (isFr ? "Fixer en bas" : "تثبيت في الأسفل")}</span>
                 </button>
 
                 <button
@@ -642,7 +643,7 @@ const Sidebar = () => {
                   className="sm:hidden flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700"
                 >
                   {isBottomMode ? <PanelLeft className="w-3.5 h-3.5" /> : <PanelBottom className="w-3.5 h-3.5" />}
-                  <span>{isBottomMode ? "شريط جانبي" : "شريط سفلي"}</span>
+                  <span>{isBottomMode ? (isFr ? "Barre latérale" : "شريط جانبي") : (isFr ? "Barre inférieure" : "شريط سفلي")}</span>
                 </button>
 
                 {isAuthenticated ? (

@@ -4,8 +4,7 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Upload, FileText, X, ImageIcon } from "lucide-react";
@@ -15,6 +14,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import { getStoreSettings, upsertStoreSettings } from "@/lib/database";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useLocale } from "@/hooks/useLocale";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.mjs`;
 
@@ -30,6 +30,9 @@ interface PrintSettingsFormValues {
 }
 
 export function PrintSettings() {
+    const { locale, isRTL } = useLocale();
+    const isFr = locale === 'fr';
+
     const [isUpdating, setIsUpdating] = useState(false);
     const [isProcessingFile, setIsProcessingFile] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string>("");
@@ -137,7 +140,7 @@ export function PrintSettings() {
             return canvas.toDataURL('image/png');
         } catch (error) {
             console.error("Error processing PDF:", error);
-            throw new Error("فشل في معالجة ملف PDF");
+            throw new Error(isFr ? "Échec du traitement du fichier PDF" : "فشل في معالجة ملف PDF");
         }
     };
 
@@ -162,8 +165,8 @@ export function PrintSettings() {
 
         if (file.size > 5 * 1024 * 1024) {
             toast({
-                title: "حجم الملف كبير جداً",
-                description: "يرجى اختيار ملف بحجم أقل من 5 ميغابايت",
+                title: isFr ? "Fichier trop volumineux" : "حجم الملف كبير جداً",
+                description: isFr ? "Veuillez choisir un fichier de moins de 5 Mo" : "يرجى اختيار ملف بحجم أقل من 5 ميغابايت",
                 variant: "destructive",
             });
             return;
@@ -184,26 +187,26 @@ export function PrintSettings() {
                     reader.readAsDataURL(file);
                 });
             } else {
-                throw new Error("نوع الملف غير مدعوم");
+                throw new Error(isFr ? "Type de fichier non supporté" : "نوع الملف غير مدعوم");
             }
 
             setPreviewUrl(base64String);
             form.setValue("letterheadUrl", base64String);
 
             toast({
-                title: "تم رفع الملف بنجاح",
-                description: "يمكنك الآن حفظ التغييرات.",
+                title: isFr ? "Fichier importé avec succès" : "تم رفع الملف بنجاح",
+                description: isFr ? "Vous pouvez maintenant enregistrer vos paramètres." : "يمكنك الآن حفظ التغييرات.",
             });
         } catch (error: any) {
             toast({
-                title: "خطأ في الرفع",
-                description: error.message || "حدث خطأ أثناء معالجة الملف.",
+                title: isFr ? "Erreur de téléchargement" : "خطأ في الرفع",
+                description: error.message || (isFr ? "Une erreur est survenue lors du traitement du fichier." : "حدث خطأ أثناء معالجة الملف."),
                 variant: "destructive",
             });
         } finally {
             setIsProcessingFile(false);
         }
-    }, [form]);
+    }, [form, isFr]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -219,8 +222,8 @@ export function PrintSettings() {
         setPreviewUrl("");
         form.setValue("letterheadUrl", "");
         toast({
-            title: "تم إزالة الراسية",
-            description: "تمت إزالة الراسية. لا تنس حفظ التغييرات.",
+            title: isFr ? "En-tête supprimé" : "تم إزالة الراسية",
+            description: isFr ? "L'en-tête a été supprimé. N'oubliez pas d'enregistrer." : "تمت إزالة الراسية. لا تنس حفظ التغييرات.",
         });
     };
 
@@ -259,13 +262,13 @@ export function PrintSettings() {
             }
 
             toast({
-                title: "تم التحديث بنجاح",
-                description: "تم حفظ إعدادات الطباعة.",
+                title: isFr ? "Mise à jour réussie" : "تم التحديث بنجاح",
+                description: isFr ? "Les paramètres d'impression ont été enregistrés." : "تم حفظ إعدادات الطباعة.",
             });
         } catch (error: any) {
             toast({
-                title: "خطأ في التحديث",
-                description: "حدث خطأ أثناء حفظ الإعدادات.",
+                title: isFr ? "Erreur de mise à jour" : "خطأ في التحديث",
+                description: isFr ? "Une erreur est survenue lors de l'enregistrement." : "حدث خطأ أثناء حفظ الإعدادات.",
                 variant: "destructive",
             });
         } finally {
@@ -278,16 +281,20 @@ export function PrintSettings() {
             (orientation === 'portrait' ? 'aspect-[1/1.414]' : 'aspect-[1.414/1]');
 
     let paperDimsText = "";
-    if (paperSize === "A4") paperDimsText = "210×297 مم";
-    if (paperSize === "A3") paperDimsText = "297×420 مم";
-    if (paperSize === "A5") paperDimsText = "148×210 مم";
-    if (paperSize === "A6") paperDimsText = "105×148 مم";
+    if (paperSize === "A4") paperDimsText = isFr ? "210×297 mm" : "210×297 مم";
+    if (paperSize === "A3") paperDimsText = isFr ? "297×420 mm" : "297×420 مم";
+    if (paperSize === "A5") paperDimsText = isFr ? "148×210 mm" : "148×210 مم";
+    if (paperSize === "A6") paperDimsText = isFr ? "105×148 mm" : "105×148 مم";
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>إعدادات الفواتير والطباعة</CardTitle>
-                <CardDescription>قم بضبط راسية الشركة الخاصة بك ومقاسات الأوراق وهوامش الطباعة.</CardDescription>
+                <CardTitle>{isFr ? "Paramètres des Factures et Impression" : "إعدادات الفواتير والطباعة"}</CardTitle>
+                <CardDescription>
+                    {isFr
+                        ? "Configurez l'en-tête de votre entreprise, le format du papier et les marges d'impression."
+                        : "قم بضبط راسية الشركة الخاصة بك ومقاسات الأوراق وهوامش الطباعة."}
+                </CardDescription>
             </CardHeader>
             <CardContent>
                 <Form {...form}>
@@ -298,11 +305,15 @@ export function PrintSettings() {
                                 control={form.control}
                                 name="printWithLetterhead"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <FormItem className="flex flex-row items-center justify-between rounded-xl border p-4">
                                         <div className="space-y-0.5">
-                                            <FormLabel className="text-base">تفعيل الطباعة مع الراسية</FormLabel>
-                                            <div className="text-sm text-gray-500">
-                                                سيتم إدراج صورة الراسية كخلفية لكامل الصفحة أثناء الطباعة
+                                            <FormLabel className="text-base">
+                                                {isFr ? "Activer l'en-tête (Letterhead)" : "تفعيل الطباعة مع الراسية"}
+                                            </FormLabel>
+                                            <div className="text-sm text-slate-500">
+                                                {isFr
+                                                    ? "L'image d'en-tête sera insérée en arrière-plan lors de l'impression"
+                                                    : "سيتم إدراج صورة الراسية كخلفية لكامل الصفحة أثناء الطباعة"}
                                             </div>
                                         </div>
                                         <FormControl>
@@ -321,18 +332,18 @@ export function PrintSettings() {
                                     name="paperSize"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>مقاس الورق</FormLabel>
+                                            <FormLabel>{isFr ? "Format du papier" : "مقاس الورق"}</FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="اختر مقاس الورق" />
+                                                        <SelectValue placeholder={isFr ? "Sélectionner le format" : "اختر مقاس الورق"} />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="A3">A3 (297×420 مم)</SelectItem>
-                                                    <SelectItem value="A4">A4 (210×297 مم)</SelectItem>
-                                                    <SelectItem value="A5">A5 (148×210 مم)</SelectItem>
-                                                    <SelectItem value="A6">A6 (105×148 مم)</SelectItem>
+                                                    <SelectItem value="A3">A3 (297×420 mm)</SelectItem>
+                                                    <SelectItem value="A4">A4 (210×297 mm)</SelectItem>
+                                                    <SelectItem value="A5">A5 (148×210 mm)</SelectItem>
+                                                    <SelectItem value="A6">A6 (105×148 mm)</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </FormItem>
@@ -343,16 +354,16 @@ export function PrintSettings() {
                                     name="orientation"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>اتجاه الورق</FormLabel>
+                                            <FormLabel>{isFr ? "Orientation" : "اتجاه الورق"}</FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="اختر الاتجاه" />
+                                                        <SelectValue placeholder={isFr ? "Sélectionner l'orientation" : "اختر الاتجاه"} />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="portrait">طولي (Portrait)</SelectItem>
-                                                    <SelectItem value="landscape">عرضي (Landscape)</SelectItem>
+                                                    <SelectItem value="portrait">{isFr ? "Portrait (Vertical)" : "طولي (Portrait)"}</SelectItem>
+                                                    <SelectItem value="landscape">{isFr ? "Paysage (Horizontal)" : "عرضي (Landscape)"}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </FormItem>
@@ -362,26 +373,29 @@ export function PrintSettings() {
                         </div>
 
                         <div className="flex flex-col space-y-4 mb-6">
-                            <FormLabel>الراسية (Letterhead)</FormLabel>
+                            <FormLabel>{isFr ? "En-tête de page (Letterhead)" : "الراسية (Letterhead)"}</FormLabel>
 
-                            <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded-md mb-2">
-                                <strong>توصية: </strong> للحصول على دقة طباعة ممتازة لمقاس {paperSize} {orientation === 'portrait' ? 'طولي' : 'عرضي'} ({paperDimsText})،
-                                يفضل استخدام صورة بدقة جودة عالية (300 DPI) وبأبعاد: <span className="font-bold">{getRecommendedResolution(paperSize, orientation === 'portrait')} بكسل</span>.
+                            <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 p-3 rounded-xl mb-2">
+                                <strong>{isFr ? "Recommandation : " : "توصية: "}</strong>
+                                {isFr
+                                    ? `Pour une excellente résolution d'impression en ${paperSize} ${orientation === 'portrait' ? 'portrait' : 'paysage'} (${paperDimsText}), utilisez une image haute qualité (300 DPI) aux dimensions : `
+                                    : `للحصول على دقة طباعة ممتازة لمقاس ${paperSize} ${orientation === 'portrait' ? 'طولي' : 'عرضي'} (${paperDimsText})، يفضل استخدام صورة بدقة جودة عالية (300 DPI) وبأبعاد: `}
+                                <span className="font-bold">{getRecommendedResolution(paperSize, orientation === 'portrait')} {isFr ? "px" : "بكسل"}</span>.
                             </div>
 
                             {previewUrl ? (
-                                <div className="relative w-full mx-auto border rounded-lg bg-gray-50 flex flex-col items-center justify-center p-2">
+                                <div className="relative w-full mx-auto border rounded-xl bg-slate-50 flex flex-col items-center justify-center p-2">
                                     <Button
                                         type="button"
                                         variant="destructive"
                                         size="icon"
-                                        className="absolute top-4 right-4 rounded-full w-8 h-8 z-10 shadow-lg"
+                                        className={`absolute top-4 ${isRTL ? 'right-4' : 'left-4'} rounded-full w-8 h-8 z-10 shadow-lg cursor-pointer`}
                                         onClick={handleRemoveLetterhead}
                                     >
                                         <X className="w-4 h-4" />
                                     </Button>
                                     <div
-                                        className={`relative ${aspectRatioStyle} w-full max-w-[500px] border shadow-sm overflow-hidden`}
+                                        className={`relative ${aspectRatioStyle} w-full max-w-[500px] border shadow-sm overflow-hidden rounded`}
                                         style={{
                                             backgroundImage: `url(${previewUrl})`,
                                             backgroundSize: '100% 100%',
@@ -390,8 +404,8 @@ export function PrintSettings() {
                                         }}
                                     >
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            <div className="border border-dashed border-gray-500 bg-white/60 px-4 py-2 font-bold text-gray-600 rounded backdrop-blur-sm">
-                                                مساحة محتوى الفاتورة
+                                            <div className="border border-dashed border-slate-500 bg-white/70 px-4 py-2 font-bold text-slate-700 rounded backdrop-blur-sm text-xs">
+                                                {isFr ? "Zone de contenu de la facture" : "مساحة محتوى الفاتورة"}
                                             </div>
                                         </div>
                                     </div>
@@ -399,8 +413,8 @@ export function PrintSettings() {
                             ) : (
                                 <div
                                     {...getRootProps()}
-                                    className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors flex flex-col items-center justify-center min-h-[250px]
-                    ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/50 hover:bg-gray-50'}
+                                    className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors flex flex-col items-center justify-center min-h-[250px]
+                    ${isDragActive ? 'border-primary bg-primary/5' : 'border-slate-300 hover:border-primary/50 hover:bg-slate-50'}
                     ${isProcessingFile ? 'opacity-50 pointer-events-none' : ''}
                   `}
                                 >
@@ -409,23 +423,25 @@ export function PrintSettings() {
                                     {isProcessingFile ? (
                                         <div className="flex flex-col items-center text-primary">
                                             <Loader2 className="w-10 h-10 animate-spin mb-4" />
-                                            <p className="font-medium">جاري معالجة الملف...</p>
+                                            <p className="font-medium">{isFr ? "Traitement du fichier en cours..." : "جاري معالجة الملف..."}</p>
                                         </div>
                                     ) : (
                                         <>
-                                            <div className="flex gap-4 mb-4 text-gray-400">
+                                            <div className="flex gap-4 mb-4 text-slate-400">
                                                 <ImageIcon className="w-10 h-10" />
                                                 <FileText className="w-10 h-10" />
                                             </div>
-                                            <p className="text-lg font-medium text-gray-700 mb-1">
-                                                {isDragActive ? 'أفلت الملف هنا...' : 'اسحب وأفلت الراسية الكاملة هنا'}
+                                            <p className="text-lg font-medium text-slate-700 mb-1">
+                                                {isDragActive
+                                                    ? (isFr ? "Déposez le fichier ici..." : "أفلت الملف هنا...")
+                                                    : (isFr ? "Glissez-déposez le fichier d'en-tête ici" : "اسحب وأفلت الراسية الكاملة هنا")}
                                             </p>
-                                            <p className="text-sm text-gray-500 mb-4">
-                                                يدعم PDF, PNG, JPG (مساحة خلفية بحجم الصفحة كاملة)
+                                            <p className="text-sm text-slate-500 mb-4">
+                                                {isFr ? "Supporte PDF, PNG, JPG (pleine page)" : "يدعم PDF, PNG, JPG (مساحة خلفية بحجم الصفحة كاملة)"}
                                             </p>
                                             <Button type="button" variant="outline" className="pointer-events-none">
                                                 <Upload className="w-4 h-4 mr-2" />
-                                                تصفح ملفات الراسية
+                                                {isFr ? "Parcourir les fichiers d'en-tête" : "تصفح ملفات الراسية"}
                                             </Button>
                                         </>
                                     )}
@@ -434,14 +450,16 @@ export function PrintSettings() {
                         </div>
 
                         <div>
-                            <h3 className="font-medium text-gray-900 mb-4">هوامش أمان محتوى الفاتورة (بالميليمتر)</h3>
+                            <h3 className="font-bold text-slate-900 mb-4">
+                                {isFr ? "Marges de sécurité du document (en millimètres)" : "هوامش أمان محتوى الفاتورة (بالميليمتر)"}
+                            </h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <FormField
                                     control={form.control}
                                     name="marginTop"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>الهامش العلوي (Top)</FormLabel>
+                                            <FormLabel>{isFr ? "Marge supérieure (Haut)" : "الهامش العلوي (Top)"}</FormLabel>
                                             <FormControl>
                                                 <Input type="number" min={0} {...field} onChange={e => field.onChange(Number(e.target.value))} />
                                             </FormControl>
@@ -453,7 +471,7 @@ export function PrintSettings() {
                                     name="marginBottom"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>الهامش السفلي (Bottom)</FormLabel>
+                                            <FormLabel>{isFr ? "Marge inférieure (Bas)" : "الهامش السفلي (Bottom)"}</FormLabel>
                                             <FormControl>
                                                 <Input type="number" min={0} {...field} onChange={e => field.onChange(Number(e.target.value))} />
                                             </FormControl>
@@ -465,7 +483,7 @@ export function PrintSettings() {
                                     name="marginRight"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>الهامش الأيمن (Right)</FormLabel>
+                                            <FormLabel>{isFr ? "Marge droite (Droite)" : "الهامش الأيمن (Right)"}</FormLabel>
                                             <FormControl>
                                                 <Input type="number" min={0} {...field} onChange={e => field.onChange(Number(e.target.value))} />
                                             </FormControl>
@@ -477,7 +495,7 @@ export function PrintSettings() {
                                     name="marginLeft"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>الهامش الأيسر (Left)</FormLabel>
+                                            <FormLabel>{isFr ? "Marge gauche (Gauche)" : "الهامش الأيسر (Left)"}</FormLabel>
                                             <FormControl>
                                                 <Input type="number" min={0} {...field} onChange={e => field.onChange(Number(e.target.value))} />
                                             </FormControl>
@@ -487,9 +505,9 @@ export function PrintSettings() {
                             </div>
                         </div>
 
-                        <Button type="submit" disabled={isUpdating || isProcessingFile} className="w-full md:w-auto mt-4">
+                        <Button type="submit" disabled={isUpdating || isProcessingFile} className="w-full md:w-auto mt-4 cursor-pointer">
                             {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            حفظ إعدادات الطباعة
+                            {isFr ? "Enregistrer les paramètres d'impression" : "حفظ إعدادات الطباعة"}
                         </Button>
                     </form>
                 </Form>
@@ -497,4 +515,3 @@ export function PrintSettings() {
         </Card>
     );
 }
-

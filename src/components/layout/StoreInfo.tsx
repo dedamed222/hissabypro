@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { loadStoreData } from "@/utils/localStorage";
 import { Image, Store } from 'lucide-react';
+import { useLocale } from "@/hooks/useLocale";
 
 interface StoreInfoData {
   name: string;
@@ -9,6 +10,9 @@ interface StoreInfoData {
 }
 
 export default function StoreInfo() {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [storeInfo, setStoreInfo] = useState<StoreInfoData>({
     name: '',
     photoUrl: ''
@@ -28,7 +32,9 @@ export default function StoreInfo() {
     return (
       <div className="flex items-center gap-2 text-gray-400">
         <Store size={16} />
-        <span className="text-sm">لم يتم تعيين معلومات المتجر</span>
+        <span className="text-sm">
+          {isFr ? "Informations du magasin non définies" : "لم يتم تعيين معلومات المتجر"}
+        </span>
       </div>
     );
   }

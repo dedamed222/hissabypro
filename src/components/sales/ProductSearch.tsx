@@ -1,8 +1,8 @@
-
 import React, { useEffect, useRef } from "react";
 import { Search } from "lucide-react";
 import { Product } from "@/types";
 import { formatCurrency } from "@/utils/formatters";
+import { useLocale } from "@/hooks/useLocale";
 
 interface ProductSearchProps {
   show: boolean;
@@ -20,6 +20,8 @@ const ProductSearch = ({
   onSelect,
 }: ProductSearchProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
 
   useEffect(() => {
     if (show && inputRef.current) {
@@ -39,7 +41,7 @@ const ProductSearch = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ابحث عن منتج..."
+            placeholder={isFr ? "Rechercher un produit..." : "ابحث عن منتج..."}
             className="w-full pr-8 pl-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -48,7 +50,7 @@ const ProductSearch = ({
       <div className="max-h-48 overflow-y-auto">
         {searchTerm.trim() === "" ? (
           <div className="p-3 text-gray-500 text-center">
-            اكتب للبحث عن منتج
+            {isFr ? "Tapez pour rechercher un produit" : "اكتب للبحث عن منتج"}
           </div>
         ) : filteredProducts.length > 0 ? (
           filteredProducts.slice(0, 8).map((product) => (
@@ -61,10 +63,10 @@ const ProductSearch = ({
                 <div className="flex-1">
                   <div className="font-medium text-gray-900">{product.name}</div>
                   <div className="text-sm text-gray-600 mt-1">
-                    الرمز: {product.code}
+                    {isFr ? "Code : " : "الرمز: "}{product.code}
                   </div>
                   <div className="text-sm text-gray-600">
-                    المخزون: {product.quantity} وحدة
+                    {isFr ? `Stock : ${product.quantity} unités` : `المخزون: ${product.quantity} وحدة`}
                   </div>
                 </div>
                 <div className="text-left">
@@ -78,7 +80,12 @@ const ProductSearch = ({
                         ? 'bg-yellow-100 text-yellow-800'
                         : 'bg-red-100 text-red-800'
                   }`}>
-                    {product.quantity > 10 ? 'متوفر' : product.quantity > 0 ? 'قليل' : 'نفذ'}
+                    {product.quantity > 10 
+                      ? (isFr ? 'Disponible' : 'متوفر') 
+                      : product.quantity > 0 
+                        ? (isFr ? 'Faible' : 'قليل') 
+                        : (isFr ? 'Épuisé' : 'نفذ')
+                    }
                   </div>
                 </div>
               </div>
@@ -86,7 +93,7 @@ const ProductSearch = ({
           ))
         ) : (
           <div className="p-3 text-gray-500 text-center">
-            لا توجد منتجات مطابقة للبحث
+            {isFr ? "Aucun produit correspondant à la recherche" : "لا توجد منتجات مطابقة للبحث"}
           </div>
         )}
       </div>

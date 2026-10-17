@@ -21,29 +21,35 @@ import {
   upsertWarehouse,
   upsertStoreSettings,
 } from "@/lib/database";
+import { useLocale } from "@/hooks/useLocale";
 
 interface Step {
-  label: string;
+  key: string;
+  labelAr: string;
+  labelFr: string;
   status: "pending" | "running" | "done" | "error";
   count?: number;
   error?: string;
 }
 
 const INITIAL_STEPS: Step[] = [
-  { label: "المنتجات", status: "pending" },
-  { label: "العملاء", status: "pending" },
-  { label: "الفواتير", status: "pending" },
-  { label: "المبيعات اليومية", status: "pending" },
-  { label: "المصروفات", status: "pending" },
-  { label: "الموردون", status: "pending" },
-  { label: "الدائنون", status: "pending" },
-  { label: "المدينون", status: "pending" },
-  { label: "المرتجعات", status: "pending" },
-  { label: "المخازن", status: "pending" },
-  { label: "إعدادات المتجر", status: "pending" },
+  { key: "products", labelAr: "المنتجات", labelFr: "Produits", status: "pending" },
+  { key: "customers", labelAr: "العملاء", labelFr: "Clients", status: "pending" },
+  { key: "invoices", labelAr: "الفواتير", labelFr: "Factures", status: "pending" },
+  { key: "dailySales", labelAr: "المبيعات اليومية", labelFr: "Ventes journalières", status: "pending" },
+  { key: "expenses", labelAr: "المصروفات", labelFr: "Dépenses", status: "pending" },
+  { key: "suppliers", labelAr: "الموردون", labelFr: "Fournisseurs", status: "pending" },
+  { key: "creditors", labelAr: "الدائنون", labelFr: "Créanciers", status: "pending" },
+  { key: "debtors", labelAr: "المدينون", labelFr: "Débiteurs", status: "pending" },
+  { key: "returns", labelAr: "المرتجعات", labelFr: "Retours", status: "pending" },
+  { key: "warehouses", labelAr: "المخازن", labelFr: "Dépôts", status: "pending" },
+  { key: "storeSettings", labelAr: "إعدادات المتجر", labelFr: "Paramètres du magasin", status: "pending" },
 ];
 
 export function CloudMigration() {
+  const { locale, isRTL } = useLocale();
+  const isFr = locale === 'fr';
+
   const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
@@ -327,19 +333,23 @@ export function CloudMigration() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <CloudUpload size={20} />
-          ترحيل البيانات إلى السحابة
+          <CloudUpload size={20} className="text-blue-600" />
+          <span>{isFr ? "Migration des Données vers le Cloud" : "ترحيل البيانات إلى السحابة"}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          انقل بياناتك المحلية (المنتجات، الفواتير، العملاء، ...) إلى قاعدة البيانات السحابية. يمكن تشغيل هذه العملية أكثر من مرة بأمان.
+          {isFr
+            ? "Transférez vos données locales (produits, factures, clients, etc.) vers la base de données cloud Supabase. Cette opération peut être exécutée plusieurs fois en toute sécurité."
+            : "انقل بياناتك المحلية (المنتجات، الفواتير، العملاء، ...) إلى قاعدة البيانات السحابية. يمكن تشغيل هذه العملية أكثر من مرة بأمان."}
         </p>
 
         {running && (
           <div className="space-y-2">
             <Progress value={progress} />
-            <p className="text-xs text-muted-foreground text-center">{progress}% مكتمل</p>
+            <p className="text-xs text-muted-foreground text-center">
+              {isFr ? `${progress}% complété` : `${progress}% مكتمل`}
+            </p>
           </div>
         )}
 
@@ -351,12 +361,14 @@ export function CloudMigration() {
               {step.status === "done" && <CheckCircle size={16} className="text-green-500" />}
               {step.status === "error" && <AlertCircle size={16} className="text-destructive" />}
               <span className={step.status === "error" ? "text-destructive" : ""}>
-                {step.label}
+                {isFr ? step.labelFr : step.labelAr}
                 {step.status === "done" && step.count !== undefined && (
-                  <span className="text-muted-foreground mr-1">({step.count} سجل)</span>
+                  <span className="text-muted-foreground mr-1 ml-1">
+                    ({step.count} {isFr ? "enregistrements" : "سجل"})
+                  </span>
                 )}
                 {step.status === "error" && step.error && (
-                  <span className="text-xs text-destructive mr-1">— {step.error}</span>
+                  <span className="text-xs text-destructive mr-1 ml-1">— {step.error}</span>
                 )}
               </span>
             </div>
@@ -364,33 +376,37 @@ export function CloudMigration() {
         </div>
 
         {done && errorCount === 0 && (
-          <div className="flex items-center gap-2 p-3 bg-green-50 rounded-md text-green-700 text-sm">
+          <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl text-green-700 text-sm border border-green-200">
             <CheckCircle size={16} />
-            تم ترحيل جميع البيانات بنجاح!
+            <span>{isFr ? "Toutes les données ont été migrées avec succès !" : "تم ترحيل جميع البيانات بنجاح!"}</span>
           </div>
         )}
         {done && errorCount > 0 && (
-          <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-md text-amber-700 text-sm">
+          <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-xl text-amber-700 text-sm border border-amber-200">
             <AlertCircle size={16} />
-            اكتمل الترحيل مع {errorCount} خطأ. راجع التفاصيل أعلاه.
+            <span>
+              {isFr
+                ? `Migration terminée avec ${errorCount} erreur(s). Consultez les détails ci-dessus.`
+                : `اكتمل الترحيل مع ${errorCount} خطأ. راجع التفاصيل أعلاه.`}
+            </span>
           </div>
         )}
 
-        <Button onClick={runMigration} disabled={running} className="w-full">
+        <Button onClick={runMigration} disabled={running} className="w-full cursor-pointer font-bold">
           {running ? (
             <>
-              <Loader2 size={16} className="animate-spin ml-2" />
-              جارٍ الترحيل...
+              <Loader2 size={16} className={`animate-spin ${isRTL ? 'ml-2' : 'mr-2'}`} />
+              <span>{isFr ? "Migration en cours..." : "جارٍ الترحيل..."}</span>
             </>
           ) : done ? (
             <>
-              <CloudUpload size={16} className="ml-2" />
-              إعادة الترحيل
+              <CloudUpload size={16} className={isRTL ? 'ml-2' : 'mr-2'} />
+              <span>{isFr ? "Relancer la migration" : "إعادة الترحيل"}</span>
             </>
           ) : (
             <>
-              <CloudUpload size={16} className="ml-2" />
-              بدء ترحيل البيانات إلى السحابة
+              <CloudUpload size={16} className={isRTL ? 'ml-2' : 'mr-2'} />
+              <span>{isFr ? "Démarrer la migration vers le Cloud" : "بدء ترحيل البيانات إلى السحابة"}</span>
             </>
           )}
         </Button>

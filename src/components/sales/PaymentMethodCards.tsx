@@ -15,7 +15,8 @@ export const PaymentMethodCards = ({
   paymentMethods, 
   getPaymentMethodTotal 
 }: PaymentMethodCardsProps) => {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const isFr = locale === 'fr';
 
   const translateMethod = (method: string) => {
     const methodLower = method?.toLowerCase();
@@ -72,7 +73,9 @@ export const PaymentMethodCards = ({
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-slate-500 truncate">{translateMethod(method)}</p>
               <h3 className="text-xl font-black text-slate-900 mt-0.5 font-sans">{formatCurrency(total)}</h3>
-              <p className="text-[11px] font-bold text-slate-400 mt-0.5">{percentage}% من المبيعات</p>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                {isFr ? `${percentage}% des ventes` : `${percentage}% من المبيعات`}
+              </p>
             </div>
           </div>
         );

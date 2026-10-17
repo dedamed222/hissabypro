@@ -128,7 +128,7 @@ export default function ProductTable({
                       {isOutOfStock ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                          نفذت
+                          {locale === 'fr' ? 'Épuisé' : 'نفذت'}
                         </span>
                       ) : isLowStock ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
@@ -186,7 +186,10 @@ export default function ProductTable({
                     {searchQuery ? t('noSearchResults') : t('noProductsAdded')}
                   </p>
                   <p className="text-xs text-slate-400">
-                    {searchQuery ? "جرب البحث بكلمات أخرى أو رمز مختلف" : "انقر على زر 'إضافة منتج جديد' في الأعلى لإضافة أول منتج"}
+                    {searchQuery 
+                      ? (locale === 'fr' ? "Essayez avec d'autres mots-clés ou un autre code" : "جرب البحث بكلمات أخرى أو رمز مختلف") 
+                      : (locale === 'fr' ? "Cliquez sur 'Ajouter un nouveau produit' en haut pour ajouter le premier article" : "انقر على زر 'إضافة منتج جديد' في الأعلى لإضافة أول منتج")
+                    }
                   </p>
                 </td>
               </tr>

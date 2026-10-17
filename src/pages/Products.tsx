@@ -20,8 +20,12 @@ import {
   AlertTriangle,
   Plus
 } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function Products() {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const {
     products,
     filteredProducts,
@@ -148,9 +152,14 @@ export default function Products() {
             <Package size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">إدارة المنتجات والأصناف</h1>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              {isFr ? "Gestion des produits et articles" : "إدارة المنتجات والأصناف"}
+            </h1>
             <p className="text-xs text-slate-500">
-              قائمة البضائع، أسعار الشراء والبيع، هوامش الربح وسجل الحركات
+              {isFr 
+                ? "Catalogue des articles, prix d'achat et de vente, marges bénéficiaires et historique des mouvements"
+                : "قائمة البضائع، أسعار الشراء والبيع، هوامش الربح وسجل الحركات"
+              }
             </p>
           </div>
         </div>
@@ -160,7 +169,7 @@ export default function Products() {
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-500/20 transition-all self-start sm:self-auto"
         >
           <Plus size={16} />
-          <span>إضافة منتج جديد</span>
+          <span>{isFr ? "Ajouter un nouveau produit" : "إضافة منتج جديد"}</span>
         </button>
       </div>
 
@@ -171,9 +180,13 @@ export default function Products() {
             <Boxes size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">إجمالي الأصناف</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Total des articles" : "إجمالي الأصناف"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.totalCount}</h3>
-            <p className="text-[11px] font-bold text-blue-600 mt-0.5">منتج مسجل</p>
+            <p className="text-[11px] font-bold text-blue-600 mt-0.5">
+              {isFr ? "articles enregistrés" : "منتج مسجل"}
+            </p>
           </div>
         </div>
 
@@ -182,9 +195,13 @@ export default function Products() {
             <DollarSign size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">القيمة السوقية الإجمالية</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Valeur marchande totale" : "القيمة السوقية الإجمالية"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5 font-sans">{formatCurrency(stats.totalValue)}</h3>
-            <p className="text-[11px] font-bold text-emerald-600 mt-0.5">بسعر البيع الحالي</p>
+            <p className="text-[11px] font-bold text-emerald-600 mt-0.5">
+              {isFr ? "au prix de vente actuel" : "بسعر البيع الحالي"}
+            </p>
           </div>
         </div>
 
@@ -193,9 +210,13 @@ export default function Products() {
             <AlertTriangle size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">المخزون المنخفض</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Stock faible" : "المخزون المنخفض"}
+            </p>
             <h3 className="text-xl font-black text-amber-600 mt-0.5">{stats.lowStockCount}</h3>
-            <p className="text-[11px] font-bold text-amber-600 mt-0.5">قاربت على النفاذ</p>
+            <p className="text-[11px] font-bold text-amber-600 mt-0.5">
+              {isFr ? "bientôt épuisés" : "قاربت على النفاذ"}
+            </p>
           </div>
         </div>
 
@@ -204,9 +225,13 @@ export default function Products() {
             <TrendingUp size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">حركات المخزون المسجلة</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Mouvements de stock" : "حركات المخزون المسجلة"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5">{movements.length}</h3>
-            <p className="text-[11px] font-bold text-purple-600 mt-0.5">حركة وارد وصادر</p>
+            <p className="text-[11px] font-bold text-purple-600 mt-0.5">
+              {isFr ? "entrées et sorties" : "حركة وارد وصادر"}
+            </p>
           </div>
         </div>
       </div>

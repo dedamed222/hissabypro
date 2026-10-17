@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { FormattedStat } from "@/types";
 import { ReactNode } from "react";
 import { ArrowDownIcon, ArrowUpIcon, TrendingUp, TrendingDown } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 
 interface StatCardProps {
   data: FormattedStat;
@@ -12,6 +13,9 @@ interface StatCardProps {
 }
 
 export default function StatCard({ data, icon, iconColor = "bg-blue-100 text-blue-600", className }: StatCardProps) {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   return (
     <div className={cn(
       "bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100/50 p-6 transition-all duration-300 hover:shadow-xl hover:scale-105 hover:bg-white group",
@@ -46,8 +50,11 @@ export default function StatCard({ data, icon, iconColor = "bg-blue-100 text-blu
           )}
           <span>{data.change}%</span>
         </div>
-        <span className="text-xs text-gray-500">مقارنة بالأمس</span>
+        <span className="text-xs text-gray-500">
+          {isFr ? "Par rapport à hier" : "مقارنة بالأمس"}
+        </span>
       </div>
     </div>
   );
 }
+

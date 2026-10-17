@@ -6,25 +6,30 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Loader2, Upload, Store, X, FileText, Image as ImageIcon } from "lucide-react";
+import { Loader2, Upload, X, FileText, Image as ImageIcon } from "lucide-react";
 import { loadStoreData, saveStoreData } from "@/utils/localStorage";
 import { useDropzone } from "react-dropzone";
 import * as pdfjsLib from "pdfjs-dist";
 import { getStoreSettings, upsertStoreSettings } from "@/lib/database";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { useLocale } from "@/hooks/useLocale";
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.mjs`;
 
-const companySchema = z.object({
-    name: z.string().min(2, { message: "اسم الشركة يجب أن يكون حرفين على الأقل" }),
-    photoUrl: z.string().optional(),
-});
-
 export function CompanyProfile() {
+    const { locale, isRTL } = useLocale();
+    const isFr = locale === 'fr';
+
+    const companySchema = z.object({
+        name: z.string().min(2, {
+            message: isFr ? "Le nom de l'entreprise doit comporter au moins 2 caractères" : "اسم الشركة يجب أن يكون حرفين على الأقل"
+        }),
+        photoUrl: z.string().optional(),
+    });
+
     const [isUpdating, setIsUpdating] = useState(false);
     const [isProcessingFile, setIsProcessingFile] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string>("");
@@ -98,7 +103,7 @@ export function CompanyProfile() {
             return canvas.toDataURL('image/png');
         } catch (error) {
             console.error("Error processing PDF:", error);
-            throw new Error("فشل في معالجة ملف PDF");
+            throw new Error(isFr ? "Échec du traitement du fichier PDF" : "فشل في معالجة ملف PDF");
         }
     };
 
@@ -109,8 +114,8 @@ export function CompanyProfile() {
         // Check file size (limit to 5MB)
         if (file.size > 5 * 1024 * 1024) {
             toast({
-                title: "حجم الملف كبير جداً",
-                description: "يرجى اختيار ملف بحجم أقل من 5 ميغابايت",
+                title: isFr ? "Fichier trop volumineux" : "حجم الملف كبير جداً",
+                description: isFr ? "Veuillez choisir un fichier inférieur à 5 Mo" : "يرجى اختيار ملف بحجم أقل من 5 ميغابايت",
                 variant: "destructive",
             });
             return;
@@ -131,26 +136,26 @@ export function CompanyProfile() {
                     reader.readAsDataURL(file);
                 });
             } else {
-                throw new Error("نوع الملف غير مدعوم");
+                throw new Error(isFr ? "Type de fichier non supporté" : "نوع الملف غير مدعوم");
             }
 
             setPreviewUrl(base64String);
             form.setValue("photoUrl", base64String);
 
             toast({
-                title: "تم رفع الملف بنجاح",
-                description: "يمكنك الآن حفظ التغييرات.",
+                title: isFr ? "Fichier téléchargé avec succès" : "تم رفع الملف بنجاح",
+                description: isFr ? "Vous pouvez maintenant enregistrer les modifications." : "يمكنك الآن حفظ التغييرات.",
             });
         } catch (error: any) {
             toast({
-                title: "خطأ في الرفع",
-                description: error.message || "حدث خطأ أثناء معالجة الملف.",
+                title: isFr ? "Erreur de téléchargement" : "خطأ في الرفع",
+                description: error.message || (isFr ? "Une erreur est survenue lors du traitement du fichier." : "حدث خطأ أثناء معالجة الملف."),
                 variant: "destructive",
             });
         } finally {
             setIsProcessingFile(false);
         }
-    }, [form]);
+    }, [form, isFr]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -166,8 +171,8 @@ export function CompanyProfile() {
         setPreviewUrl("");
         form.setValue("photoUrl", "");
         toast({
-            title: "تم إزالة الشعار",
-            description: "تمت إزالة الشعار. لا تنس حفظ التغييرات.",
+            title: isFr ? "Logo supprimé" : "تم إزالة الشعار",
+            description: isFr ? "Le logo a été supprimé. N'oubliez pas d'enregistrer." : "تمت إزالة الشعار. لا تنس حفظ التغييرات.",
         });
     };
 
@@ -191,13 +196,13 @@ export function CompanyProfile() {
             }
 
             toast({
-                title: "تم التحديث بنجاح",
-                description: "تم حفظ معلومات الشركة.",
+                title: isFr ? "Mise à jour réussie" : "تم التحديث بنجاح",
+                description: isFr ? "Les informations de l'entreprise ont été enregistrées." : "تم حفظ معلومات الشركة.",
             });
         } catch (error: any) {
             toast({
-                title: "خطأ في التحديث",
-                description: "حدث خطأ أثناء حفظ معلومات الشركة.",
+                title: isFr ? "Erreur de mise à jour" : "خطأ في التحديث",
+                description: isFr ? "Une erreur s'est produite lors de l'enregistrement." : "حدث خطأ أثناء حفظ معلومات الشركة.",
                 variant: "destructive",
             });
         } finally {
@@ -208,37 +213,43 @@ export function CompanyProfile() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>ملف الشركة</CardTitle>
-                <CardDescription>قم بتحديث اسم وشعار الشركة ليظهرا في الفواتير. يمكنك رفع صورة أو ملف PDF.</CardDescription>
+                <CardTitle>{isFr ? "Profil de l'Entreprise" : "ملف الشركة"}</CardTitle>
+                <CardDescription>
+                    {isFr
+                        ? "Mettez à jour le nom et le logo de l'entreprise pour qu'ils apparaissent sur vos factures. Supporte les images ou PDF."
+                        : "قم بتحديث اسم وشعار الشركة ليظهرا في الفواتير. يمكنك رفع صورة أو ملف PDF."}
+                </CardDescription>
             </CardHeader>
             <CardContent>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
                         <div className="flex flex-col space-y-4 mb-6">
-                            <FormLabel>شعار الشركة / الترويسة</FormLabel>
+                            <FormLabel>{isFr ? "Logo de l'entreprise / En-tête" : "شعار الشركة / الترويسة"}</FormLabel>
 
                             {previewUrl ? (
-                                <div className="relative w-full max-w-md mx-auto border rounded-lg p-4 bg-gray-50 flex flex-col items-center justify-center">
+                                <div className="relative w-full max-w-md mx-auto border rounded-xl p-4 bg-slate-50 flex flex-col items-center justify-center">
                                     <Button
                                         type="button"
                                         variant="destructive"
                                         size="icon"
-                                        className="absolute top-2 right-2 rounded-full w-8 h-8"
+                                        className={`absolute top-2 ${isRTL ? 'right-2' : 'left-2'} rounded-full w-8 h-8 cursor-pointer`}
                                         onClick={handleRemoveLogo}
                                     >
                                         <X className="w-4 h-4" />
                                     </Button>
-                                    <img src={previewUrl} alt="Company Logo Preview" className="max-h-48 object-contain" />
-                                    <p className="text-xs text-gray-500 mt-4 text-center">
-                                        هذه هي المعاينة الحالية للشعار. سيتم عرضها في أعلى الفواتير.
+                                    <img src={previewUrl} alt="Company Logo Preview" className="max-h-48 object-contain rounded" />
+                                    <p className="text-xs text-slate-500 mt-4 text-center">
+                                        {isFr
+                                            ? "Aperçu actuel du logo. Il sera affiché en haut de vos factures et relevés."
+                                            : "هذه هي المعاينة الحالية للشعار. سيتم عرضها في أعلى الفواتير."}
                                     </p>
                                 </div>
                             ) : (
                                 <div
                                     {...getRootProps()}
-                                    className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors flex flex-col items-center justify-center min-h-[200px]
-                    ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300 hover:border-primary/50 hover:bg-gray-50'}
+                                    className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors flex flex-col items-center justify-center min-h-[200px]
+                    ${isDragActive ? 'border-primary bg-primary/5' : 'border-slate-300 hover:border-primary/50 hover:bg-slate-50'}
                     ${isProcessingFile ? 'opacity-50 pointer-events-none' : ''}
                   `}
                                 >
@@ -247,29 +258,33 @@ export function CompanyProfile() {
                                     {isProcessingFile ? (
                                         <div className="flex flex-col items-center text-primary">
                                             <Loader2 className="w-10 h-10 animate-spin mb-4" />
-                                            <p className="font-medium">جاري معالجة الملف...</p>
+                                            <p className="font-medium">{isFr ? "Traitement du fichier en cours..." : "جاري معالجة الملف..."}</p>
                                         </div>
                                     ) : (
                                         <>
-                                            <div className="flex gap-4 mb-4 text-gray-400">
+                                            <div className="flex gap-4 mb-4 text-slate-400">
                                                 <ImageIcon className="w-10 h-10" />
                                                 <FileText className="w-10 h-10" />
                                             </div>
-                                            <p className="text-lg font-medium text-gray-700 mb-1">
-                                                {isDragActive ? 'أفلت الملف هنا...' : 'اسحب وأفلت الشعار هنا، أو انقر للاختيار'}
+                                            <p className="text-lg font-medium text-slate-700 mb-1">
+                                                {isDragActive
+                                                    ? (isFr ? "Déposez le fichier ici..." : "أفلت الملف هنا...")
+                                                    : (isFr ? "Glissez-déposez le logo ici, ou cliquez pour parcourir" : "اسحب وأفلت الشعار هنا، أو انقر للاختيار")}
                                             </p>
-                                            <p className="text-sm text-gray-500 mb-4">
-                                                يدعم الصور (PNG, JPG, SVG) وملفات PDF (سيتم استخراج الصفحة الأولى)
+                                            <p className="text-sm text-slate-500 mb-4">
+                                                {isFr
+                                                    ? "Prend en charge les images (PNG, JPG, SVG) et les fichiers PDF"
+                                                    : "يدعم الصور (PNG, JPG, SVG) وملفات PDF (سيتم استخراج الصفحة الأولى)"}
                                             </p>
                                             <Button type="button" variant="outline" className="pointer-events-none">
                                                 <Upload className="w-4 h-4 mr-2" />
-                                                تصفح الملفات
+                                                {isFr ? "Parcourir les fichiers" : "تصفح الملفات"}
                                             </Button>
                                         </>
                                     )}
                                 </div>
                             )}
-                            <p className="text-xs text-gray-500">الحد الأقصى للحجم: 5MB</p>
+                            <p className="text-xs text-slate-500">{isFr ? "Taille maximale : 5 Mo" : "الحد الأقصى للحجم: 5MB"}</p>
                         </div>
 
                         <FormField
@@ -277,18 +292,18 @@ export function CompanyProfile() {
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>اسم الشركة</FormLabel>
+                                    <FormLabel>{isFr ? "Nom de l'entreprise" : "اسم الشركة"}</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="أدخل اسم الشركة" {...field} />
+                                        <Input placeholder={isFr ? "Entrez le nom de l'entreprise" : "أدخل اسم الشركة"} {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
 
-                        <Button type="submit" disabled={isUpdating || isProcessingFile} className="w-full md:w-auto">
+                        <Button type="submit" disabled={isUpdating || isProcessingFile} className="w-full md:w-auto cursor-pointer">
                             {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            حفظ التغييرات
+                            {isFr ? "Enregistrer les modifications" : "حفظ التغييرات"}
                         </Button>
                     </form>
                 </Form>

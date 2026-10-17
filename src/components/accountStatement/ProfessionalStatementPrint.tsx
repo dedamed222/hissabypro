@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { Customer, StoreInfo } from "@/types";
+import { useLocale } from "@/hooks/useLocale";
 import {
   Printer,
   X,
@@ -71,6 +72,9 @@ export default function ProfessionalStatementPrint({
   startDate,
   endDate
 }: ProfessionalStatementPrintProps) {
+  const { locale, isRTL } = useLocale();
+  const isFr = locale === 'fr';
+
   // Printing options
   const [includeItemDetails, setIncludeItemDetails] = useState<boolean>(true);
   const [includeSignatures, setIncludeSignatures] = useState<boolean>(true);
@@ -82,7 +86,7 @@ export default function ProfessionalStatementPrint({
     window.print();
   };
 
-  const todayStr = new Date().toLocaleDateString('ar-EG', {
+  const todayStr = new Date().toLocaleDateString(isFr ? 'fr-FR' : 'ar-EG', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
@@ -93,15 +97,19 @@ export default function ProfessionalStatementPrint({
   const getBadgeTitle = (type: string, isArchive?: boolean) => {
     switch (type) {
       case 'invoice':
-        return isArchive ? 'فاتورة أرشيف' : 'فاتورة مبيعات';
+        return isArchive
+          ? (isFr ? 'Facture Archive' : 'فاتورة أرشيف')
+          : (isFr ? 'Facture Vente' : 'فاتورة مبيعات');
       case 'return':
-        return isArchive ? 'مرتجع أرشيف' : 'مرتجع مبيعات';
+        return isArchive
+          ? (isFr ? 'Retour Archive' : 'مرتجع أرشيف')
+          : (isFr ? 'Retour Vente' : 'مرتجع مبيعات');
       case 'creditor':
-        return 'سداد / سند قبض';
+        return isFr ? 'Règlement / Reçu' : 'سداد / سند قبض';
       case 'debtor':
-        return 'دين آجل (له)';
+        return isFr ? 'Dette à terme (Lui)' : 'دين آجل (له)';
       default:
-        return 'معاملة مالية';
+        return isFr ? 'Opération financière' : 'معاملة مالية';
     }
   };
 
@@ -117,9 +125,12 @@ export default function ProfessionalStatementPrint({
               <FileSpreadsheet size={18} />
             </div>
             <div>
-              <h3 className="font-bold text-sm">معاينة وطباعة كشف الحساب المالي الرسمي</h3>
+              <h3 className="font-bold text-sm">
+                {isFr ? "Aperçu & Impression du Relevé Financier Officiel" : "معاينة وطباعة كشف الحساب المالي الرسمي"}
+              </h3>
               <p className="text-xs text-slate-300">
-                العميل: <strong className="text-white">{customer.name}</strong> ({transactions.length} حركة)
+                {isFr ? "Client : " : "العميل: "}
+                <strong className="text-white">{customer.name}</strong> ({transactions.length} {isFr ? "mouvements" : "حركة"})
               </p>
             </div>
           </div>
@@ -133,7 +144,7 @@ export default function ProfessionalStatementPrint({
                 onChange={(e) => setIncludeItemDetails(e.target.checked)}
                 className="rounded accent-blue-600 cursor-pointer"
               />
-              <span>تفاصيل الأصناف للفواتير</span>
+              <span>{isFr ? "Détails des articles" : "تفاصيل الأصناف للفواتير"}</span>
             </label>
 
             <label className="flex items-center gap-1.5 cursor-pointer text-slate-200 hover:text-white">
@@ -143,7 +154,7 @@ export default function ProfessionalStatementPrint({
                 onChange={(e) => setIncludeSignatures(e.target.checked)}
                 className="rounded accent-blue-600 cursor-pointer"
               />
-              <span>قسم التوقيعات والختم</span>
+              <span>{isFr ? "Signatures & Cachet" : "قسم التوقيعات والختم"}</span>
             </label>
 
             <button
@@ -151,13 +162,13 @@ export default function ProfessionalStatementPrint({
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold shadow-md shadow-blue-600/30 transition-all cursor-pointer"
             >
               <Printer size={16} />
-              <span>طباعة المستند</span>
+              <span>{isFr ? "Imprimer le document" : "طباعة المستند"}</span>
             </button>
 
             <button
               onClick={onClose}
               className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
-              title="إغلاق"
+              title={isFr ? "Fermer" : "إغلاق"}
             >
               <X size={18} />
             </button>
@@ -171,7 +182,7 @@ export default function ProfessionalStatementPrint({
           <div
             id="statement-print-zone"
             className="statement-print-zone bg-white mx-auto p-8 sm:p-10 rounded-xl shadow-lg border border-slate-200 print:border-none print:shadow-none print:p-0 print:m-0 print:w-full print:rounded-none max-w-4xl text-slate-800 font-sans"
-            style={{ direction: 'rtl' }}
+            style={{ direction: isRTL ? 'rtl' : 'ltr' }}
           >
             {/* 1. Official Header */}
             <div className="border-b-2 border-slate-900 pb-5 mb-5">
@@ -188,10 +199,10 @@ export default function ProfessionalStatementPrint({
                     )}
                     <div>
                       <h1 className="text-xl font-black text-slate-900 tracking-tight">
-                        {storeInfo?.name || 'مؤسسة حسابي برو التجارية'}
+                        {storeInfo?.name || (isFr ? 'Hissaby Pro SARL' : 'مؤسسة حسابي برو التجارية')}
                       </h1>
                       <p className="text-xs text-slate-500 font-medium">
-                        {storeInfo?.businessType || 'لتجارة الجملة والتجزئة والمبيعات'}
+                        {storeInfo?.businessType || (isFr ? 'Commerce Général, Vente en Gros et Détail' : 'لتجارة الجملة والتجزئة والمبيعات')}
                       </p>
                     </div>
                   </div>
@@ -211,32 +222,36 @@ export default function ProfessionalStatementPrint({
                     )}
                     {storeInfo?.commercialRegister && (
                       <p className="text-[10px] text-slate-500">
-                        السجل التجاري: <span className="font-mono font-bold">{storeInfo.commercialRegister}</span>
+                        {isFr ? "Registre de Commerce : " : "السجل التجاري: "}
+                        <span className="font-mono font-bold">{storeInfo.commercialRegister}</span>
                       </p>
                     )}
                     {storeInfo?.taxNumber && (
                       <p className="text-[10px] text-slate-500">
-                        الرقم الضريبي: <span className="font-mono font-bold">{storeInfo.taxNumber}</span>
+                        {isFr ? "NIF / Fiscal : " : "الرقم الضريبي: "}
+                        <span className="font-mono font-bold">{storeInfo.taxNumber}</span>
                       </p>
                     )}
                   </div>
                 </div>
 
                 {/* Left: Statement Document Meta */}
-                <div className="text-left bg-slate-50 border border-slate-200 rounded-xl p-3 min-w-[220px]">
+                <div className={`${isRTL ? 'text-left' : 'text-right'} bg-slate-50 border border-slate-200 rounded-xl p-3 min-w-[220px]`}>
                   <div className="inline-block px-2 py-0.5 rounded bg-blue-100 text-blue-900 font-black text-xs mb-1">
-                    كشف حساب مالي تفصيلي
+                    {isFr ? "RELEVÉ DE COMPTE OFFICIEL" : "كشف حساب مالي تفصيلي"}
                   </div>
                   <p className="text-[11px] font-mono font-bold text-slate-700 mt-1">
-                    رقم الكشف: {statementRefNumber}
+                    {isFr ? "Réf : " : "رقم الكشف: "}
+                    {statementRefNumber}
                   </p>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    تاريخ الإصدار: <span className="font-sans font-medium text-slate-800">{todayStr}</span>
+                    {isFr ? "Date : " : "تاريخ الإصدار: "}
+                    <span className="font-sans font-medium text-slate-800">{todayStr}</span>
                   </p>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    فترة الكشف:{" "}
+                    {isFr ? "Période : " : "فترة الكشف: "}
                     <span className="font-sans font-bold text-slate-900">
-                      {startDate ? startDate : 'بداية التعامل'} إلى {endDate ? endDate : 'تاريخه'}
+                      {startDate ? startDate : (isFr ? 'Origine' : 'بداية التعامل')} {isFr ? 'au' : 'إلى'} {endDate ? endDate : (isFr ? 'Présent' : 'تاريخه')}
                     </span>
                   </p>
                 </div>
@@ -247,26 +262,26 @@ export default function ProfessionalStatementPrint({
             <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-4 mb-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 {/* Customer Data */}
-                <div className="space-y-1.5 border-l border-slate-200 pl-4">
+                <div className={`space-y-1.5 ${isRTL ? 'border-l pl-4' : 'border-r pr-4'} border-slate-200`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-500 text-[11px]">اسم العميل / المؤسسة:</span>
+                    <span className="text-slate-500 text-[11px]">{isFr ? "Client / Raison sociale :" : "اسم العميل / المؤسسة:"}</span>
                     <strong className="text-sm font-black text-slate-900">{customer.name}</strong>
                   </div>
                   {customer.company && (
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 text-[11px]">الشركة / النشاط:</span>
+                      <span className="text-slate-500 text-[11px]">{isFr ? "Activité / Entreprise :" : "الشركة / النشاط:"}</span>
                       <span className="font-bold text-slate-800">{customer.company}</span>
                     </div>
                   )}
                   {customer.phone && (
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 text-[11px]">رقم الهاتف / الجوال:</span>
+                      <span className="text-slate-500 text-[11px]">{isFr ? "Tél / Mobile :" : "رقم الهاتف / الجوال:"}</span>
                       <span className="font-mono font-bold text-slate-800" dir="ltr">{customer.phone}</span>
                     </div>
                   )}
                   {customer.address && (
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500 text-[11px]">العنوان:</span>
+                      <span className="text-slate-500 text-[11px]">{isFr ? "Adresse :" : "العنوان:"}</span>
                       <span className="text-slate-700 font-medium">{customer.address}</span>
                     </div>
                   )}
@@ -275,30 +290,34 @@ export default function ProfessionalStatementPrint({
                 {/* Account Summary Status */}
                 <div className="space-y-1.5 flex flex-col justify-center">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-500 text-[11px]">الرصيد السابق (المنقول):</span>
+                    <span className="text-slate-500 text-[11px]">{isFr ? "Solde reporté antérieur :" : "الرصيد السابق (المنقول):"}</span>
                     <span className="font-sans font-bold text-slate-800">
                       {formatCurrency(Math.abs(totals.openingBalance))}
-                      <span className="text-[10px] text-slate-400 mr-1">
-                        {totals.openingBalance > 0 ? "(عليه)" : totals.openingBalance < 0 ? "(له)" : "(0)"}
+                      <span className="text-[10px] text-slate-400 mr-1 ml-1">
+                        {totals.openingBalance > 0 ? (isFr ? "(Dû)" : "(عليه)") : totals.openingBalance < 0 ? (isFr ? "(Crédit)" : "(له)") : "(0)"}
                       </span>
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-500 text-[11px]">إجمالي فواتير الفترة (مدين):</span>
+                    <span className="text-slate-500 text-[11px]">{isFr ? "Total Débit de la période :" : "إجمالي فواتير الفترة (مدين):"}</span>
                     <span className="font-sans font-bold text-rose-700">{formatCurrency(totals.totalDebit)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-500 text-[11px]">إجمالي السدادات والمرتجع (دائن):</span>
+                    <span className="text-slate-500 text-[11px]">{isFr ? "Total Règlements & Avoirs (Crédit) :" : "إجمالي السدادات والمرتجع (دائن):"}</span>
                     <span className="font-sans font-bold text-emerald-700">{formatCurrency(totals.totalCredit)}</span>
                   </div>
                   <div className="pt-1.5 border-t border-slate-200 flex items-center justify-between">
-                    <span className="font-black text-slate-900 text-xs">صافي الرصيد الختامي:</span>
+                    <span className="font-black text-slate-900 text-xs">{isFr ? "Solde Net Final :" : "صافي الرصيد الختامي:"}</span>
                     <span className={`text-sm font-black font-sans ${
                       totals.finalBalance > 0 ? "text-rose-700" : totals.finalBalance < 0 ? "text-emerald-700" : "text-slate-800"
                     }`}>
                       {formatCurrency(Math.abs(totals.finalBalance))}
-                      <span className="text-[11px] mr-1 font-bold">
-                        {totals.finalBalance > 0 ? " (مطلوب سداده منه)" : totals.finalBalance < 0 ? " (رصيد دائن له)" : " (خالص ومسدد)"}
+                      <span className="text-[11px] mr-1 ml-1 font-bold">
+                        {totals.finalBalance > 0
+                          ? (isFr ? " (À régler par le client)" : " (مطلوب سداده منه)")
+                          : totals.finalBalance < 0
+                          ? (isFr ? " (Solde créditeur au client)" : " (رصيد دائن له)")
+                          : (isFr ? " (Compte soldé)" : " (خالص ومسدد)")}
                       </span>
                     </span>
                   </div>
@@ -310,21 +329,21 @@ export default function ProfessionalStatementPrint({
             {includeSummaryCards && (
               <div className="grid grid-cols-4 gap-2.5 mb-5 text-center text-xs">
                 <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50">
-                  <p className="text-[10px] font-bold text-slate-500">حركات الفترة</p>
+                  <p className="text-[10px] font-bold text-slate-500">{isFr ? "Opérations" : "حركات الفترة"}</p>
                   <p className="text-sm font-black font-sans text-slate-800 mt-0.5">{transactions.length}</p>
                 </div>
                 <div className="border border-rose-200 rounded-lg p-2.5 bg-rose-50/40">
-                  <p className="text-[10px] font-bold text-rose-700">إجمالي المدين (+)</p>
+                  <p className="text-[10px] font-bold text-rose-700">{isFr ? "Total Débit (+)" : "إجمالي المدين (+)"}</p>
                   <p className="text-sm font-black font-sans text-rose-700 mt-0.5">{formatCurrency(totals.totalDebit)}</p>
                 </div>
                 <div className="border border-emerald-200 rounded-lg p-2.5 bg-emerald-50/40">
-                  <p className="text-[10px] font-bold text-emerald-700">إجمالي الدائن (-)</p>
+                  <p className="text-[10px] font-bold text-emerald-700">{isFr ? "Total Crédit (-)" : "إجمالي الدائن (-)"}</p>
                   <p className="text-sm font-black font-sans text-emerald-700 mt-0.5">{formatCurrency(totals.totalCredit)}</p>
                 </div>
                 <div className={`border rounded-lg p-2.5 ${
                   totals.finalBalance > 0 ? "border-rose-300 bg-rose-100/50" : "border-emerald-300 bg-emerald-100/50"
                 }`}>
-                  <p className="text-[10px] font-black text-slate-700">الرصيد المستحق</p>
+                  <p className="text-[10px] font-black text-slate-700">{isFr ? "Solde Net Dû" : "الرصيد المستحق"}</p>
                   <p className={`text-sm font-black font-sans mt-0.5 ${
                     totals.finalBalance > 0 ? "text-rose-700" : "text-emerald-700"
                   }`}>
@@ -336,18 +355,18 @@ export default function ProfessionalStatementPrint({
 
             {/* 4. THE MASTER LEDGER PRINT TABLE */}
             <div className="mb-6">
-              <table className="w-full text-right border-collapse text-[11px] statement-table border border-slate-300">
+              <table className={`w-full ${isRTL ? 'text-right' : 'text-left'} border-collapse text-[11px] statement-table border border-slate-300`}>
                 <thead>
                   <tr className="bg-slate-800 text-white font-bold border-b-2 border-slate-900">
                     <th className="py-2.5 px-2 text-center w-8 border-l border-slate-700">#</th>
-                    <th className="py-2.5 px-2.5 w-20 border-l border-slate-700">التاريخ</th>
-                    <th className="py-2.5 px-2.5 w-24 border-l border-slate-700">نوع المعاملة</th>
-                    <th className="py-2.5 px-2.5 w-24 border-l border-slate-700">رقم الفاتورة/المستند</th>
-                    <th className="py-2.5 px-3 border-l border-slate-700">البيان وتفاصيل العملية</th>
-                    <th className="py-2.5 px-2 text-center w-12 border-l border-slate-700">الكمية</th>
-                    <th className="py-2.5 px-2.5 text-center w-24 border-l border-slate-700 bg-rose-900/40">مدين (+)</th>
-                    <th className="py-2.5 px-2.5 text-center w-24 border-l border-slate-700 bg-emerald-900/40">دائن (-)</th>
-                    <th className="py-2.5 px-3 text-left w-28 bg-slate-900">الرصيد التراكمي</th>
+                    <th className="py-2.5 px-2.5 w-20 border-l border-slate-700">{isFr ? "Date" : "التاريخ"}</th>
+                    <th className="py-2.5 px-2.5 w-24 border-l border-slate-700">{isFr ? "Type" : "نوع المعاملة"}</th>
+                    <th className="py-2.5 px-2.5 w-24 border-l border-slate-700">{isFr ? "N° Facture/Réf" : "رقم الفاتورة/المستند"}</th>
+                    <th className="py-2.5 px-3 border-l border-slate-700">{isFr ? "Libellé & Détails de l'opération" : "البيان وتفاصيل العملية"}</th>
+                    <th className="py-2.5 px-2 text-center w-12 border-l border-slate-700">{isFr ? "Qté" : "الكمية"}</th>
+                    <th className="py-2.5 px-2.5 text-center w-24 border-l border-slate-700 bg-rose-900/40">{isFr ? "Débit (+)" : "مدين (+)"}</th>
+                    <th className="py-2.5 px-2.5 text-center w-24 border-l border-slate-700 bg-emerald-900/40">{isFr ? "Crédit (-)" : "دائن (-)"}</th>
+                    <th className={`py-2.5 px-3 ${isRTL ? 'text-left' : 'text-right'} w-28 bg-slate-900`}>{isFr ? "Solde Cumulé" : "الرصيد التراكمي"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -357,11 +376,13 @@ export default function ProfessionalStatementPrint({
                       <td className="py-2 px-2 text-center text-slate-500 font-sans border-l border-slate-200">--</td>
                       <td className="py-2 px-2.5 text-slate-700 font-sans border-l border-slate-200">{startDate}</td>
                       <td className="py-2 px-2.5 border-l border-slate-200 text-blue-900">
-                        رصيد سابق
+                        {isFr ? "Solde Antérieur" : "رصيد سابق"}
                       </td>
                       <td className="py-2 px-2.5 font-mono text-slate-400 border-l border-slate-200">---</td>
                       <td className="py-2 px-3 text-slate-900 border-l border-slate-200 font-bold" colSpan={2}>
-                        رصيد افتتاحي سابق منقول حتى تاريخ {startDate}
+                        {isFr
+                          ? `Solde d'ouverture reporté jusqu'au ${startDate}`
+                          : `رصيد افتتاحي سابق منقول حتى تاريخ ${startDate}`}
                       </td>
                       <td className="py-2 px-2.5 text-center font-sans text-rose-700 border-l border-slate-200">
                         {totals.openingBalance > 0 ? formatCurrency(totals.openingBalance) : '-'}
@@ -369,10 +390,10 @@ export default function ProfessionalStatementPrint({
                       <td className="py-2 px-2.5 text-center font-sans text-emerald-700 border-l border-slate-200">
                         {totals.openingBalance < 0 ? formatCurrency(Math.abs(totals.openingBalance)) : '-'}
                       </td>
-                      <td className="py-2 px-3 text-left font-black font-sans text-slate-900 bg-blue-100/40">
+                      <td className={`py-2 px-3 ${isRTL ? 'text-left' : 'text-right'} font-black font-sans text-slate-900 bg-blue-100/40`}>
                         {formatCurrency(Math.abs(totals.openingBalance))}
-                        <span className="text-[9px] text-slate-500 mr-1">
-                          {totals.openingBalance > 0 ? "عليه" : "له"}
+                        <span className="text-[9px] text-slate-500 mr-1 ml-1">
+                          {totals.openingBalance > 0 ? (isFr ? "Dû" : "عليه") : (isFr ? "Crédit" : "له")}
                         </span>
                       </td>
                     </tr>
@@ -411,12 +432,12 @@ export default function ProfessionalStatementPrint({
                           <td className="py-2 px-2.5 text-center font-sans font-bold text-emerald-700 bg-emerald-50/20 border-l border-slate-200">
                             {tx.credit > 0 ? formatCurrency(tx.credit) : '-'}
                           </td>
-                          <td className="py-2 px-3 text-left font-black font-sans bg-slate-100/60">
+                          <td className={`py-2 px-3 ${isRTL ? 'text-left' : 'text-right'} font-black font-sans bg-slate-100/60`}>
                             <span className={currentBal > 0 ? "text-rose-700" : currentBal < 0 ? "text-emerald-700" : "text-slate-600"}>
                               {formatCurrency(Math.abs(currentBal))}
                             </span>
-                            <span className="text-[9px] text-slate-400 mr-1 font-bold">
-                              {currentBal > 0 ? "عليه" : currentBal < 0 ? "له" : "خالص"}
+                            <span className="text-[9px] text-slate-400 mr-1 ml-1 font-bold">
+                              {currentBal > 0 ? (isFr ? "Dû" : "عليه") : currentBal < 0 ? (isFr ? "Crédit" : "له") : (isFr ? "Soldé" : "خالص")}
                             </span>
                           </td>
                         </tr>
@@ -428,26 +449,30 @@ export default function ProfessionalStatementPrint({
                               <div className="bg-white rounded-md border border-slate-300 p-2 text-[10px]">
                                 <div className="flex items-center gap-1.5 mb-1 text-slate-700 font-bold">
                                   <Receipt size={11} className="text-blue-600" />
-                                  <span>أصناف الفاتورة #{tx.invoiceNumber} ({tx.items?.length} صنف):</span>
+                                  <span>
+                                    {isFr
+                                      ? `Articles de la facture #${tx.invoiceNumber} (${tx.items?.length} articles) :`
+                                      : `أصناف الفاتورة #${tx.invoiceNumber} (${tx.items?.length} صنف):`}
+                                  </span>
                                 </div>
-                                <table className="w-full text-right border-collapse">
+                                <table className={`w-full ${isRTL ? 'text-right' : 'text-left'} border-collapse`}>
                                   <thead>
                                     <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
-                                      <th className="p-1">اسم الصنف</th>
-                                      <th className="p-1 w-24">كود الصنف</th>
-                                      <th className="p-1 text-center w-16">الكمية</th>
-                                      <th className="p-1 text-center w-24">سعر الوحدة</th>
-                                      <th className="p-1 text-left w-24">الإجمالي</th>
+                                      <th className="p-1">{isFr ? "Désignation" : "اسم الصنف"}</th>
+                                      <th className="p-1 w-24">{isFr ? "Code" : "كود الصنف"}</th>
+                                      <th className="p-1 text-center w-16">{isFr ? "Quantité" : "الكمية"}</th>
+                                      <th className="p-1 text-center w-24">{isFr ? "Prix Unitaire" : "سعر الوحدة"}</th>
+                                      <th className={`p-1 ${isRTL ? 'text-left' : 'text-right'} w-24`}>{isFr ? "Total" : "الإجمالي"}</th>
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-slate-100 font-sans">
                                     {tx.items?.map((it, itemIdx) => (
                                       <tr key={itemIdx} className="hover:bg-slate-50">
-                                        <td className="p-1 font-medium text-slate-800 font-arabic">{it.productName}</td>
+                                        <td className="p-1 font-medium text-slate-800">{it.productName}</td>
                                         <td className="p-1 font-mono text-slate-500">{it.productCode || '-'}</td>
                                         <td className="p-1 text-center font-bold text-slate-700">{it.quantity}</td>
                                         <td className="p-1 text-center text-slate-600">{formatCurrency(it.price)}</td>
-                                        <td className="p-1 text-left font-bold text-slate-900">{formatCurrency(it.total)}</td>
+                                        <td className={`p-1 ${isRTL ? 'text-left' : 'text-right'} font-bold text-slate-900`}>{formatCurrency(it.total)}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -463,7 +488,7 @@ export default function ProfessionalStatementPrint({
                 <tfoot className="bg-slate-200 text-slate-900 font-bold border-t-2 border-slate-800 text-[11px]">
                   <tr>
                     <td colSpan={5} className="py-2.5 px-3 font-black text-slate-900 text-xs">
-                      المجموع العام لحركات الفترة:
+                      {isFr ? "Total général des opérations de la période :" : "المجموع العام لحركات الفترة:"}
                     </td>
                     <td className="py-2.5 px-2 text-center font-sans font-bold text-slate-900 border-l border-slate-300">
                       {totals.totalQuantity}
@@ -474,12 +499,12 @@ export default function ProfessionalStatementPrint({
                     <td className="py-2.5 px-2.5 text-center font-black font-sans text-emerald-700 bg-emerald-100/60 border-l border-slate-300">
                       {formatCurrency(totals.totalCredit)}
                     </td>
-                    <td className="py-2.5 px-3 text-left font-black font-sans text-xs bg-slate-300/70">
+                    <td className={`py-2.5 px-3 ${isRTL ? 'text-left' : 'text-right'} font-black font-sans text-xs bg-slate-300/70`}>
                       <span className={totals.finalBalance > 0 ? "text-rose-800" : "text-emerald-800"}>
                         {formatCurrency(Math.abs(totals.finalBalance))}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-600 mr-1">
-                        {totals.finalBalance > 0 ? "(عليه)" : totals.finalBalance < 0 ? "(له)" : "(خالص)"}
+                      <span className="text-[10px] font-bold text-slate-600 mr-1 ml-1">
+                        {totals.finalBalance > 0 ? (isFr ? "(Dû)" : "(عليه)") : totals.finalBalance < 0 ? (isFr ? "(Crédit)" : "(له)") : (isFr ? "(Soldé)" : "(خالص)")}
                       </span>
                     </td>
                   </tr>
@@ -492,22 +517,37 @@ export default function ProfessionalStatementPrint({
               <div className="flex items-center justify-between">
                 <span className="font-bold flex items-center gap-1.5 text-slate-900">
                   <ShieldCheck size={14} className="text-blue-600" />
-                  <span>الإقرار والاعتماد المحاسبي:</span>
+                  <span>{isFr ? "Attestation et certification comptable :" : "الإقرار والاعتماد المحاسبي:"}</span>
                 </span>
                 <span className="font-mono text-[11px] text-slate-500 font-medium">
-                  {transactions.length} حركات مسجلة
+                  {transactions.length} {isFr ? "opérations enregistrées" : "حركات مسجلة"}
                 </span>
               </div>
               <p className="text-[11px] text-slate-600 leading-relaxed">
-                نشهد بأن هذا الكشف يمثل الحساب الدقيق والمعتمد للعميل المحترم/{" "}
-                <strong className="text-slate-900">{customer.name}</strong>، ويشمل جميع الفواتير والمبيعات السابقة المستخرجة والمطابقة من السجلات والأرشيف حتى تاريخه، والرصيد النهائي المعتمد هو{" "}
-                <strong className={`font-sans text-xs ${totals.finalBalance > 0 ? "text-rose-700" : "text-emerald-700"}`}>
-                  {formatCurrency(Math.abs(totals.finalBalance))}
-                </strong>{" "}
-                ({totals.finalBalance > 0 ? "مطلوب سداده لصالح المؤسسة" : totals.finalBalance < 0 ? "رصيد دائن مستحق للعميل" : "الحساب مسدد بالكامل"}).
+                {isFr ? (
+                  <>
+                    Nous certifions que le présent relevé de compte représente fidèlement la situation comptable de notre client M./Société{" "}
+                    <strong className="text-slate-900">{customer.name}</strong>, comprenant l'ensemble des factures de vente, mouvements d'archive et règlements jusqu'à ce jour. Le solde définitif arrêté est de{" "}
+                    <strong className={`font-sans text-xs ${totals.finalBalance > 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                      {formatCurrency(Math.abs(totals.finalBalance))}
+                    </strong>{" "}
+                    ({totals.finalBalance > 0 ? "à régler à notre établissement" : totals.finalBalance < 0 ? "solde créditeur en sa faveur" : "compte entièrement soldé"}).
+                  </>
+                ) : (
+                  <>
+                    نشهد بأن هذا الكشف يمثل الحساب الدقيق والمعتمد للعميل المحترم/{" "}
+                    <strong className="text-slate-900">{customer.name}</strong>، ويشمل جميع الفواتير والمبيعات السابقة المستخرجة والمطابقة من السجلات والأرشيف حتى تاريخه، والرصيد النهائي المعتمد هو{" "}
+                    <strong className={`font-sans text-xs ${totals.finalBalance > 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                      {formatCurrency(Math.abs(totals.finalBalance))}
+                    </strong>{" "}
+                    ({totals.finalBalance > 0 ? "مطلوب سداده لصالح المؤسسة" : totals.finalBalance < 0 ? "رصيد دائن مستحق للعميل" : "الحساب مسدد بالكامل"}).
+                  </>
+                )}
               </p>
               <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-200">
-                * ملاحظة قانونية: يعتبر هذا الكشف نهائياً وصحيحاً وموافقاً عليه من الطرفين في حال عدم ورود أي إخطار كتابي خلال 15 يوماً من تاريخ استلامه.
+                {isFr
+                  ? "* Mention légale : Ce relevé est réputé exact et approuvé entre les parties à défaut de contestation écrite dans un délai de 15 jours suivant sa notification."
+                  : "* ملاحظة قانونية: يعتبر هذا الكشف نهائياً وصحيحاً وموافقاً عليه من الطرفين في حال عدم ورود أي إخطار كتابي خلال 15 يوماً من تاريخ استلامه."}
               </p>
             </div>
 
@@ -516,36 +556,36 @@ export default function ProfessionalStatementPrint({
               <div className="pt-4 border-t-2 border-slate-800 grid grid-cols-3 gap-4 text-center text-xs">
                 {/* Accountant Signature */}
                 <div className="space-y-6">
-                  <p className="font-bold text-slate-700 text-[11px]">إعداد المحاسب المسؤول</p>
+                  <p className="font-bold text-slate-700 text-[11px]">{isFr ? "Le Responsable Comptable" : "إعداد المحاسب المسؤول"}</p>
                   <div className="h-12 border-b border-dashed border-slate-300 mx-4"></div>
-                  <p className="text-[10px] text-slate-400">التوقيع والتاريخ</p>
+                  <p className="text-[10px] text-slate-400">{isFr ? "Date & Signature" : "التوقيع والتاريخ"}</p>
                 </div>
 
                 {/* Management Stamp */}
                 <div className="space-y-6 border-r border-l border-slate-200 px-2">
-                  <p className="font-bold text-slate-700 text-[11px]">ختم واعتماد المؤسسة</p>
+                  <p className="font-bold text-slate-700 text-[11px]">{isFr ? "Cachet de l'Établissement" : "ختم واعتماد المؤسسة"}</p>
                   <div className="h-12 flex items-center justify-center">
                     <div className="w-16 h-12 border-2 border-blue-900/30 rounded-lg flex items-center justify-center text-[10px] font-bold text-blue-900/40 transform -rotate-6">
-                      الختم الرسمي
+                      {isFr ? "Cachet Officiel" : "الختم الرسمي"}
                     </div>
                   </div>
-                  <p className="text-[10px] text-slate-400">الإدارة المالية</p>
+                  <p className="text-[10px] text-slate-400">{isFr ? "Direction Financière" : "الإدارة المالية"}</p>
                 </div>
 
                 {/* Customer Signature */}
                 <div className="space-y-6">
-                  <p className="font-bold text-slate-700 text-[11px]">توقيع واستلام العميل</p>
+                  <p className="font-bold text-slate-700 text-[11px]">{isFr ? "Signature du Client" : "توقيع واستلام العميل"}</p>
                   <div className="h-12 border-b border-dashed border-slate-300 mx-4"></div>
-                  <p className="text-[10px] text-slate-400">الاسم والتوقيع</p>
+                  <p className="text-[10px] text-slate-400">{isFr ? "Nom & Signature" : "الاسم والتوقيع"}</p>
                 </div>
               </div>
             )}
 
             {/* Document Footer */}
             <div className="mt-8 pt-3 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400 font-sans">
-              <span>نظام حسابي برو لإدارة الحسابات والمبيعات</span>
-              <span>صفحة 1 من 1</span>
-              <span>تاريخ الطباعة: {todayStr}</span>
+              <span>{isFr ? "Système Hissaby Pro - Gestion Commerciale & Comptable" : "نظام حسابي برو لإدارة الحسابات والمبيعات"}</span>
+              <span>{isFr ? "Page 1 sur 1" : "صفحة 1 من 1"}</span>
+              <span>{isFr ? "Date d'impression : " : "تاريخ الطباعة: "}{todayStr}</span>
             </div>
 
           </div>{/* End printable statement */}
@@ -555,21 +595,23 @@ export default function ProfessionalStatementPrint({
         {/* Modal Bottom Footer (Screen Only) */}
         <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs print:hidden shrink-0">
           <p className="text-slate-500">
-            تم ضبط التنسيق ليلائم أوراق الطباعة القياسية <strong className="text-slate-800">A4 Portrait</strong> بدقة تامة.
+            {isFr
+              ? "Mise en page optimisée pour l'impression standard A4 Portrait."
+              : "تم ضبط التنسيق ليلائم أوراق الطباعة القياسية A4 Portrait بدقة تامة."}
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
               className="px-4 py-2 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
-              إلغاء
+              {isFr ? "Fermer" : "إلغاء"}
             </button>
             <button
               onClick={handlePrint}
               className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
             >
               <Printer size={15} />
-              <span>بدء الطباعة الآن</span>
+              <span>{isFr ? "Lancer l'impression" : "بدء الطباعة الآن"}</span>
             </button>
           </div>
         </div>

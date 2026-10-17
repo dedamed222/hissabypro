@@ -1,13 +1,16 @@
-
 import { AnimatedLogo } from "@/components/ui/animated-logo";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Store } from "lucide-react";
 import { loadStoreData } from "@/utils/localStorage";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function Home() {
   const navigate = useNavigate();
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [storeInfo, setStoreInfo] = useState({ name: "", photoUrl: "" });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -36,8 +39,12 @@ export default function Home() {
       </div>
       
       <div className={`text-center transition-opacity duration-700 ease-in-out ${isLoading ? "opacity-0" : "opacity-100"}`}>
-        <h1 className="text-4xl font-bold mb-2 text-arab-indigo">حسابي برو</h1>
-        <p className="text-lg text-gray-600 mb-8">نظام إدارة المتاجر الأمثل</p>
+        <h1 className="text-4xl font-bold mb-2 text-arab-indigo">
+          {isFr ? "Hissaby Pro" : "حسابي برو"}
+        </h1>
+        <p className="text-lg text-gray-600 mb-8">
+          {isFr ? "Le système optimal de gestion de magasin" : "نظام إدارة المتاجر الأمثل"}
+        </p>
         
         {storeInfo.name && (
           <div className="flex items-center justify-center mb-6 space-x-2">
@@ -64,7 +71,7 @@ export default function Home() {
             className="bg-gradient-indigo hover:bg-arab-indigo-dark transition-all"
             onClick={() => navigate("/dashboard")}
           >
-            لوحة التحكم
+            {isFr ? "Tableau de bord" : "لوحة التحكم"}
           </Button>
           
           <Button
@@ -73,13 +80,16 @@ export default function Home() {
             className="border-arab-indigo text-arab-indigo hover:bg-arab-indigo/10"
             onClick={() => navigate("/login")}
           >
-            تبديل الحساب
+            {isFr ? "Changer de compte" : "تبديل الحساب"}
           </Button>
         </div>
       </div>
       
       <div className={`mt-12 text-sm text-gray-500 transition-opacity duration-700 delay-300 ${isLoading ? "opacity-0" : "opacity-100"}`}>
-        © {new Date().getFullYear()} حسابي برو - جميع الحقوق محفوظة
+        {isFr 
+          ? `© ${new Date().getFullYear()} Hissaby Pro - Tous droits réservés`
+          : `© ${new Date().getFullYear()} حسابي برو - جميع الحقوق محفوظة`
+        }
       </div>
     </div>
   );

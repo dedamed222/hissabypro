@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,8 +33,12 @@ import {
   User,
   DollarSign
 } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function Payments() {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -73,13 +76,14 @@ export default function Payments() {
   // Get pending invoices (waiting for payment)
   const pendingInvoices = invoices.filter(invoice =>
     invoice.status === "pending" &&
-    invoice.notes?.includes("دفع متأخر") ||
-    invoice.notes?.includes("جدول زمني")
+    (invoice.notes?.includes("دفع متأخر") ||
+     invoice.notes?.includes("جدول زمني") ||
+     invoice.notes?.includes("échéancier") ||
+     invoice.notes?.includes("retard"))
   );
 
   // Calculate payment percentage (mock calculation)
   const getPaymentPercentage = (invoice: Invoice) => {
-    // Mock calculation - in real app this would be based on actual payments
     return Math.floor(Math.random() * 100);
   };
 
@@ -87,14 +91,16 @@ export default function Payments() {
   const getNextPaymentDate = (invoice: Invoice) => {
     const date = new Date();
     date.setDate(date.getDate() + Math.floor(Math.random() * 30) + 1);
-    return date.toLocaleDateString('en-GB');
+    return date.toLocaleDateString(isFr ? 'fr-FR' : 'ar-MR');
   };
 
   // Send reminder function
   const sendReminder = (invoice: Invoice) => {
     toast({
-      title: "تم إرسال التذكير",
-      description: `تم إرسال تذكير دفع للعميل ${invoice.customerName}`,
+      title: isFr ? "Rappel envoyé" : "تم إرسال التذكير",
+      description: isFr 
+        ? `Rappel de paiement envoyé au client ${invoice.customerName}`
+        : `تم إرسال تذكير دفع للعميل ${invoice.customerName}`,
     });
   };
 
@@ -102,17 +108,17 @@ export default function Payments() {
   const paymentMethods = [...new Set(invoices.map(invoice => invoice.paymentMethod))].filter(Boolean);
 
   return (
-    <div className="space-y-6 p-6" dir="rtl">
+    <div className="space-y-6 p-6">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <CreditCard className="w-8 h-8 text-blue-600" />
-          إدارة المدفوعات
+          {isFr ? "Gestion des paiements" : "إدارة المدفوعات"}
         </h1>
         <Link to="/create-invoice">
           <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="w-4 h-4 ml-2" />
-            إضافة فاتورة جديدة
+            <Plus className="w-4 h-4 mr-2" />
+            {isFr ? "Nouvelle facture" : "إضافة فاتورة جديدة"}
           </Button>
         </Link>
       </div>
@@ -122,7 +128,7 @@ export default function Payments() {
         <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
           <CardTitle className="flex items-center gap-2">
             <Filter className="w-5 h-5" />
-            البحث والفلترة
+            {isFr ? "Recherche et filtres" : "البحث والفلترة"}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -130,7 +136,7 @@ export default function Payments() {
             <div className="relative">
               <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="البحث في الفواتير..."
+                placeholder={isFr ? "Rechercher dans les factures..." : "البحث في الفواتير..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
@@ -139,22 +145,22 @@ export default function Payments() {
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="فلترة حسب الحالة" />
+                <SelectValue placeholder={isFr ? "Filtrer par statut" : "فلترة حسب الحالة"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع الحالات</SelectItem>
-                <SelectItem value="paid">مدفوعة</SelectItem>
-                <SelectItem value="pending">غير مدفوعة</SelectItem>
-                <SelectItem value="cancelled">ملغية</SelectItem>
+                <SelectItem value="all">{isFr ? "Tous les statuts" : "جميع الحالات"}</SelectItem>
+                <SelectItem value="paid">{isFr ? "Payée" : "مدفوعة"}</SelectItem>
+                <SelectItem value="pending">{isFr ? "Non payée" : "غير مدفوعة"}</SelectItem>
+                <SelectItem value="cancelled">{isFr ? "Annulée" : "ملغية"}</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="طريقة الدفع" />
+                <SelectValue placeholder={isFr ? "Mode de paiement" : "طريقة الدفع"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع طرق الدفع</SelectItem>
+                <SelectItem value="all">{isFr ? "Tous les modes" : "جميع طرق الدفع"}</SelectItem>
                 {paymentMethods.map((method) => (
                   <SelectItem key={method} value={method}>
                     {method}
@@ -178,15 +184,15 @@ export default function Payments() {
         <TabsList className="grid w-full grid-cols-3 bg-blue-50">
           <TabsTrigger value="paid" className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4" />
-            الفواتير المسددة ({paidInvoices.length})
+            {isFr ? "Factures payées" : "الفواتير المسددة"} ({paidInvoices.length})
           </TabsTrigger>
           <TabsTrigger value="unpaid" className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
-            الفواتير غير المسددة ({unpaidInvoices.length})
+            {isFr ? "Factures impayées" : "الفواتير غير المسددة"} ({unpaidInvoices.length})
           </TabsTrigger>
           <TabsTrigger value="pending" className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            قائمة الانتظار ({pendingInvoices.length})
+            {isFr ? "En attente" : "قائمة الانتظار"} ({pendingInvoices.length})
           </TabsTrigger>
         </TabsList>
 
@@ -196,7 +202,7 @@ export default function Payments() {
             <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
               <CardTitle className="flex items-center gap-2 text-green-700">
                 <CheckCircle className="w-5 h-5" />
-                الفواتير المسددة
+                {isFr ? "Factures payées" : "الفواتير المسددة"}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
@@ -204,54 +210,54 @@ export default function Payments() {
                 <Table className="block md:table">
                   <TableHeader className="hidden md:table-header-group">
                     <TableRow className="bg-gray-100">
-                      <TableHead className="text-right font-semibold">رقم الفاتورة</TableHead>
-                      <TableHead className="text-right font-semibold">اسم العميل</TableHead>
-                      <TableHead className="text-right font-semibold">المبلغ</TableHead>
-                      <TableHead className="text-right font-semibold">طريقة الدفع</TableHead>
-                      <TableHead className="text-right font-semibold">التاريخ</TableHead>
-                      <TableHead className="text-right font-semibold">الحالة</TableHead>
-                      <TableHead className="text-center font-semibold">الإجراءات</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "N° Facture" : "رقم الفاتورة"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Nom du client" : "اسم العميل"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Montant" : "المبلغ"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Mode de paiement" : "طريقة الدفع"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Date" : "التاريخ"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Statut" : "الحالة"}</TableHead>
+                      <TableHead className="text-center font-semibold">{isFr ? "Actions" : "الإجراءات"}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="block md:table-row-group">
                     {paidInvoices.length > 0 ? (
                       paidInvoices.map((invoice) => (
                         <TableRow key={invoice.id} className="hover:bg-gray-50 mobile-card-row">
-                          <TableCell data-label="رقم الفاتورة" className="font-medium">
+                          <TableCell data-label={isFr ? "N° Facture" : "رقم الفاتورة"} className="font-medium">
                             <Badge variant="outline" className="font-mono">
                               {invoice.invoiceNumber}
                             </Badge>
                           </TableCell>
-                          <TableCell data-label="اسم العميل">
+                          <TableCell data-label={isFr ? "Nom du client" : "اسم العميل"}>
                             <div className="flex items-center gap-2 justify-end md:justify-start">
                               <User className="w-4 h-4 text-gray-500" />
                               {invoice.customerName}
                             </div>
                           </TableCell>
-                          <TableCell data-label="المبلغ" className="font-bold text-green-600">
+                          <TableCell data-label={isFr ? "Montant" : "المبلغ"} className="font-bold text-green-600">
                             {formatCurrency(invoice.total)}
                           </TableCell>
-                          <TableCell data-label="طريقة الدفع">
+                          <TableCell data-label={isFr ? "Mode de paiement" : "طريقة الدفع"}>
                             <div className="flex items-center gap-2 justify-end md:justify-start">
                               <CreditCard className="w-4 h-4" />
                               {invoice.paymentMethod}
                             </div>
                           </TableCell>
-                          <TableCell data-label="التاريخ">
+                          <TableCell data-label={isFr ? "Date" : "التاريخ"}>
                             <div className="flex items-center gap-2 justify-end md:justify-start">
                               <Calendar className="w-4 h-4 text-gray-500" />
                               {invoice.date}
                             </div>
                           </TableCell>
-                          <TableCell data-label="الحالة">
+                          <TableCell data-label={isFr ? "Statut" : "الحالة"}>
                             <Badge className="bg-green-100 text-green-800">
-                              {invoice.status === "paid" ? "مسددة" : invoice.status}
+                              {invoice.status === "paid" ? (isFr ? "Payée" : "مسددة") : invoice.status}
                             </Badge>
                           </TableCell>
-                          <TableCell data-label="الإجراءات" className="text-center">
+                          <TableCell data-label={isFr ? "Actions" : "الإجراءات"} className="text-center">
                             <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 h-10 px-4">
-                              <Eye className="w-4 h-4 ml-1" />
-                              عرض التفاصيل
+                              <Eye className="w-4 h-4 mr-1" />
+                              {isFr ? "Voir détails" : "عرض التفاصيل"}
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -259,7 +265,7 @@ export default function Payments() {
                     ) : (
                       <TableRow className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
                         <TableCell colSpan={7} className="text-center py-8 text-gray-500 block md:table-cell">
-                          لا توجد فواتير مسددة
+                          {isFr ? "Aucune facture payée" : "لا توجد فواتير مسددة"}
                         </TableCell>
                       </TableRow>
                     )}
@@ -276,7 +282,7 @@ export default function Payments() {
             <CardHeader className="bg-gradient-to-r from-red-50 to-pink-50">
               <CardTitle className="flex items-center gap-2 text-red-700">
                 <AlertCircle className="w-5 h-5" />
-                الفواتير غير المسددة
+                {isFr ? "Factures impayées" : "الفواتير غير المسددة"}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
@@ -284,12 +290,12 @@ export default function Payments() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-100">
-                      <TableHead className="text-right font-semibold">رقم الفاتورة</TableHead>
-                      <TableHead className="text-right font-semibold">اسم العميل</TableHead>
-                      <TableHead className="text-right font-semibold">المبلغ المستحق</TableHead>
-                      <TableHead className="text-right font-semibold">نسبة التسديد</TableHead>
-                      <TableHead className="text-right font-semibold">تاريخ الاستحقاق</TableHead>
-                      <TableHead className="text-center font-semibold">الإجراءات</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "N° Facture" : "رقم الفاتورة"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Nom du client" : "اسم العميل"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Montant dû" : "المبلغ المستحق"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Taux de règlement" : "نسبة التسديد"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Date d'échéance" : "تاريخ الاستحقاق"}</TableHead>
+                      <TableHead className="text-center font-semibold">{isFr ? "Actions" : "الإجراءات"}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -327,8 +333,8 @@ export default function Payments() {
                                 className="text-orange-600 hover:text-orange-700"
                                 onClick={() => sendReminder(invoice)}
                               >
-                                <Bell className="w-4 h-4 ml-1" />
-                                إرسال تذكير
+                                <Bell className="w-4 h-4 mr-1" />
+                                {isFr ? "Envoyer rappel" : "إرسال تذكير"}
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -337,7 +343,7 @@ export default function Payments() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                          لا توجد فواتير غير مسددة
+                          {isFr ? "Aucune facture impayée" : "لا توجد فواتير غير مسددة"}
                         </TableCell>
                       </TableRow>
                     )}
@@ -354,7 +360,7 @@ export default function Payments() {
             <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50">
               <CardTitle className="flex items-center gap-2 text-yellow-700">
                 <Clock className="w-5 h-5" />
-                قائمة الانتظار للدفع
+                {isFr ? "Liste d'attente pour paiement" : "قائمة الانتظار للدفع"}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
@@ -362,13 +368,13 @@ export default function Payments() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-gray-100">
-                      <TableHead className="text-right font-semibold">رقم الفاتورة</TableHead>
-                      <TableHead className="text-right font-semibold">العميل</TableHead>
-                      <TableHead className="text-right font-semibold">المبلغ الكلي</TableHead>
-                      <TableHead className="text-right font-semibold">الدفعة الأولى</TableHead>
-                      <TableHead className="text-right font-semibold">المتبقي</TableHead>
-                      <TableHead className="text-right font-semibold">تاريخ السداد القادم</TableHead>
-                      <TableHead className="text-right font-semibold">ملاحظات</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "N° Facture" : "رقم الفاتورة"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Client" : "العميل"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Montant total" : "المبلغ الكلي"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Premier acompte" : "الدفعة الأولى"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Restant" : "المتبقي"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Prochaine échéance" : "تاريخ السداد القادم"}</TableHead>
+                      <TableHead className="text-right font-semibold">{isFr ? "Remarques" : "ملاحظات"}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -403,7 +409,7 @@ export default function Payments() {
                               {nextPaymentDate}
                             </TableCell>
                             <TableCell className="text-sm text-gray-600">
-                              {invoice.notes || "جدول زمني للدفع"}
+                              {invoice.notes || (isFr ? "Échéancier de paiement" : "جدول زمني للدفع")}
                             </TableCell>
                           </TableRow>
                         );
@@ -411,7 +417,7 @@ export default function Payments() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                          لا توجد فواتير في قائمة الانتظار
+                          {isFr ? "Aucune facture en attente" : "لا توجد فواتير في قائمة الانتظار"}
                         </TableCell>
                       </TableRow>
                     )}
@@ -429,7 +435,9 @@ export default function Payments() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600 mb-1">إجمالي المبيعات المسددة</p>
+                <p className="text-sm font-medium text-green-600 mb-1">
+                  {isFr ? "Total des ventes réglées" : "إجمالي المبيعات المسددة"}
+                </p>
                 <p className="text-2xl font-bold text-green-700">
                   {formatCurrency(paidInvoices.reduce((sum, inv) => sum + inv.total, 0))}
                 </p>
@@ -445,7 +453,9 @@ export default function Payments() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-red-600 mb-1">المبالغ المستحقة</p>
+                <p className="text-sm font-medium text-red-600 mb-1">
+                  {isFr ? "Montants dus" : "المبالغ المستحقة"}
+                </p>
                 <p className="text-2xl font-bold text-red-700">
                   {formatCurrency(unpaidInvoices.reduce((sum, inv) => sum + inv.total, 0))}
                 </p>
@@ -461,7 +471,9 @@ export default function Payments() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-600 mb-1">إجمالي الفواتير</p>
+                <p className="text-sm font-medium text-blue-600 mb-1">
+                  {isFr ? "Total des factures" : "إجمالي الفواتير"}
+                </p>
                 <p className="text-2xl font-bold text-blue-700">
                   {formatCurrency(invoices.reduce((sum, inv) => sum + inv.total, 0))}
                 </p>

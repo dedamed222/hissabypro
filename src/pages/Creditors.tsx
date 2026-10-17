@@ -12,6 +12,7 @@ import ProductSearch from "@/components/sales/ProductSearch";
 import NewProductForm from "@/components/creditors/NewProductForm";
 import { useProductSearch } from "@/hooks/useProductSearch";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/hooks/useLocale";
 import { 
   getCreditors, 
   upsertCreditor, 
@@ -22,6 +23,8 @@ import {
 export default function Creditors() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
   const [formData, setFormData] = useState({
     name: "",
     productCode: "",
@@ -122,14 +125,14 @@ export default function Creditors() {
       }
 
       toast({
-        title: newStatus === 'paid' ? "تم التسديد" : "تمت إعادة التعيين",
-        description: newStatus === 'paid' ? "تم وضع علامة مسدد على الدائنية" : "تمت إعادة الدائنية إلى قائمة الانتظار"
+        title: newStatus === 'paid' ? (isFr ? "Payé" : "تم التسديد") : (isFr ? "Réinitialisé" : "تمت إعادة التعيين"),
+        description: newStatus === 'paid' ? (isFr ? "Marqué comme payé" : "تم وضع علامة مسدد على الدائنية") : (isFr ? "Remis en attente" : "تمت إعادة الدائنية إلى قائمة الانتظار")
       });
     } catch (err) {
       console.error("Error toggling creditor status:", err);
-      const errorMessage = err instanceof Error ? err.message : "فشل تحديث حالة الدائنية";
+      const errorMessage = err instanceof Error ? err.message : (isFr ? "Échec de mise à jour du statut" : "فشل تحديث حالة الدائنية");
       toast({
-        title: "خطأ في المزامنة",
+        title: isFr ? "Erreur de synchronisation" : "خطأ في المزامنة",
         description: errorMessage,
         variant: "destructive"
       });
@@ -181,19 +184,19 @@ export default function Creditors() {
 
   const handleSubmit = () => {
     if (!formData.name.trim()) {
-      setError("يرجى إدخال اسم الدائن");
+      setError(isFr ? "Veuillez entrer le nom du créancier" : "يرجى إدخال اسم الدائن");
       return;
     }
     if (!formData.productCode.trim() || !formData.productName.trim()) {
-      setError("يرجى إدخال معلومات المنتج");
+      setError(isFr ? "Veuillez entrer les informations du produit" : "يرجى إدخال معلومات المنتج");
       return;
     }
     if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
-      setError("يرجى إدخال سعر صحيح");
+      setError(isFr ? "Veuillez entrer un prix valide" : "يرجى إدخال سعر صحيح");
       return;
     }
     if (!formData.quantity || isNaN(Number(formData.quantity)) || Number(formData.quantity) <= 0) {
-      setError("يرجى إدخال كمية صحيحة");
+      setError(isFr ? "Veuillez entrer une quantité valide" : "يرجى إدخال كمية صحيحة");
       return;
     }
 
@@ -261,7 +264,7 @@ export default function Creditors() {
       setSelectedCustomer(null);
     } catch (err) {
       console.error("Error adding creditor:", err);
-      setError("حدث خطأ أثناء إضافة الدائن");
+      setError(isFr ? "Une erreur est survenue lors de l'ajout du créancier" : "حدث خطأ أثناء إضافة الدائن");
     } finally {
       setLoading(false);
     }
@@ -286,7 +289,7 @@ export default function Creditors() {
 
   const handleEditSubmit = (id: string) => {
     if (!editForm.name.trim() || !editForm.productCode.trim() || !editForm.productName.trim() || !editForm.quantity || isNaN(Number(editForm.quantity)) || Number(editForm.quantity) <= 0 || !editForm.price || isNaN(Number(editForm.price)) || Number(editForm.price) <= 0) {
-      setError("يرجى إدخال بيانات صحيحة عند التعديل");
+      setError(isFr ? "Veuillez entrer des données valides lors de la modification" : "يرجى إدخال بيانات صحيحة عند التعديل");
       return;
     }
 
@@ -342,8 +345,12 @@ export default function Creditors() {
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl mb-8 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">إدارة الدائنين</h1>
-            <p className="text-gray-600">تتبع وإدارة حسابات الدائنين والتعاملات المالية</p>
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">
+              {isFr ? "Gestion des Créanciers" : "إدارة الدائنين"}
+            </h1>
+            <p className="text-gray-600">
+              {isFr ? "Suivi et gestion des comptes des créanciers et des transactions financières" : "تتبع وإدارة حسابات الدائنين والتعاملات المالية"}
+            </p>
           </div>
           <Button
             onClick={() => navigate('/creditors/overview')}
@@ -351,7 +358,7 @@ export default function Creditors() {
             size="lg"
           >
             <BarChart3 className="w-5 h-5" />
-            ملخص شامل
+            {isFr ? "Résumé global" : "ملخص شامل"}
           </Button>
         </div>
       </div>
@@ -362,7 +369,7 @@ export default function Creditors() {
           <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              الدائنين الحاليين
+              {isFr ? "Créanciers actuels" : "الدائنين الحاليين"}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
@@ -387,7 +394,7 @@ export default function Creditors() {
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
-            إضافة دائن جديد
+            {isFr ? "Ajouter un nouveau créancier" : "إضافة دائن جديد"}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -402,7 +409,7 @@ export default function Creditors() {
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                 <User className="w-5 h-5" />
-                بيانات الدائن
+                {isFr ? "Informations du créancier" : "بيانات الدائن"}
               </h3>
               <CustomerSelector
                 selectedCustomer={selectedCustomer}
@@ -410,11 +417,11 @@ export default function Creditors() {
                 onCustomerChange={handleCustomerChange}
               />
               <div className="mt-4">
-                <label className="block mb-2 font-medium">اسم الدائن</label>
+                <label className="block mb-2 font-medium">{isFr ? "Nom du créancier" : "اسم الدائن"}</label>
                 <Input 
                   value={formData.name} 
                   onChange={e => setFormData({...formData, name: e.target.value})} 
-                  placeholder="أدخل اسم الدائن أو اختر من القائمة" 
+                  placeholder={isFr ? "Entrez le nom du créancier ou choisissez dans la liste" : "أدخل اسم الدائن أو اختر من القائمة"} 
                   className="focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -425,13 +432,13 @@ export default function Creditors() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Package className="w-5 h-5" />
-                  معلومات المنتج
+                  {isFr ? "Informations du produit" : "معلومات المنتج"}
                 </h3>
                 <NewProductForm onProductAdded={handleProductAdded} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
-                  <label className="block mb-2 font-medium">رمز المنتج</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Code produit" : "رمز المنتج"}</label>
                   <Input 
                     value={formData.productCode} 
                     onChange={e => {
@@ -440,7 +447,7 @@ export default function Creditors() {
                       setShowProductSearch(true);
                     }}
                     onFocus={() => setShowProductSearch(true)}
-                    placeholder="أدخل رمز المنتج أو ابحث" 
+                    placeholder={isFr ? "Entrez le code produit ou recherchez" : "أدخل رمز المنتج أو ابحث"} 
                     className="focus:ring-2 focus:ring-blue-500"
                   />
                   <ProductSearch
@@ -452,26 +459,26 @@ export default function Creditors() {
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-medium">اسم المنتج</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Nom du produit" : "اسم المنتج"}</label>
                   <Input 
                     value={formData.productName} 
                     onChange={e => setFormData({...formData, productName: e.target.value})} 
-                    placeholder="اسم المنتج" 
+                    placeholder={isFr ? "Nom du produit" : "اسم المنتج"} 
                     className="focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-medium">الكمية</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Quantité" : "الكمية"}</label>
                   <Input 
                     type="number" 
                     value={formData.quantity} 
                     onChange={e => setFormData({...formData, quantity: e.target.value})} 
-                    placeholder="الكمية" 
+                    placeholder={isFr ? "Quantité" : "الكمية"} 
                     className="focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block mb-2 font-medium">سعر الوحدة</label>
+                  <label className="block mb-2 font-medium">{isFr ? "Prix unitaire" : "سعر الوحدة"}</label>
                   <Input 
                     type="number" 
                     value={formData.price} 
@@ -489,7 +496,7 @@ export default function Creditors() {
               className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
             >
               <Plus className="mr-2" size={18} />
-              {loading ? "جاري الإضافة..." : "إضافة دائن"}
+              {loading ? (isFr ? "Ajout en cours..." : "جاري الإضافة...") : (isFr ? "Ajouter le créancier" : "إضافة دائن")}
             </Button>
           </div>
         </CardContent>

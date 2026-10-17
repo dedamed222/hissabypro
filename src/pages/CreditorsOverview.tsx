@@ -9,9 +9,13 @@ import { formatCurrency } from "@/utils/formatters";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import ExportActions from "@/components/shared/ExportActions";
 import { getCreditors } from "@/lib/database";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function CreditorsOverview() {
   const navigate = useNavigate();
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [creditors, setCreditors] = useState<Creditor[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,7 +65,7 @@ export default function CreditorsOverview() {
     }
   };
 
-  // تجميع المعاملات حسب الدائن (فقط المبالغ غير المسددة)
+  // Group creditors (only pending)
   const groupedCreditors = creditors.reduce((acc, creditor) => {
     const key = creditor.name;
     const isPaid = creditor.status === 'paid';
@@ -85,13 +89,13 @@ export default function CreditorsOverview() {
 
   const creditorsArray = Object.values(groupedCreditors).filter(c => c.totalAmount > 0 || creditors.some(cr => cr.name === c.name && cr.status === 'pending'));
 
-  // حساب الإحصائيات
+  // Calculate statistics
   const totalDebt = creditorsArray.reduce((sum, creditor) => sum + creditor.totalAmount, 0);
   const totalCreditors = creditorsArray.length;
   const averageDebt = totalCreditors > 0 ? totalDebt / totalCreditors : 0;
   const totalProducts = creditors.filter(c => c.status !== 'paid').length;
 
-  // أعلى 10 دائنين
+  // Top 10 creditors
   const topCreditors = [...creditorsArray]
     .sort((a, b) => b.totalAmount - a.totalAmount)
     .filter(c => c.totalAmount > 0)
@@ -101,12 +105,12 @@ export default function CreditorsOverview() {
       amount: creditor.totalAmount
     }));
 
-  // توزيع الديون حسب النطاق
+  // Debt ranges
   const debtRanges = [
-    { range: 'أقل من 1000', count: 0, color: 'hsl(var(--chart-1))' },
+    { range: isFr ? 'Moins de 1 000' : 'أقل من 1000', count: 0, color: 'hsl(var(--chart-1))' },
     { range: '1000 - 5000', count: 0, color: 'hsl(var(--chart-2))' },
     { range: '5000 - 10000', count: 0, color: 'hsl(var(--chart-3))' },
-    { range: 'أكثر من 10000', count: 0, color: 'hsl(var(--chart-4))' }
+    { range: isFr ? 'Plus de 10 000' : 'أكثر من 10000', count: 0, color: 'hsl(var(--chart-4))' }
   ];
 
   creditorsArray.forEach(creditor => {
@@ -118,7 +122,7 @@ export default function CreditorsOverview() {
     else debtRanges[3].count++;
   });
 
-  // بيانات التصدير
+  // Export data
   const exportData = creditorsArray.map(creditor => ({
     name: creditor.name,
     address: creditor.address,
@@ -129,7 +133,7 @@ export default function CreditorsOverview() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">جاري التحميل...</div>
+        <div className="text-lg">{isFr ? "Chargement..." : "جاري التحميل..."}</div>
       </div>
     );
   }
@@ -148,23 +152,27 @@ export default function CreditorsOverview() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">ملخص شامل للدائنين</h1>
-            <p className="text-muted-foreground mt-1">تحليل متقدم وإحصائيات شاملة</p>
+            <h1 className="text-3xl font-bold text-foreground">
+              {isFr ? "Résumé global des créanciers" : "ملخص شامل للدائنين"}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {isFr ? "Analyse avancée et statistiques complètes" : "تحليل متقدم وإحصائيات شاملة"}
+            </p>
           </div>
         </div>
         <ExportActions
           data={exportData}
-          filename="ملخص_الدائنين"
-          title="ملخص شامل للدائنين"
+          filename={isFr ? "resume_creanciers" : "ملخص_الدائنين"}
+          title={isFr ? "Résumé global des créanciers" : "ملخص شامل للدائنين"}
           columns={[
-            { key: 'name', header: 'اسم الدائن' },
-            { key: 'address', header: 'العنوان' },
+            { key: 'name', header: isFr ? 'Nom du créancier' : 'اسم الدائن' },
+            { key: 'address', header: isFr ? 'Adresse' : 'العنوان' },
             { 
               key: 'totalAmount', 
-              header: 'إجمالي الديون',
+              header: isFr ? 'Total des dettes' : 'إجمالي الديون',
               render: (item: any) => formatCurrency(item.totalAmount)
             },
-            { key: 'productsCount', header: 'عدد المنتجات' }
+            { key: 'productsCount', header: isFr ? 'Nombre de produits' : 'عدد المنتجات' }
           ]}
           totals={{
             totalDebit: totalDebt,
@@ -180,12 +188,14 @@ export default function CreditorsOverview() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Users className="w-4 h-4" />
-              عدد الدائنين
+              {isFr ? "Nombre de créanciers" : "عدد الدائنين"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-foreground">{totalCreditors}</div>
-            <p className="text-xs text-muted-foreground mt-2">إجمالي الدائنين المسجلين</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {isFr ? "Total des créanciers enregistrés" : "إجمالي الدائنين المسجلين"}
+            </p>
           </CardContent>
         </Card>
 
@@ -193,12 +203,14 @@ export default function CreditorsOverview() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <DollarSign className="w-4 h-4" />
-              إجمالي الديون
+              {isFr ? "Total des dettes" : "إجمالي الديون"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-destructive">{formatCurrency(totalDebt)}</div>
-            <p className="text-xs text-muted-foreground mt-2">مجموع جميع الديون</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {isFr ? "Somme de toutes les dettes" : "مجموع جميع الديون"}
+            </p>
           </CardContent>
         </Card>
 
@@ -206,12 +218,14 @@ export default function CreditorsOverview() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
-              متوسط الديون
+              {isFr ? "Dette moyenne" : "متوسط الديون"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-foreground">{formatCurrency(averageDebt)}</div>
-            <p className="text-xs text-muted-foreground mt-2">متوسط الدين لكل دائن</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {isFr ? "Dette moyenne par créancier" : "متوسط الدين لكل دائن"}
+            </p>
           </CardContent>
         </Card>
 
@@ -219,12 +233,14 @@ export default function CreditorsOverview() {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Package className="w-4 h-4" />
-              إجمالي المنتجات
+              {isFr ? "Total des produits" : "إجمالي المنتجات"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-foreground">{totalProducts}</div>
-            <p className="text-xs text-muted-foreground mt-2">عدد المنتجات المسجلة</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {isFr ? "Nombre de produits enregistrés" : "عدد المنتجات المسجلة"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -236,7 +252,7 @@ export default function CreditorsOverview() {
           <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5" />
-              أعلى 10 دائنين
+              {isFr ? "Top 10 créanciers" : "أعلى 10 دائنين"}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
@@ -259,12 +275,12 @@ export default function CreditorsOverview() {
                     }}
                     formatter={(value: any) => formatCurrency(value)}
                   />
-                  <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[0, 8, 8, 0]} />
+                  <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[0, 8, 8, 0]} name={isFr ? "Montant" : "المبلغ"} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-                لا توجد بيانات للعرض
+                {isFr ? "Aucune donnée à afficher" : "لا توجد بيانات للعرض"}
               </div>
             )}
           </CardContent>
@@ -275,7 +291,7 @@ export default function CreditorsOverview() {
           <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
             <CardTitle className="flex items-center gap-2">
               <Package className="w-5 h-5" />
-              توزيع الديون حسب النطاق
+              {isFr ? "Répartition de la dette par tranche" : "توزيع الديون حسب النطاق"}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
@@ -308,7 +324,7 @@ export default function CreditorsOverview() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[400px] text-muted-foreground">
-                لا توجد بيانات للعرض
+                {isFr ? "Aucune donnée à afficher" : "لا توجد بيانات للعرض"}
               </div>
             )}
           </CardContent>
@@ -320,7 +336,7 @@ export default function CreditorsOverview() {
         <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            قائمة الدائنين التفصيلية
+            {isFr ? "Liste détaillée des créanciers" : "قائمة الدائنين التفصيلية"}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -329,11 +345,21 @@ export default function CreditorsOverview() {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-right py-3 px-4 font-semibold text-foreground">#</th>
-                  <th className="text-right py-3 px-4 font-semibold text-foreground">اسم الدائن</th>
-                  <th className="text-right py-3 px-4 font-semibold text-foreground">العنوان</th>
-                  <th className="text-right py-3 px-4 font-semibold text-foreground">عدد المنتجات</th>
-                  <th className="text-right py-3 px-4 font-semibold text-foreground">إجمالي الديون</th>
-                  <th className="text-right py-3 px-4 font-semibold text-foreground">إجراءات</th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">
+                    {isFr ? "Nom du créancier" : "اسم الدائن"}
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">
+                    {isFr ? "Adresse" : "العنوان"}
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">
+                    {isFr ? "Nombre de produits" : "عدد المنتجات"}
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">
+                    {isFr ? "Total des dettes" : "إجمالي الديون"}
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold text-foreground">
+                    {isFr ? "Actions" : "إجراءات"}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -352,9 +378,9 @@ export default function CreditorsOverview() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/creditors/${creditor.name}`)}
+                          onClick={() => navigate(`/creditors/${encodeURIComponent(creditor.name)}`)}
                         >
-                          عرض التفاصيل
+                          {isFr ? "Voir détails" : "عرض التفاصيل"}
                         </Button>
                       </td>
                     </tr>
@@ -363,7 +389,7 @@ export default function CreditorsOverview() {
             </table>
             {creditorsArray.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                لا توجد بيانات للعرض
+                {isFr ? "Aucune donnée à afficher" : "لا توجد بيانات للعرض"}
               </div>
             )}
           </div>

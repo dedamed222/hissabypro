@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Product } from "@/types";
 import ExportActions from "@/components/shared/ExportActions";
+import { useLocale } from "@/hooks/useLocale";
 
 interface InventoryTableProps {
   products: Product[];
@@ -39,6 +40,9 @@ export default function InventoryTable({
   setStockFilter,
   warehouseName
 }: InventoryTableProps) {
+  const { locale, isRTL } = useLocale();
+  const isFr = locale === 'fr';
+
   // Compute key inventory metrics
   const stats = useMemo(() => {
     const totalCount = products.length;
@@ -64,21 +68,23 @@ export default function InventoryTable({
   }, [products]);
 
   const exportColumns = [
-    { key: 'code', header: 'رمز المنتج' },
-    { key: 'name', header: 'اسم المنتج' },
-    { key: 'cost', header: 'سعر الشراء', render: (item: Product) => formatCurrency(item.cost) },
-    { key: 'price', header: 'سعر البيع', render: (item: Product) => formatCurrency(item.price) },
-    { key: 'profit', header: 'الربح', render: (item: Product) => formatCurrency(item.price - item.cost) },
-    { key: 'quantity', header: 'الكمية' },
-    { key: 'totalValue', header: 'القيمة الإجمالية', render: (item: Product) => formatCurrency(item.price * item.quantity) },
-    { key: 'lowStockThreshold', header: 'الحد الأدنى' },
+    { key: 'code', header: isFr ? 'Code Produit' : 'رمز المنتج' },
+    { key: 'name', header: isFr ? 'Désignation' : 'اسم المنتج' },
+    { key: 'cost', header: isFr ? "Prix d'achat" : 'سعر الشراء', render: (item: Product) => formatCurrency(item.cost) },
+    { key: 'price', header: isFr ? 'Prix de vente' : 'سعر البيع', render: (item: Product) => formatCurrency(item.price) },
+    { key: 'profit', header: isFr ? 'Marge' : 'الربح', render: (item: Product) => formatCurrency(item.price - item.cost) },
+    { key: 'quantity', header: isFr ? 'Quantité' : 'الكمية' },
+    { key: 'totalValue', header: isFr ? 'Valeur totale' : 'القيمة الإجمالية', render: (item: Product) => formatCurrency(item.price * item.quantity) },
+    { key: 'lowStockThreshold', header: isFr ? 'Seuil d\'alerte' : 'الحد الأدنى' },
     {
       key: 'status',
-      header: 'حالة المخزون',
+      header: isFr ? 'État du stock' : 'حالة المخزون',
       render: (item: Product) => {
         const isOutOfStock = item.quantity === 0;
         const isLowStock = item.quantity <= item.lowStockThreshold;
-        return isOutOfStock ? 'نفذت الكمية' : isLowStock ? 'منخفض' : 'متوفر';
+        if (isOutOfStock) return isFr ? 'Épuisé' : 'نفذت الكمية';
+        if (isLowStock) return isFr ? 'Stock faible' : 'منخفض';
+        return isFr ? 'Disponible' : 'متوفر';
       }
     }
   ];
@@ -93,10 +99,12 @@ export default function InventoryTable({
             <DollarSign size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">إجمالي قيمة المخزون</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Valeur totale du stock" : "إجمالي قيمة المخزون"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5">{formatCurrency(stats.totalSaleValue)}</h3>
             <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-              التكلفة: {formatCurrency(stats.totalCostValue)}
+              {isFr ? "Coût d'achat : " : "التكلفة: "}{formatCurrency(stats.totalCostValue)}
             </p>
           </div>
         </div>
@@ -107,10 +115,12 @@ export default function InventoryTable({
             <PackageCheck size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">منتجات متوفرة بكثرة</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Produits bien approvisionnés" : "منتجات متوفرة بكثرة"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.availableCount}</h3>
             <p className="text-[11px] font-bold text-emerald-600 mt-0.5">
-              من أصل {stats.totalCount} منتج
+              {isFr ? `sur ${stats.totalCount} produits` : `من أصل ${stats.totalCount} منتج`}
             </p>
           </div>
         </div>
@@ -121,10 +131,12 @@ export default function InventoryTable({
             <AlertTriangle size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">قاربت على النفاذ</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Stock faible / Alerte" : "قاربت على النفاذ"}
+            </p>
             <h3 className="text-xl font-black text-amber-600 mt-0.5">{stats.lowStockCount}</h3>
             <p className="text-[11px] font-bold text-amber-600 mt-0.5">
-              تحتاج لإعادة طلب
+              {isFr ? "Réapprovisionnement requis" : "تحتاج لإعادة طلب"}
             </p>
           </div>
         </div>
@@ -135,10 +147,12 @@ export default function InventoryTable({
             <XCircle size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">نفذت الكمية تماماً</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Rupture de stock" : "نفذت الكمية تماماً"}
+            </p>
             <h3 className="text-xl font-black text-rose-600 mt-0.5">{stats.outOfStockCount}</h3>
             <p className="text-[11px] font-bold text-rose-500 mt-0.5">
-              غير متاحة للبيع
+              {isFr ? "Non disponible à la vente" : "غير متاحة للبيع"}
             </p>
           </div>
         </div>
@@ -149,18 +163,18 @@ export default function InventoryTable({
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+            <Search className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-400`} size={17} />
             <input
               type="text"
-              placeholder="البحث باسم المنتج، كود الصنف، أو الفئة..."
+              placeholder={isFr ? "Rechercher par nom, code ou catégorie..." : "البحث باسم المنتج، كود الصنف، أو الفئة..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+              className={`w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm ${isRTL ? 'pl-4 pr-10' : 'pr-4 pl-10'} py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium`}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600`}
               >
                 <X size={15} />
               </button>
@@ -169,20 +183,20 @@ export default function InventoryTable({
 
           {/* Stock Filter Select */}
           <div className="relative min-w-[200px]">
-            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+            <div className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 pointer-events-none text-slate-400`}>
               <Filter size={16} />
             </div>
             <select
               value={stockFilter}
               onChange={(e) => setStockFilter(e.target.value)}
-              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm pr-9 pl-8 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all"
+              className={`w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm ${isRTL ? 'pr-9 pl-8' : 'pl-9 pr-8'} py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all`}
             >
-              <option value="all">جميع الحالات</option>
-              <option value="available">المتوفر فقط</option>
-              <option value="low">المخزون المنخفض</option>
-              <option value="out">نفذت الكمية</option>
+              <option value="all">{isFr ? "Tous les états" : "جميع الحالات"}</option>
+              <option value="available">{isFr ? "En stock uniquement" : "المتوفر فقط"}</option>
+              <option value="low">{isFr ? "Stock faible" : "المخزون المنخفض"}</option>
+              <option value="out">{isFr ? "Rupture de stock" : "نفذت الكمية"}</option>
             </select>
-            <ChevronDown size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+            <ChevronDown size={15} className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 pointer-events-none text-slate-400`} />
           </div>
 
           {/* Export Action */}
@@ -190,7 +204,7 @@ export default function InventoryTable({
             <ExportActions
               data={filteredProducts}
               filename={`inventory_${warehouseName}`}
-              title={`تقرير المخزون - ${warehouseName}`}
+              title={isFr ? `Rapport d'inventaire - ${warehouseName}` : `تقرير المخزون - ${warehouseName}`}
               columns={exportColumns}
             />
           </div>
@@ -198,17 +212,19 @@ export default function InventoryTable({
 
         {/* Quick Filter Tag Buttons */}
         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
-          <span className="text-xs font-semibold text-slate-400 ml-1">تصفية حسب الحالة:</span>
+          <span className="text-xs font-semibold text-slate-400 ml-1">
+            {isFr ? "Filtrer par état :" : "تصفية حسب الحالة:"}
+          </span>
           {[
-            { id: 'all', label: 'الكل', count: products.length },
-            { id: 'available', label: 'متوفر', count: stats.availableCount },
-            { id: 'low', label: 'منخفض', count: stats.lowStockCount },
-            { id: 'out', label: 'نفذت الكمية', count: stats.outOfStockCount }
+            { id: 'all', label: isFr ? 'Tous' : 'الكل', count: products.length },
+            { id: 'available', label: isFr ? 'Disponible' : 'متوفر', count: stats.availableCount },
+            { id: 'low', label: isFr ? 'Faible' : 'منخفض', count: stats.lowStockCount },
+            { id: 'out', label: isFr ? 'Épuisé' : 'نفذت الكمية', count: stats.outOfStockCount }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setStockFilter(tab.id)}
-              className={`text-xs px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+              className={`text-xs px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 stockFilter === tab.id
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
@@ -222,8 +238,12 @@ export default function InventoryTable({
               </span>
             </button>
           ))}
-          <div className="mr-auto text-xs font-medium text-slate-500">
-            المعروض: <span className="font-bold text-slate-900">{filteredProducts.length}</span> منتج
+          <div className={`${isRTL ? 'mr-auto' : 'ml-auto'} text-xs font-medium text-slate-500`}>
+            {isFr ? (
+              <>Affichage : <span className="font-bold text-slate-900">{filteredProducts.length}</span> produit(s)</>
+            ) : (
+              <>المعروض: <span className="font-bold text-slate-900">{filteredProducts.length}</span> منتج</>
+            )}
           </div>
         </div>
       </div>
@@ -235,26 +255,32 @@ export default function InventoryTable({
             <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
               <Layers size={28} />
             </div>
-            <h3 className="text-base font-bold text-slate-800 mb-1">لا توجد منتجات مطابقة</h3>
+            <h3 className="text-base font-bold text-slate-800 mb-1">
+              {isFr ? "Aucun produit correspondant" : "لا توجد منتجات مطابقة"}
+            </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
               {searchQuery || stockFilter !== "all"
-                ? "لا توجد نتائج تطابق معايير البحث والفلترة المحددة في هذا المخزن."
-                : "لم يتم العثور على أي منتجات مخزنة في هذا القسم."}
+                ? (isFr
+                    ? "Aucun résultat ne correspond aux critères de recherche et filtres sélectionnés dans ce dépôt."
+                    : "لا توجد نتائج تطابق معايير البحث والفلترة المحددة في هذا المخزن.")
+                : (isFr
+                    ? "Aucun produit n'a été trouvé dans ce dépôt."
+                    : "لم يتم العثور على أي منتجات مخزنة في هذا القسم.")}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse">
+            <table className={`w-full ${isRTL ? 'text-right' : 'text-left'} border-collapse`}>
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">كود الصنف</th>
-                  <th className="py-3.5 px-4">اسم المنتج</th>
-                  <th className="py-3.5 px-4 text-center">سعر الشراء</th>
-                  <th className="py-3.5 px-4 text-center">سعر البيع</th>
-                  <th className="py-3.5 px-4 text-center">الربح المتوقع</th>
-                  <th className="py-3.5 px-4 text-center">الكمية الحالية</th>
-                  <th className="py-3.5 px-4 text-left">إجمالي القيمة</th>
-                  <th className="py-3.5 px-4 text-center">حالة المخزون</th>
+                  <th className="py-3.5 px-4">{isFr ? "Code" : "كود الصنف"}</th>
+                  <th className="py-3.5 px-4">{isFr ? "Désignation" : "اسم المنتج"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Prix d'achat" : "سعر الشراء"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Prix de vente" : "سعر البيع"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Marge attendue" : "الربح المتوقع"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Stock actuel" : "الكمية الحالية"}</th>
+                  <th className={`py-3.5 px-4 ${isRTL ? 'text-left' : 'text-right'}`}>{isFr ? "Valeur totale" : "إجمالي القيمة"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "État du stock" : "حالة المخزون"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
@@ -327,13 +353,13 @@ export default function InventoryTable({
                             {product.quantity}
                           </span>
                           <span className="text-[10px] text-slate-400">
-                            / أدنى: {product.lowStockThreshold}
+                            {isFr ? `/ Min: ${product.lowStockThreshold}` : `/ أدنى: ${product.lowStockThreshold}`}
                           </span>
                         </div>
                       </td>
 
                       {/* Total Value */}
-                      <td className="py-3.5 px-4 text-left font-black text-slate-900 font-sans">
+                      <td className={`py-3.5 px-4 ${isRTL ? 'text-left' : 'text-right'} font-black text-slate-900 font-sans`}>
                         {formatCurrency(totalValue)}
                       </td>
 
@@ -342,17 +368,17 @@ export default function InventoryTable({
                         {isOutOfStock ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                            نفذت الكمية
+                            {isFr ? "Épuisé" : "نفذت الكمية"}
                           </span>
                         ) : isLowStock ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                            منخفض
+                            {isFr ? "Stock faible" : "منخفض"}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            متوفر
+                            {isFr ? "Disponible" : "متوفر"}
                           </span>
                         )}
                       </td>

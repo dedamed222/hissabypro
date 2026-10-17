@@ -29,10 +29,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import ExportActions from "@/components/shared/ExportActions";
 import { upsertCreditor, deleteCreditor } from "@/lib/database";
 import { Badge } from "@/components/ui/badge";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function CreditorDetails() {
   const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [creditorData, setCreditorData] = useState<any>(null);
   const [formData, setFormData] = useState({
     productCode: "",
@@ -128,15 +132,15 @@ export default function CreditorDetails() {
 
   const handleAddProduct = async () => {
     if (!formData.productCode.trim() || !formData.productName.trim()) {
-      setError("يرجى إدخال معلومات المنتج");
+      setError(isFr ? "Veuillez entrer les informations du produit" : "يرجى إدخال معلومات المنتج");
       return;
     }
     if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
-      setError("يرجى إدخال سعر صحيح");
+      setError(isFr ? "Veuillez entrer un prix valide" : "يرجى إدخال سعر صحيح");
       return;
     }
     if (!formData.quantity || isNaN(Number(formData.quantity)) || Number(formData.quantity) <= 0) {
-      setError("يرجى إدخال كمية صحيحة");
+      setError(isFr ? "Veuillez entrer une quantité valide" : "يرجى إدخال كمية صحيحة");
       return;
     }
 
@@ -197,10 +201,10 @@ export default function CreditorDetails() {
       });
       
       loadCreditorData();
-      toast.success("تم إضافة المنتج بنجاح");
+      toast.success(isFr ? "Produit ajouté avec succès" : "تم إضافة المنتج بنجاح");
     } catch (err) {
       console.error("Error adding product:", err);
-      setError("حدث خطأ أثناء إضافة المنتج");
+      setError(isFr ? "Une erreur est survenue lors de l'ajout du produit" : "حدث خطأ أثناء إضافة المنتج");
     } finally {
       setLoading(false);
     }
@@ -238,10 +242,10 @@ export default function CreditorDetails() {
       }
 
       loadCreditorData();
-      toast.success(newStatus === 'paid' ? "تم تسديد المعاملة" : "تمت إعادة المعاملة للانتظار");
+      toast.success(newStatus === 'paid' ? (isFr ? "Transaction réglée" : "تم تسديد المعاملة") : (isFr ? "Transaction remise en attente" : "تمت إعادة المعاملة للانتظار"));
     } catch (err) {
       console.error("Error toggling status:", err);
-      toast.error("فشل تحديث حالة المعاملة");
+      toast.error(isFr ? "Échec de mise à jour du statut" : "فشل تحديث حالة المعاملة");
     }
   };
 
@@ -261,7 +265,7 @@ export default function CreditorDetails() {
 
     setDeleteId(null);
     loadCreditorData();
-    toast.success("تم حذف المنتج بنجاح");
+    toast.success(isFr ? "Produit supprimé avec succès" : "تم حذف المنتج بنجاح");
   };
 
   // Filter and sort products
@@ -312,7 +316,7 @@ export default function CreditorDetails() {
     });
 
     return filtered;
-  }, [creditorData, filterSearch, filterDateFrom, filterDateTo, sortBy]);
+  }, [creditorData, filterSearch, filterDateFrom, filterDateTo, filterStatus, sortBy]);
 
   // Calculate statistics
   const statistics = useMemo(() => {
@@ -330,7 +334,7 @@ export default function CreditorDetails() {
       acc[key] = (acc[key] || 0) + p.quantity;
       return acc;
     }, {});
-    const mostPurchased = Object.entries(productCounts).sort((a: any, b: any) => b[1] - a[1])[0];
+    const mostPurchased = Object.entries(productCounts).sort((a: any, b: any) => (b[1] as number) - (a[1] as number))[0];
 
     return {
       totalQuantity,
@@ -346,7 +350,7 @@ export default function CreditorDetails() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">جاري التحميل...</p>
+          <p className="text-muted-foreground">{isFr ? "Chargement..." : "جاري التحميل..."}</p>
         </div>
       </div>
     );
@@ -362,11 +366,11 @@ export default function CreditorDetails() {
           className="gap-2"
         >
           <ArrowRight className="h-4 w-4" />
-          رجوع
+          {isFr ? "Retour" : "رجوع"}
         </Button>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <User className="w-6 h-6" />
-          تفاصيل الدائن
+          {isFr ? "Détails du créancier" : "تفاصيل الدائن"}
         </h1>
       </div>
 
@@ -379,7 +383,7 @@ export default function CreditorDetails() {
             </div>
             {creditorData.totalAmount === 0 && (
               <Badge className="bg-green-100 text-green-700 border-green-200 text-sm py-1.5 px-3">
-                <CheckCircle2 className="w-4 h-4 ml-1.5" /> تم تسديد الكل
+                <CheckCircle2 className="w-4 h-4 ml-1.5" /> {isFr ? "Tout est payé" : "تم تسديد الكل"}
               </Badge>
             )}
           </div>
@@ -392,7 +396,9 @@ export default function CreditorDetails() {
                   <Package className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">إجمالي المنتجات</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {isFr ? "Total produits" : "إجمالي المنتجات"}
+                  </p>
                   <p className="text-2xl font-bold">{creditorData.products.length}</p>
                 </div>
               </div>
@@ -404,7 +410,9 @@ export default function CreditorDetails() {
                   <DollarSign className={`h-5 w-5 ${creditorData.totalAmount > 0 ? 'text-destructive' : 'text-green-600'}`} />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">المبلغ المتبقي</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {isFr ? "Montant restant" : "المبلغ المتبقي"}
+                  </p>
                   <p className={`text-2xl font-bold ${creditorData.totalAmount > 0 ? 'text-destructive' : 'text-green-600'}`}>
                     {formatCurrency(creditorData.totalAmount)}
                   </p>
@@ -418,7 +426,9 @@ export default function CreditorDetails() {
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">المبلغ المدفوع</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {isFr ? "Montant payé" : "المبلغ المدفوع"}
+                  </p>
                   <p className="text-2xl font-bold text-green-600">
                     {formatCurrency(creditorData.totalPaid)}
                   </p>
@@ -432,7 +442,9 @@ export default function CreditorDetails() {
                   <TrendingUp className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">إجمالي الكمية</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {isFr ? "Quantité totale" : "إجمالي الكمية"}
+                  </p>
                   <p className="text-2xl font-bold text-blue-600">{statistics?.totalQuantity || 0}</p>
                 </div>
               </div>
@@ -444,7 +456,9 @@ export default function CreditorDetails() {
                   <BarChart3 className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">متوسط الصفقة</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {isFr ? "Transaction moyenne" : "متوسط الصفقة"}
+                  </p>
                   <p className="text-lg font-bold text-purple-600">
                     {formatCurrency(statistics?.avgPrice || 0)}
                   </p>
@@ -458,7 +472,9 @@ export default function CreditorDetails() {
                   <Calendar className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">آخر نشاط</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {isFr ? "Dernière activité" : "آخر نشاط"}
+                  </p>
                   <p className="text-lg font-semibold">{formatDate(creditorData.lastDate)}</p>
                 </div>
               </div>
@@ -472,7 +488,7 @@ export default function CreditorDetails() {
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
-            إضافة منتج جديد
+            {isFr ? "Ajouter un nouveau produit" : "إضافة منتج جديد"}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -484,13 +500,17 @@ export default function CreditorDetails() {
             )}
             
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-muted-foreground">معلومات المنتج</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground">
+                {isFr ? "Informations du produit" : "معلومات المنتج"}
+              </h3>
               <NewProductForm onProductAdded={handleProductAdded} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
-                <label className="block mb-2 font-medium text-sm">رمز المنتج</label>
+                <label className="block mb-2 font-medium text-sm">
+                  {isFr ? "Code produit" : "رمز المنتج"}
+                </label>
                 <Input 
                   value={formData.productCode} 
                   onChange={e => {
@@ -499,7 +519,7 @@ export default function CreditorDetails() {
                     setShowProductSearch(true);
                   }}
                   onFocus={() => setShowProductSearch(true)}
-                  placeholder="أدخل رمز المنتج أو ابحث" 
+                  placeholder={isFr ? "Entrez le code produit ou recherchez" : "أدخل رمز المنتج أو ابحث"} 
                 />
                 <ProductSearch
                   show={showProductSearch && (searchTerm.length > 0 || formData.productCode.length > 0)}
@@ -510,24 +530,30 @@ export default function CreditorDetails() {
                 />
               </div>
               <div>
-                <label className="block mb-2 font-medium text-sm">اسم المنتج</label>
+                <label className="block mb-2 font-medium text-sm">
+                  {isFr ? "Nom du produit" : "اسم المنتج"}
+                </label>
                 <Input 
                   value={formData.productName} 
                   onChange={e => setFormData({...formData, productName: e.target.value})} 
-                  placeholder="اسم المنتج" 
+                  placeholder={isFr ? "Nom du produit" : "اسم المنتج"} 
                 />
               </div>
               <div>
-                <label className="block mb-2 font-medium text-sm">الكمية</label>
+                <label className="block mb-2 font-medium text-sm">
+                  {isFr ? "Quantité" : "الكمية"}
+                </label>
                 <Input 
                   type="number" 
                   value={formData.quantity} 
                   onChange={e => setFormData({...formData, quantity: e.target.value})} 
-                  placeholder="الكمية" 
+                  placeholder={isFr ? "Quantité" : "الكمية"} 
                 />
               </div>
               <div>
-                <label className="block mb-2 font-medium text-sm">سعر الوحدة</label>
+                <label className="block mb-2 font-medium text-sm">
+                  {isFr ? "Prix unitaire" : "سعر الوحدة"}
+                </label>
                 <Input 
                   type="number" 
                   value={formData.price} 
@@ -543,7 +569,7 @@ export default function CreditorDetails() {
               className="w-full md:w-auto"
             >
               <Plus className="ml-2 h-4 w-4" />
-              {loading ? "جاري الإضافة..." : "إضافة منتج"}
+              {loading ? (isFr ? "Ajout en cours..." : "جاري الإضافة...") : (isFr ? "Ajouter le produit" : "إضافة منتج")}
             </Button>
           </div>
         </CardContent>
@@ -555,34 +581,34 @@ export default function CreditorDetails() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Package className="w-5 h-5" />
-              قائمة المنتجات والنشاطات ({filteredAndSortedProducts.length})
+              {isFr ? "Liste des produits et activités" : "قائمة المنتجات والنشاطات"} ({filteredAndSortedProducts.length})
             </CardTitle>
             <ExportActions
               data={filteredAndSortedProducts}
-              filename={`نشاطات_${creditorData.name}`}
-              title={`نشاطات الدائن: ${creditorData.name}`}
+              filename={isFr ? `activites_${creditorData.name}` : `نشاطات_${creditorData.name}`}
+              title={isFr ? `Activités du créancier: ${creditorData.name}` : `نشاطات الدائن: ${creditorData.name}`}
               columns={[
                 { 
                   key: 'status', 
-                  header: 'الحالة',
-                  render: (item: any) => item.status === 'paid' ? 'تم التسديد' : 'قيد الانتظار'
+                  header: isFr ? 'Statut' : 'الحالة',
+                  render: (item: any) => item.status === 'paid' ? (isFr ? 'Payé' : 'تم التسديد') : (isFr ? 'En attente' : 'قيد الانتظار')
                 },
-                { key: 'productCode', header: 'رمز المنتج' },
-                { key: 'productName', header: 'اسم المنتج' },
-                { key: 'quantity', header: 'الكمية' },
+                { key: 'productCode', header: isFr ? 'Code produit' : 'رمز المنتج' },
+                { key: 'productName', header: isFr ? 'Nom du produit' : 'اسم المنتج' },
+                { key: 'quantity', header: isFr ? 'Quantité' : 'الكمية' },
                 { 
                   key: 'price', 
-                  header: 'سعر الوحدة',
+                  header: isFr ? 'Prix unitaire' : 'سعر الوحدة',
                   render: (item: any) => formatCurrency(item.price)
                 },
                 { 
                   key: 'total', 
-                  header: 'المبلغ الإجمالي',
+                  header: isFr ? 'Montant total' : 'المبلغ الإجمالي',
                   render: (item: any) => formatCurrency(item.total)
                 },
                 { 
                   key: 'date', 
-                  header: 'التاريخ',
+                  header: isFr ? 'Date' : 'التاريخ',
                   render: (item: any) => formatDate(item.date)
                 }
               ]}
@@ -604,16 +630,20 @@ export default function CreditorDetails() {
           <div className="mb-6 p-4 bg-muted/30 rounded-lg border">
             <div className="flex items-center gap-2 mb-4">
               <Filter className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">فلترة النشاطات</h3>
+              <h3 className="font-semibold">
+                {isFr ? "Filtrer les activités" : "فلترة النشاطات"}
+              </h3>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <div className="lg:col-span-1">
-                <label className="block mb-2 text-sm font-medium">بحث في المنتجات</label>
+                <label className="block mb-2 text-sm font-medium">
+                  {isFr ? "Rechercher des produits" : "بحث في المنتجات"}
+                </label>
                 <div className="relative">
                   <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="رمز أو اسم المنتج"
+                    placeholder={isFr ? "Code ou nom du produit" : "رمز أو اسم المنتج"}
                     value={filterSearch}
                     onChange={(e) => setFilterSearch(e.target.value)}
                     className="pr-10"
@@ -622,21 +652,25 @@ export default function CreditorDetails() {
               </div>
               
               <div>
-                <label className="block mb-2 text-sm font-medium">الحالة</label>
+                <label className="block mb-2 text-sm font-medium">
+                  {isFr ? "Statut" : "الحالة"}
+                </label>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger>
-                    <SelectValue placeholder="الكل" />
+                    <SelectValue placeholder={isFr ? "Tous" : "الكل"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">الكل</SelectItem>
-                    <SelectItem value="pending">قيد الانتظار</SelectItem>
-                    <SelectItem value="paid">تم التسديد</SelectItem>
+                    <SelectItem value="all">{isFr ? "Tous" : "الكل"}</SelectItem>
+                    <SelectItem value="pending">{isFr ? "En attente" : "قيد الانتظار"}</SelectItem>
+                    <SelectItem value="paid">{isFr ? "Payé" : "تم التسديد"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <label className="block mb-2 text-sm font-medium">من تاريخ</label>
+                <label className="block mb-2 text-sm font-medium">
+                  {isFr ? "Du date" : "من تاريخ"}
+                </label>
                 <Input
                   type="date"
                   value={filterDateFrom}
@@ -645,7 +679,9 @@ export default function CreditorDetails() {
               </div>
               
               <div>
-                <label className="block mb-2 text-sm font-medium">إلى تاريخ</label>
+                <label className="block mb-2 text-sm font-medium">
+                  {isFr ? "Au date" : "إلى تاريخ"}
+                </label>
                 <Input
                   type="date"
                   value={filterDateTo}
@@ -654,24 +690,26 @@ export default function CreditorDetails() {
               </div>
               
               <div>
-                <label className="block mb-2 text-sm font-medium">ترتيب حسب</label>
+                <label className="block mb-2 text-sm font-medium">
+                  {isFr ? "Trier par" : "ترتيب حسب"}
+                </label>
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger>
-                    <SelectValue placeholder="اختر الترتيب" />
+                    <SelectValue placeholder={isFr ? "Choisir le tri" : "اختر الترتيب"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="date-desc">التاريخ (الأحدث أولاً)</SelectItem>
-                    <SelectItem value="date-asc">التاريخ (الأقدم أولاً)</SelectItem>
-                    <SelectItem value="price-desc">المبلغ (الأعلى أولاً)</SelectItem>
-                    <SelectItem value="price-asc">المبلغ (الأقل أولاً)</SelectItem>
-                    <SelectItem value="quantity-desc">الكمية (الأكثر أولاً)</SelectItem>
-                    <SelectItem value="quantity-asc">الكمية (الأقل أولاً)</SelectItem>
+                    <SelectItem value="date-desc">{isFr ? "Date (plus récent)" : "التاريخ (الأحدث أولاً)"}</SelectItem>
+                    <SelectItem value="date-asc">{isFr ? "Date (plus ancien)" : "التاريخ (الأقدم أولاً)"}</SelectItem>
+                    <SelectItem value="price-desc">{isFr ? "Montant (décroissant)" : "المبلغ (الأعلى أولاً)"}</SelectItem>
+                    <SelectItem value="price-asc">{isFr ? "Montant (croissant)" : "المبلغ (الأقل أولاً)"}</SelectItem>
+                    <SelectItem value="quantity-desc">{isFr ? "Quantité (décroissant)" : "الكمية (الأكثر أولاً)"}</SelectItem>
+                    <SelectItem value="quantity-asc">{isFr ? "Quantité (croissant)" : "الكمية (الأقل أولاً)"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             
-            {(filterSearch || filterDateFrom || filterDateTo) && (
+            {(filterSearch || filterDateFrom || filterDateTo || filterStatus !== "all") && (
               <div className="mt-3 flex gap-2">
                 <Button
                   size="sm"
@@ -683,10 +721,13 @@ export default function CreditorDetails() {
                     setFilterStatus("all");
                   }}
                 >
-                  مسح الفلاتر
+                  {isFr ? "Effacer les filtres" : "مسح الفلاتر"}
                 </Button>
                 <div className="text-sm text-muted-foreground flex items-center">
-                  النتائج: {filteredAndSortedProducts.length} من {creditorData.products.length}
+                  {isFr 
+                    ? `Résultats: ${filteredAndSortedProducts.length} sur ${creditorData.products.length}`
+                    : `النتائج: ${filteredAndSortedProducts.length} من ${creditorData.products.length}`
+                  }
                 </div>
               </div>
             )}
@@ -695,14 +736,14 @@ export default function CreditorDetails() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  <th className="text-right p-3 font-semibold border">الحالة</th>
-                  <th className="text-right p-3 font-semibold border">رمز المنتج</th>
-                  <th className="text-right p-3 font-semibold border">اسم المنتج</th>
-                  <th className="text-center p-3 font-semibold border">الكمية</th>
-                  <th className="text-center p-3 font-semibold border">سعر الوحدة</th>
-                  <th className="text-center p-3 font-semibold border">الإجمالي</th>
-                  <th className="text-center p-3 font-semibold border">التاريخ</th>
-                  <th className="text-center p-3 font-semibold border">الإجراءات</th>
+                  <th className="text-right p-3 font-semibold border">{isFr ? "Statut" : "الحالة"}</th>
+                  <th className="text-right p-3 font-semibold border">{isFr ? "Code produit" : "رمز المنتج"}</th>
+                  <th className="text-right p-3 font-semibold border">{isFr ? "Nom du produit" : "اسم المنتج"}</th>
+                  <th className="text-center p-3 font-semibold border">{isFr ? "Quantité" : "الكمية"}</th>
+                  <th className="text-center p-3 font-semibold border">{isFr ? "Prix unitaire" : "سعر الوحدة"}</th>
+                  <th className="text-center p-3 font-semibold border">{isFr ? "Total" : "الإجمالي"}</th>
+                  <th className="text-center p-3 font-semibold border">{isFr ? "Date" : "التاريخ"}</th>
+                  <th className="text-center p-3 font-semibold border">{isFr ? "Actions" : "الإجراءات"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -711,11 +752,11 @@ export default function CreditorDetails() {
                     <td className="p-3 border text-center">
                       {product.status === 'paid' ? (
                         <Badge className="bg-green-100 text-green-700 border-green-200">
-                          <CheckCircle2 className="w-3 h-3 ml-1" /> تم التسديد
+                          <CheckCircle2 className="w-3 h-3 ml-1" /> {isFr ? "Payé" : "تم التسديد"}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
-                          <Clock className="w-3 h-3 ml-1" /> قيد الانتظار
+                          <Clock className="w-3 h-3 ml-1" /> {isFr ? "En attente" : "قيد الانتظار"}
                         </Badge>
                       )}
                     </td>
@@ -746,7 +787,7 @@ export default function CreditorDetails() {
                           variant="ghost"
                           onClick={() => handleToggleStatus(product.id, product.status)}
                           className={`h-8 w-8 p-0 ${product.status === 'paid' ? 'text-amber-600' : 'text-green-600'}`}
-                          title={product.status === 'paid' ? "إلغاء التسديد" : "تسديد المعاملة"}
+                          title={product.status === 'paid' ? (isFr ? "Annuler le paiement" : "إلغاء التسديد") : (isFr ? "Régler la transaction" : "تسديد المعاملة")}
                         >
                           {product.status === 'paid' ? <Clock className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                         </Button>
@@ -766,7 +807,7 @@ export default function CreditorDetails() {
               <tfoot>
                 <tr className="bg-primary/5 font-bold">
                   <td colSpan={5} className="p-3 text-right border">
-                    الرصيد المتبقي {filterSearch || filterDateFrom || filterDateTo || filterStatus !== "all" ? '(المفلتر)' : ''}:
+                    {isFr ? "Solde restant" : "الرصيد المتبقي"} {filterSearch || filterDateFrom || filterDateTo || filterStatus !== "all" ? (isFr ? '(filtré)' : '(المفلتر)') : ''}:
                   </td>
                   <td className="p-3 text-center text-destructive text-lg border">
                     {formatCurrency(filteredAndSortedProducts.reduce((sum: number, p: any) => p.status === 'paid' ? sum : sum + p.total, 0))}
@@ -780,7 +821,12 @@ export default function CreditorDetails() {
           {filteredAndSortedProducts.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
               <Package className="w-16 h-16 mx-auto mb-4 opacity-40" />
-              <p>{creditorData.products.length === 0 ? "لا توجد منتجات حالياً" : "لا توجد نتائج تطابق الفلاتر المحددة"}</p>
+              <p>
+                {creditorData.products.length === 0 
+                  ? (isFr ? "Aucun produit actuellement" : "لا توجد منتجات حالياً")
+                  : (isFr ? "Aucun résultat ne correspond aux filtres sélectionnés" : "لا توجد نتائج تطابق الفلاتر المحددة")
+                }
+              </p>
             </div>
           )}
         </CardContent>
@@ -793,12 +839,12 @@ export default function CreditorDetails() {
             <CardHeader className="bg-destructive/10">
               <CardTitle className="text-destructive flex items-center gap-2">
                 <Trash2 className="w-5 h-5" />
-                تأكيد الحذف
+                {isFr ? "Confirmer la suppression" : "تأكيد الحذف"}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <p className="text-foreground mb-6">
-                هل أنت متأكد من حذف هذا المنتج؟
+                {isFr ? "Êtes-vous sûr de vouloir supprimer ce produit ?" : "هل أنت متأكد من حذف هذا المنتج؟"}
               </p>
               <div className="flex gap-3 justify-end">
                 <Button 
@@ -806,10 +852,10 @@ export default function CreditorDetails() {
                   onClick={() => handleDeleteProduct(deleteId)}
                 >
                   <Trash2 className="w-4 h-4 ml-2" />
-                  حذف
+                  {isFr ? "Supprimer" : "حذف"}
                 </Button>
                 <Button variant="outline" onClick={() => setDeleteId(null)}>
-                  إلغاء
+                  {isFr ? "Annuler" : "إلغاء"}
                 </Button>
               </div>
             </CardContent>

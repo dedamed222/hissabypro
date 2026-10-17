@@ -13,9 +13,13 @@ import ExportActions from "@/components/shared/ExportActions";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { getDebtors } from "@/lib/database";
+import { useLocale } from "@/hooks/useLocale";
 
 const DebtorsOverview = () => {
   const navigate = useNavigate();
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [debtors, setDebtors] = useState<Debtor[]>([]);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
@@ -168,11 +172,11 @@ const DebtorsOverview = () => {
 
   // Debt distribution
   const debtRanges = [
-    { range: "أقل من 10,000", min: 0, max: 10000, count: 0 },
+    { range: isFr ? "Moins de 10 000" : "أقل من 10,000", min: 0, max: 10000, count: 0 },
     { range: "10,000 - 50,000", min: 10000, max: 50000, count: 0 },
     { range: "50,000 - 100,000", min: 50000, max: 100000, count: 0 },
     { range: "100,000 - 500,000", min: 100000, max: 500000, count: 0 },
-    { range: "أكثر من 500,000", min: 500000, max: Infinity, count: 0 }
+    { range: isFr ? "Plus de 500 000" : "أكثر من 500,000", min: 500000, max: Infinity, count: 0 }
   ];
 
   groupedDebtorsArray.forEach(debtor => {
@@ -189,11 +193,11 @@ const DebtorsOverview = () => {
   }));
 
   const exportColumns = [
-    { key: 'name', header: 'اسم المدين' },
-    { key: 'phone', header: 'الهاتف' },
+    { key: 'name', header: isFr ? 'Nom du débiteur' : 'اسم المدين' },
+    { key: 'phone', header: isFr ? 'Téléphone' : 'الهاتف' },
     { 
       key: 'totalAmount', 
-      header: 'المبلغ الكلي',
+      header: isFr ? 'Montant total' : 'المبلغ الكلي',
       render: (item: any) => formatCurrency(item.totalAmount)
     }
   ];
@@ -216,14 +220,21 @@ const DebtorsOverview = () => {
             <ArrowRight className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">الملخص الشامل للمدينين</h1>
-            <p className="text-muted-foreground">نظرة عامة على جميع المدينين والإحصائيات</p>
+            <h1 className="text-3xl font-bold">
+              {isFr ? "Résumé global des débiteurs" : "الملخص الشامل للمدينين"}
+            </h1>
+            <p className="text-muted-foreground">
+              {isFr 
+                ? "Vue d'ensemble de tous les débiteurs et statistiques financières" 
+                : "نظرة عامة على جميع المدينين والإحصائيات"
+              }
+            </p>
           </div>
         </div>
         <ExportActions
           data={exportData}
-          filename="ملخص_المدينين"
-          title="الملخص الشامل للمدينين"
+          filename={isFr ? "resume_debiteurs" : "ملخص_المدينين"}
+          title={isFr ? "Résumé global des débiteurs" : "الملخص الشامل للمدينين"}
           columns={exportColumns}
           totals={{
             totalDebit: stats.totalDebt,
@@ -238,14 +249,14 @@ const DebtorsOverview = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CalendarIcon className="w-5 h-5" />
-            تصفية حسب التاريخ
+            {isFr ? "Filtrer par date" : "تصفية حسب التاريخ"}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap items-center gap-4">
             {/* Start Date */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">من تاريخ</label>
+              <label className="text-sm font-medium">{isFr ? "Du date" : "من تاريخ"}</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -255,8 +266,8 @@ const DebtorsOverview = () => {
                       !startDate && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="ml-2 h-4 w-4" />
-                    {startDate ? format(startDate, "PPP") : <span>اختر التاريخ</span>}
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "PPP") : <span>{isFr ? "Choisir une date" : "اختر التاريخ"}</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -273,7 +284,7 @@ const DebtorsOverview = () => {
 
             {/* End Date */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">إلى تاريخ</label>
+              <label className="text-sm font-medium">{isFr ? "Au date" : "إلى تاريخ"}</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -283,8 +294,8 @@ const DebtorsOverview = () => {
                       !endDate && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="ml-2 h-4 w-4" />
-                    {endDate ? format(endDate, "PPP") : <span>اختر التاريخ</span>}
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "PPP") : <span>{isFr ? "Choisir une date" : "اختر التاريخ"}</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -307,7 +318,7 @@ const DebtorsOverview = () => {
                 className="mt-6 flex items-center gap-2"
               >
                 <X className="h-4 w-4" />
-                إعادة تعيين
+                {isFr ? "Réinitialiser" : "إعادة تعيين"}
               </Button>
             )}
           </div>
@@ -315,9 +326,9 @@ const DebtorsOverview = () => {
           {(startDate || endDate) && (
             <div className="mt-4 p-3 bg-muted rounded-lg text-sm">
               <p className="font-medium">
-                النطاق الزمني المحدد: 
-                {startDate && ` من ${formatDate(startDate.toISOString())}`}
-                {endDate && ` إلى ${formatDate(endDate.toISOString())}`}
+                {isFr ? "Période sélectionnée :" : "النطاق الزمني المحدد:"} 
+                {startDate && (isFr ? ` du ${formatDate(startDate.toISOString())}` : ` من ${formatDate(startDate.toISOString())}`)}
+                {endDate && (isFr ? ` au ${formatDate(endDate.toISOString())}` : ` إلى ${formatDate(endDate.toISOString())}`)}
               </p>
             </div>
           )}
@@ -328,7 +339,9 @@ const DebtorsOverview = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">إجمالي الديون</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {isFr ? "Total des dettes" : "إجمالي الديون"}
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -338,7 +351,9 @@ const DebtorsOverview = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">عدد المدينين</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {isFr ? "Nombre de débiteurs" : "عدد المدينين"}
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -348,7 +363,9 @@ const DebtorsOverview = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">متوسط الدين</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {isFr ? "Dette moyenne" : "متوسط الدين"}
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -358,7 +375,9 @@ const DebtorsOverview = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">إجمالي المنتجات</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {isFr ? "Total des produits" : "إجمالي المنتجات"}
+            </CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -372,7 +391,9 @@ const DebtorsOverview = () => {
         {/* Top Debtors Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>أعلى 10 مدينين حسب المبلغ</CardTitle>
+            <CardTitle>
+              {isFr ? "Top 10 débiteurs par montant" : "أعلى 10 مدينين حسب المبلغ"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {topDebtors.length > 0 ? (
@@ -392,12 +413,12 @@ const DebtorsOverview = () => {
                     labelStyle={{ color: '#000' }}
                   />
                   <Legend />
-                  <Bar dataKey="amount" fill="#ef4444" name="المبلغ" />
+                  <Bar dataKey="amount" fill="#ef4444" name={isFr ? "Montant" : "المبلغ"} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                لا توجد بيانات لعرضها
+                {isFr ? "Aucune donnée à afficher" : "لا توجد بيانات لعرضها"}
               </div>
             )}
           </CardContent>
@@ -406,7 +427,9 @@ const DebtorsOverview = () => {
         {/* Debt Distribution Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>توزيع الديون حسب النطاق</CardTitle>
+            <CardTitle>
+              {isFr ? "Répartition de la dette par tranche" : "توزيع الديون حسب النطاق"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {debtRanges.some(r => r.count > 0) ? (
@@ -432,7 +455,7 @@ const DebtorsOverview = () => {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                لا توجد بيانات لعرضها
+                {isFr ? "Aucune donnée à afficher" : "لا توجد بيانات لعرضها"}
               </div>
             )}
           </CardContent>
@@ -442,16 +465,24 @@ const DebtorsOverview = () => {
       {/* Summary Table */}
       <Card>
         <CardHeader>
-          <CardTitle>قائمة المدينين الكاملة</CardTitle>
+          <CardTitle>
+            {isFr ? "Liste complète des débiteurs" : "قائمة المدينين الكاملة"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="text-right p-3 font-semibold">اسم المدين</th>
-                  <th className="text-right p-3 font-semibold">الهاتف</th>
-                  <th className="text-right p-3 font-semibold">المبلغ الكلي</th>
+                  <th className="text-right p-3 font-semibold">
+                    {isFr ? "Nom du débiteur" : "اسم المدين"}
+                  </th>
+                  <th className="text-right p-3 font-semibold">
+                    {isFr ? "Téléphone" : "الهاتف"}
+                  </th>
+                  <th className="text-right p-3 font-semibold">
+                    {isFr ? "Montant total" : "المبلغ الكلي"}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -470,7 +501,7 @@ const DebtorsOverview = () => {
                 ) : (
                   <tr>
                     <td colSpan={3} className="text-center p-8 text-muted-foreground">
-                      لا توجد بيانات متاحة
+                      {isFr ? "Aucune donnée disponible" : "لا توجد بيانات متاحة"}
                     </td>
                   </tr>
                 )}

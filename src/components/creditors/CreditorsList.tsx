@@ -1,9 +1,7 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import {
   Edit,
@@ -17,9 +15,9 @@ import {
   Clock
 } from "lucide-react";
 import { Creditor, Customer } from "@/types";
-import CustomerSelector from "@/components/invoice/CustomerSelector";
 import ExportActions from "@/components/shared/ExportActions";
 import { Badge } from "@/components/ui/badge";
+import { useLocale } from "@/hooks/useLocale";
 
 interface CreditorsListProps {
   creditors: Creditor[];
@@ -55,6 +53,8 @@ const CreditorsList = ({
   setDeleteId
 }: CreditorsListProps) => {
   const navigate = useNavigate();
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const toggleRowExpansion = (creditorId: string) => {
@@ -68,23 +68,23 @@ const CreditorsList = ({
   };
 
   const exportColumns = [
-    { key: 'name', header: 'اسم الدائن' },
-    { key: 'productCode', header: 'رمز المنتج' },
-    { key: 'productName', header: 'اسم المنتج' },
-    { key: 'quantity', header: 'الكمية' },
+    { key: 'name', header: isFr ? 'Nom du créancier' : 'اسم الدائن' },
+    { key: 'productCode', header: isFr ? 'Code produit' : 'رمز المنتج' },
+    { key: 'productName', header: isFr ? 'Nom du produit' : 'اسم المنتج' },
+    { key: 'quantity', header: isFr ? 'Quantité' : 'الكمية' },
     {
       key: 'status',
-      header: 'الحالة',
-      render: (creditor: Creditor) => creditor.status === 'paid' ? 'تم التسديد' : 'قيد الانتظار'
+      header: isFr ? 'Statut' : 'الحالة',
+      render: (creditor: Creditor) => creditor.status === 'paid' ? (isFr ? 'Payé' : 'تم التسديد') : (isFr ? 'En attente' : 'قيد الانتظار')
     },
     {
       key: 'date',
-      header: 'التاريخ',
+      header: isFr ? 'Date' : 'التاريخ',
       render: (creditor: Creditor) => formatDate(creditor.date)
     },
     {
       key: 'price',
-      header: 'السعر',
+      header: isFr ? 'Prix' : 'السعر',
       render: (creditor: Creditor) => formatCurrency(creditor.price || 0)
     }
   ];
@@ -123,10 +123,6 @@ const CreditorsList = ({
       acc[key].totalAmount += amount;
     }
 
-    // Keep the most recent date
-    if (new Date(creditor.date || 0) > new Date(acc[key].date || 0)) {
-      acc[key].date = creditor.date;
-    }
     return acc;
   }, {} as Record<string, any>);
 
@@ -139,12 +135,12 @@ const CreditorsList = ({
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
-              قائمة الدائنين ({groupedCreditorsArray.length})
+              {isFr ? "Liste des créanciers" : "قائمة الدائنين"} ({groupedCreditorsArray.length})
             </CardTitle>
             <ExportActions
               data={creditors}
-              filename="الدائنين"
-              title="قائمة الدائنين"
+              filename={isFr ? "creanciers" : "الدائنين"}
+              title={isFr ? "Liste des créanciers" : "قائمة الدائنين"}
               columns={exportColumns}
             />
           </div>
@@ -156,7 +152,9 @@ const CreditorsList = ({
           <CardContent className="pt-6">
             <div className="text-center py-12 text-muted-foreground">
               <User className="w-16 h-16 mx-auto mb-4 opacity-40" />
-              <p className="text-lg">لا توجد دائنين مسجلين حتى الآن</p>
+              <p className="text-lg">
+                {isFr ? "Aucun créancier enregistré pour le moment" : "لا توجد دائنين مسجلين حتى الآن"}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -181,7 +179,7 @@ const CreditorsList = ({
                           </h3>
                           {creditor.totalAmount === 0 && (
                             <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200">
-                              تم تسديد الكل
+                              {isFr ? "Tout est payé" : "تم تسديد الكل"}
                             </Badge>
                           )}
                           <Button
@@ -198,7 +196,9 @@ const CreditorsList = ({
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-center md:text-right">
                       <div className="bg-white/70 rounded-lg p-3 border">
-                        <p className="text-xs text-muted-foreground mb-1">عدد المنتجات</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          {isFr ? "Nombre de produits" : "عدد المنتجات"}
+                        </p>
                         <div className="flex items-center gap-2 justify-center md:justify-start">
                           <Package className="w-4 h-4 text-primary" />
                           <span className="text-lg font-bold">{creditor.products.length}</span>
@@ -206,14 +206,18 @@ const CreditorsList = ({
                       </div>
 
                       <div className="bg-white/70 rounded-lg p-3 border">
-                        <p className="text-xs text-muted-foreground mb-1">المبلغ المتبقي</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          {isFr ? "Montant restant" : "المبلغ المتبقي"}
+                        </p>
                         <p className={`text-lg font-bold ${creditor.totalAmount > 0 ? 'text-destructive' : 'text-green-600'}`}>
                           {formatCurrency(creditor.totalAmount)}
                         </p>
                       </div>
 
                       <div className="bg-white/70 rounded-lg p-3 border">
-                        <p className="text-xs text-muted-foreground mb-1">آخر تاريخ</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          {isFr ? "Dernière date" : "آخر تاريخ"}
+                        </p>
                         <p className="text-sm font-medium">{formatDate(creditor.date)}</p>
                       </div>
 
@@ -223,7 +227,7 @@ const CreditorsList = ({
                           variant="outline"
                           onClick={() => onEdit(creditor)}
                           disabled={creditor.totalAmount === 0}
-                          title="تعديل"
+                          title={isFr ? "Modifier" : "تعديل"}
                           className="h-8"
                         >
                           <Edit className="w-4 h-4" />
@@ -232,7 +236,7 @@ const CreditorsList = ({
                           size="sm"
                           variant="outline"
                           onClick={() => setDeleteId(creditor.id)}
-                          title="حذف"
+                          title={isFr ? "Supprimer" : "حذف"}
                           className="h-8 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -260,60 +264,60 @@ const CreditorsList = ({
                   <div className="bg-muted/30 rounded-lg p-4">
                     <h4 className="font-semibold mb-3 flex items-center gap-2 text-foreground">
                       <Package className="w-4 h-4" />
-                      تفاصيل المنتجات والنشاطات
+                      {isFr ? "Détails des produits et activités" : "تفاصيل المنتجات والنشاطات"}
                     </h4>
                     <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
                       <table className="w-full text-sm block md:table">
                         <thead className="hidden md:table-header-group">
                           <tr className="bg-background">
-                            <th className="text-right p-3 font-medium border">الحالة</th>
-                            <th className="text-right p-3 font-medium border">رمز المنتج</th>
-                            <th className="text-right p-3 font-medium border">اسم المنتج</th>
-                            <th className="text-center p-3 font-medium border">الكمية</th>
-                            <th className="text-center p-3 font-medium border">إجمالي المبلغ</th>
-                            <th className="text-center p-3 font-medium border">التاريخ</th>
-                            <th className="text-center p-3 font-medium border">إجراءات</th>
+                            <th className="text-right p-3 font-medium border">{isFr ? "Statut" : "الحالة"}</th>
+                            <th className="text-right p-3 font-medium border">{isFr ? "Code produit" : "رمز المنتج"}</th>
+                            <th className="text-right p-3 font-medium border">{isFr ? "Nom du produit" : "اسم المنتج"}</th>
+                            <th className="text-center p-3 font-medium border">{isFr ? "Quantité" : "الكمية"}</th>
+                            <th className="text-center p-3 font-medium border">{isFr ? "Montant total" : "إجمالي المبلغ"}</th>
+                            <th className="text-center p-3 font-medium border">{isFr ? "Date" : "التاريخ"}</th>
+                            <th className="text-center p-3 font-medium border">{isFr ? "Actions" : "إجراءات"}</th>
                           </tr>
                         </thead>
                         <tbody className="block md:table-row-group">
                           {creditor.products.map((product: any, index: number) => (
                             <tr key={product.id || index} className={`mobile-card-row bg-background hover:bg-muted/50 transition-colors ${product.status === 'paid' ? 'opacity-70 bg-green-50/20' : ''}`}>
-                              <td data-label="الحالة" className="p-3 border md:border-t-0 text-center">
+                              <td data-label={isFr ? "Statut" : "الحالة"} className="p-3 border md:border-t-0 text-center">
                                 {product.status === 'paid' ? (
                                   <Badge className="bg-green-100 text-green-700 border-green-200">
-                                    <CheckCircle2 className="w-3 h-3 ml-1" /> تم التسديد
+                                    <CheckCircle2 className="w-3 h-3 ml-1" /> {isFr ? "Payé" : "تم التسديد"}
                                   </Badge>
                                 ) : (
                                   <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
-                                    <Clock className="w-3 h-3 ml-1" /> قيد الانتظار
+                                    <Clock className="w-3 h-3 ml-1" /> {isFr ? "En attente" : "قيد الانتظار"}
                                   </Badge>
                                 )}
                               </td>
-                              <td data-label="رمز المنتج" className={`p-3 border md:border-t-0 font-medium ${product.status === 'paid' ? 'text-muted-foreground' : 'text-primary'}`}>
+                              <td data-label={isFr ? "Code produit" : "رمز المنتج"} className={`p-3 border md:border-t-0 font-medium ${product.status === 'paid' ? 'text-muted-foreground' : 'text-primary'}`}>
                                 {product.productCode}
                               </td>
-                              <td data-label="اسم المنتج" className={`p-3 border md:border-t-0 ${product.status === 'paid' ? 'text-muted-foreground italic' : 'text-foreground'}`}>
+                              <td data-label={isFr ? "Nom du produit" : "اسم المنتج"} className={`p-3 border md:border-t-0 ${product.status === 'paid' ? 'text-muted-foreground italic' : 'text-foreground'}`}>
                                 {product.productName}
                               </td>
-                              <td data-label="الكمية" className="p-3 border md:border-t-0 text-center">
+                              <td data-label={isFr ? "Quantité" : "الكمية"} className="p-3 border md:border-t-0 text-center">
                                 <span className={`inline-flex items-center justify-center px-2 py-1 rounded-full text-xs font-medium ${product.status === 'paid' ? 'bg-gray-100 text-gray-500' : 'bg-primary/10 text-primary'}`}>
                                   {product.quantity}
                                 </span>
                               </td>
-                              <td data-label="إجمالي المبلغ" className={`p-3 border md:border-t-0 text-center font-bold ${product.status === 'paid' ? 'text-green-600' : 'text-destructive'}`}>
+                              <td data-label={isFr ? "Montant total" : "إجمالي المبلغ"} className={`p-3 border md:border-t-0 text-center font-bold ${product.status === 'paid' ? 'text-green-600' : 'text-destructive'}`}>
                                 {formatCurrency(product.total)}
                               </td>
-                              <td data-label="التاريخ" className="p-3 border md:border-t-0 text-center text-muted-foreground text-xs">
+                              <td data-label={isFr ? "Date" : "التاريخ"} className="p-3 border md:border-t-0 text-center text-muted-foreground text-xs">
                                 {formatDate(product.date)}
                               </td>
-                              <td data-label="إجراءات" className="p-2 border md:border-t-0 text-center">
+                              <td data-label={isFr ? "Actions" : "إجراءات"} className="p-2 border md:border-t-0 text-center">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => onToggleStatus && onToggleStatus(product.id, product.status)}
                                   className={`h-10 px-4 text-xs ${product.status === 'paid' ? 'text-amber-600' : 'text-green-600'}`}
                                 >
-                                  {product.status === 'paid' ? 'إلغاء' : 'تسديد'}
+                                  {product.status === 'paid' ? (isFr ? 'Annuler' : 'إلغاء') : (isFr ? 'Régler' : 'تسديد')}
                                 </Button>
                               </td>
                             </tr>
@@ -322,13 +326,13 @@ const CreditorsList = ({
                         <tfoot className="block md:table-footer-group">
                           <tr className="bg-primary/5 flex flex-col md:table-row">
                             <td colSpan={4} className="p-3 border font-bold text-right text-xs hidden md:table-cell">
-                              المبلغ المتبقي / المبلغ المدفوع:
+                              {isFr ? "Montant restant / Montant payé :" : "المبلغ المتبقي / المبلغ المدفوع:"}
                             </td>
                             <td className="p-3 border text-center font-bold text-lg flex justify-between md:table-cell">
-                              <span className="md:hidden text-xs text-gray-500">المبلغ المتبقي / المدفوع:</span>
+                              <span className="md:hidden text-xs text-gray-500">{isFr ? "Montant restant / payé :" : "المبلغ المتبقي / المدفوع:"}</span>
                               <div className="flex flex-col items-end md:items-center">
                                 <span className="text-destructive">{formatCurrency(creditor.totalAmount)}</span>
-                                <span className="text-xs text-green-600 mt-1">مدفوع: {formatCurrency(creditor.totalPaid)}</span>
+                                <span className="text-xs text-green-600 mt-1">{isFr ? "Payé :" : "مدفوع:"} {formatCurrency(creditor.totalPaid)}</span>
                               </div>
                             </td>
                             <td colSpan={2} className="p-3 border hidden md:table-cell"></td>
@@ -346,12 +350,16 @@ const CreditorsList = ({
                     <CardHeader className="bg-destructive/10">
                       <CardTitle className="text-destructive flex items-center gap-2">
                         <Trash2 className="w-5 h-5" />
-                        تأكيد الحذف
+                        {isFr ? "Confirmer la suppression" : "تأكيد الحذف"}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6">
                       <p className="text-foreground mb-6">
-                        هل أنت متأكد من حذف الدائن <strong>{creditor.name}</strong> وجميع نشاطاته؟
+                        {isFr ? (
+                          <>Êtes-vous sûr de vouloir supprimer le créancier <strong>{creditor.name}</strong> et toutes ses activités ?</>
+                        ) : (
+                          <>هل أنت متأكد من حذف الدائن <strong>{creditor.name}</strong> وجميع نشاطاته؟</>
+                        )}
                       </p>
                       <div className="flex gap-3 justify-end">
                         <Button
@@ -359,10 +367,10 @@ const CreditorsList = ({
                           onClick={() => onDelete(creditor.id)}
                         >
                           <Trash2 className="w-4 h-4 ml-2" />
-                          حذف
+                          {isFr ? "Supprimer" : "حذف"}
                         </Button>
                         <Button variant="outline" onClick={() => setDeleteId(null)}>
-                          إلغاء
+                          {isFr ? "Annuler" : "إلغاء"}
                         </Button>
                       </div>
                     </CardContent>

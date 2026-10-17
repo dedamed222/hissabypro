@@ -37,6 +37,7 @@ export default function Login() {
     // هنا سيتم إضافة رابط التحميل عندما يكون متاحاً
     window.open("https://github.com/your-repo/releases/latest", "_blank");
   };
+  const isFr = locale === 'fr';
   return <div className="min-h-screen flex flex-col justify-center items-center bg-gradient-ocean p-4 bg-amber-300">
       {/* App Logo */}
       <div className="mb-6 text-center rounded">
@@ -48,10 +49,12 @@ export default function Login() {
           {storeInfo.photoUrl ? <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3 border-2 border-white shadow-lg">
               <img src={storeInfo.photoUrl} alt={storeInfo.name} className="w-full h-full object-cover" />
             </div> : <div className="w-20 h-20 rounded-full bg-white/20 mx-auto mb-3 flex items-center justify-center text-white font-bold text-2xl border-2 border-white shadow-lg">
-              {storeInfo.name.charAt(0) || "م"}
+              {storeInfo.name.charAt(0) || (isFr ? "B" : "م")}
             </div>}
           <h1 className="text-xl font-bold text-white mb-1">{storeInfo.name}</h1>
-          <p className="text-white/80 text-sm">نظام إدارة المتاجر</p>
+          <p className="text-white/80 text-sm">
+            {isFr ? "Système de gestion commerciale" : (t.storeManagementSystem || "نظام إدارة المتاجر")}
+          </p>
         </div>}
       
       <LoginForm />

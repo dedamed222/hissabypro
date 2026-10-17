@@ -17,7 +17,8 @@ import { StoreInfo } from "@/types";
 import { Receipt, FileText, DollarSign, Calendar, Layers } from "lucide-react";
 
 export default function CreateInvoice() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const isFr = locale === 'fr';
   const {
     customers,
     selectedCustomer,
@@ -81,25 +82,29 @@ export default function CreateInvoice() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">إنشاء فاتورة جديدة</h1>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                {isFr ? "Créer une nouvelle facture" : "إنشاء فاتورة جديدة"}
+              </h1>
               {invoiceType === 'sales' && (
                 <span className="text-xs px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-bold">
-                  {t('salesInvoice') || 'فاتورة بيع'}
+                  {t('salesInvoice') || (isFr ? 'Facture de vente' : 'فاتورة بيع')}
                 </span>
               )}
               {invoiceType === 'quotation' && (
                 <span className="text-xs px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full font-bold">
-                  {t('quotationInvoice') || 'عرض سعر'}
+                  {t('quotationInvoice') || (isFr ? 'Devis' : 'عرض سعر')}
                 </span>
               )}
               {invoiceType === 'debt' && (
                 <span className="text-xs px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-bold">
-                  {t('debtInvoice') || 'فاتورة دين'}
+                  {t('debtInvoice') || (isFr ? 'Facture à terme' : 'فاتورة دين')}
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-500">
-              إصدار فواتير البيع المباشر، عروض الأسعار وفواتير الآجل مع طباعة رسمية
+              {isFr
+                ? "Émission de factures de vente directe, devis et factures à terme avec impression officielle"
+                : "إصدار فواتير البيع المباشر، عروض الأسعار وفواتير الآجل مع طباعة رسمية"}
             </p>
           </div>
         </div>
@@ -107,9 +112,9 @@ export default function CreateInvoice() {
         {/* Invoice Type Pills Switcher */}
         <div className="bg-slate-200/70 p-1.5 rounded-2xl flex items-center gap-1.5 border border-slate-200/80 self-start sm:self-auto">
           {[
-            { id: 'sales', label: t('salesInvoice') || 'فاتورة بيع', icon: Receipt },
-            { id: 'quotation', label: t('quotationInvoice') || 'عرض سعر', icon: FileText },
-            { id: 'debt', label: t('debtInvoice') || 'فاتورة دين', icon: DollarSign },
+            { id: 'sales', label: t('salesInvoice') || (isFr ? 'Facture de vente' : 'فاتورة بيع'), icon: Receipt },
+            { id: 'quotation', label: t('quotationInvoice') || (isFr ? 'Devis' : 'عرض سعر'), icon: FileText },
+            { id: 'debt', label: t('debtInvoice') || (isFr ? 'Facture à terme' : 'فاتورة دين'), icon: DollarSign },
           ].map(type => {
             const Icon = type.icon;
             const isSelected = invoiceType === type.id;
@@ -136,12 +141,14 @@ export default function CreateInvoice() {
           {/* Print only header */}
           <div className="hidden print:block text-center mb-8">
             <h1 className="text-3xl font-bold font-sans">
-              {invoiceType === 'sales' ? (t('salesInvoice') || 'فاتورة بيع') :
-               invoiceType === 'quotation' ? (t('quotationInvoice') || 'عرض سعر') :
-               (t('debtInvoice') || 'فاتورة دين')}
+              {invoiceType === 'sales' ? (t('salesInvoice') || (isFr ? 'Facture de vente' : 'فاتورة بيع')) :
+               invoiceType === 'quotation' ? (t('quotationInvoice') || (isFr ? 'Devis' : 'عرض سعر')) :
+               (t('debtInvoice') || (isFr ? 'Facture à terme' : 'فاتورة دين'))}
             </h1>
             {invoiceType === 'quotation' && (
-              <p className="mt-2 text-gray-500 font-sans">هذا عرض سعر مبدئي وغير ملزم للطرفين</p>
+              <p className="mt-2 text-gray-500 font-sans">
+                {isFr ? "Ceci est un devis indicatif sans engagement contractuel" : "هذا عرض سعر مبدئي وغير ملزم للطرفين"}
+              </p>
             )}
           </div>
 
@@ -231,7 +238,9 @@ export default function CreateInvoice() {
               )}
               {invoiceType === 'quotation' && (
                 <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 text-xs font-medium leading-relaxed text-center">
-                  هذا عرض سعر مبدئي وغير ملزم للطرفين ولن يتم خصم المنتجات من المخزون إلا عند تحويله إلى بيع.
+                  {isFr 
+                    ? "Ceci est un devis estimatif sans engagement mutuel. Les produits ne seront déduits du stock que lors de la conversion en vente."
+                    : "هذا عرض سعر مبدئي وغير ملزم للطرفين ولن يتم خصم المنتجات من المخزون إلا عند تحويله إلى بيع."}
                 </div>
               )}
 

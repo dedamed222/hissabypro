@@ -19,8 +19,12 @@ import { Expense } from "@/types";
 import { ExpenseEditModal } from "@/components/expenses/ExpenseEditModal";
 import { ExpenseDeleteModal } from "@/components/expenses/ExpenseDeleteModal";
 import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function Expenses() {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -45,11 +49,11 @@ export default function Expenses() {
 
   const handleAddExpense = () => {
     if (!description.trim()) {
-      setError("يرجى إدخال وصف المصروف");
+      setError(isFr ? "Veuillez entrer une description de la dépense" : "يرجى إدخال وصف المصروف");
       return;
     }
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      setError("يرجى إدخال مبلغ صحيح");
+      setError(isFr ? "Veuillez entrer un montant valide" : "يرجى إدخال مبلغ صحيح");
       return;
     }
     setError("");
@@ -75,12 +79,12 @@ export default function Expenses() {
       setPaymentMethod("cash");
       setRefreshKey(prev => prev + 1);
       toast({
-        title: "تمت الإضافة",
-        description: "تم تسجيل المصروف اليومي بنجاح"
+        title: isFr ? "Ajouté" : "تمت الإضافة",
+        description: isFr ? "La dépense quotidienne a été enregistrée avec succès" : "تم تسجيل المصروف اليومي بنجاح"
       });
     } catch (err) {
       console.error("Error adding expense:", err);
-      setError("حدث خطأ أثناء إضافة المصروف");
+      setError(isFr ? "Une erreur est survenue lors de l'ajout de la dépense" : "حدث خطأ أثناء إضافة المصروف");
     } finally {
       setLoading(false);
     }
@@ -91,18 +95,24 @@ export default function Expenses() {
   };
 
   const getCategoryDisplayName = (cat: string) => {
-    const categoryMap: Record<string, string> = {
-      general: "عام",
-      utilities: "فواتير ومرافق",
-      salary: "رواتب وعمالة",
-      rent: "إيجار المحل",
-      supplies: "مستلزمات وتجهيز"
+    const categoryMap: Record<string, { ar: string; fr: string }> = {
+      general: { ar: "عام", fr: "Général" },
+      utilities: { ar: "فواتير ومرافق", fr: "Factures et services" },
+      salary: { ar: "رواتب وعمالة", fr: "Salaires et personnel" },
+      rent: { ar: "إيجار المحل", fr: "Loyer du local" },
+      supplies: { ar: "مستلزمات وتجهيز", fr: "Fournitures et matériel" }
     };
-    return categoryMap[cat] || cat;
+    if (categoryMap[cat]) {
+      return isFr ? categoryMap[cat].fr : categoryMap[cat].ar;
+    }
+    return cat;
   };
 
   const getPaymentMethodDisplayName = (method: string) => {
-    return method === "cash" ? "نقداً" : method;
+    if (method === "cash") {
+      return isFr ? "Espèces" : "نقداً";
+    }
+    return method;
   };
 
   return (
@@ -114,9 +124,14 @@ export default function Expenses() {
             <Receipt size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">المصروفات اليومية</h1>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              {isFr ? "Dépenses quotidiennes" : "المصروفات اليومية"}
+            </h1>
             <p className="text-xs text-slate-500">
-              تسجيل وضبط النفقات اليومية، الرواتب، الفواتير واحتساب صافي الأرباح
+              {isFr 
+                ? "Enregistrement et contrôle des dépenses quotidiennes, salaires, factures et calcul du bénéfice net" 
+                : "تسجيل وضبط النفقات اليومية، الرواتب، الفواتير واحتساب صافي الأرباح"
+              }
             </p>
           </div>
         </div>
@@ -140,9 +155,13 @@ export default function Expenses() {
             <TrendingUp size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">إجمالي المبيعات اليومية</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Total des ventes du jour" : "إجمالي المبيعات اليومية"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5 font-sans">{formatCurrency(dailySales)}</h3>
-            <p className="text-[11px] font-bold text-blue-600 mt-0.5">واردات اليوم</p>
+            <p className="text-[11px] font-bold text-blue-600 mt-0.5">
+              {isFr ? "Recettes du jour" : "واردات اليوم"}
+            </p>
           </div>
         </div>
 
@@ -151,9 +170,13 @@ export default function Expenses() {
             <TrendingDown size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">إجمالي المصروفات اليومية</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Total des dépenses du jour" : "إجمالي المصروفات اليومية"}
+            </p>
             <h3 className="text-xl font-black text-rose-600 mt-0.5 font-sans">{formatCurrency(dailyExpenses)}</h3>
-            <p className="text-[11px] font-bold text-rose-500 mt-0.5">{filteredExpenses.length} بنود مسجلة</p>
+            <p className="text-[11px] font-bold text-rose-500 mt-0.5">
+              {isFr ? `${filteredExpenses.length} éléments enregistrés` : `${filteredExpenses.length} بنود مسجلة`}
+            </p>
           </div>
         </div>
 
@@ -164,13 +187,17 @@ export default function Expenses() {
             <DollarSign size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">صافي الربح اليومي</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Bénéfice net du jour" : "صافي الربح اليومي"}
+            </p>
             <h3 className={`text-xl font-black mt-0.5 font-sans ${
               netProfit >= 0 ? "text-emerald-600" : "text-rose-600"
             }`}>
               {formatCurrency(netProfit)}
             </h3>
-            <p className="text-[11px] font-bold text-slate-400 mt-0.5">المبيعات - المصروفات</p>
+            <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+              {isFr ? "Ventes - Dépenses" : "المبيعات - المصروفات"}
+            </p>
           </div>
         </div>
       </div>
@@ -179,7 +206,7 @@ export default function Expenses() {
       <div className="gsc-card p-5">
         <h2 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
           <Plus size={16} className="text-blue-600" />
-          <span>إضافة قيد مصروف جديد</span>
+          <span>{isFr ? "Ajouter une nouvelle dépense" : "إضافة قيد مصروف جديد"}</span>
         </h2>
 
         {error && (
@@ -191,18 +218,22 @@ export default function Expenses() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
           <div className="md:col-span-2">
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">بيان المصروف</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              {isFr ? "Description de la dépense" : "بيان المصروف"}
+            </label>
             <input
               type="text"
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="مثال: فاتورة كهرباء، شراء أدوات تنظيف..."
+              placeholder={isFr ? "Ex: facture d'électricité, achat fournitures..." : "مثال: فاتورة كهرباء، شراء أدوات تنظيف..."}
               className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">المبلغ المطلوب</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              {isFr ? "Montant requis" : "المبلغ المطلوب"}
+            </label>
             <input
               type="number"
               step="any"
@@ -214,34 +245,38 @@ export default function Expenses() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">الفئة</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              {isFr ? "Catégorie" : "الفئة"}
+            </label>
             <select
               value={category}
               onChange={e => setCategory(e.target.value)}
               className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
             >
-              <option value="general">عام</option>
-              <option value="utilities">مرافق وفواتير</option>
-              <option value="salary">رواتب وعمالة</option>
-              <option value="rent">إيجار</option>
-              <option value="supplies">مستلزمات</option>
+              <option value="general">{isFr ? "Général" : "عام"}</option>
+              <option value="utilities">{isFr ? "Services et factures" : "مرافق وفواتير"}</option>
+              <option value="salary">{isFr ? "Salaires et personnel" : "رواتب وعمالة"}</option>
+              <option value="rent">{isFr ? "Loyer" : "إيجار"}</option>
+              <option value="supplies">{isFr ? "Fournitures" : "مستلزمات"}</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">طريقة الدفع</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              {isFr ? "Mode de paiement" : "طريقة الدفع"}
+            </label>
             <select
               value={paymentMethod}
               onChange={e => setPaymentMethod(e.target.value as typeof paymentMethod)}
               className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
             >
-              <option value="cash">نقداً</option>
-              <option value="BANKILY">بنكيلي (BANKILY)</option>
-              <option value="MASRVI">مصرفي (MASRVI)</option>
-              <option value="SEDAD">سداد (SEDAD)</option>
-              <option value="BIMBANK">بيم بنك (BIMBANK)</option>
-              <option value="BCIPAY">بي سي آي باي (BCIPAY)</option>
-              <option value="CLICK">كليك (CLICK)</option>
+              <option value="cash">{isFr ? "Espèces" : "نقداً"}</option>
+              <option value="BANKILY">{isFr ? "Bankily (BANKILY)" : "بنكيلي (BANKILY)"}</option>
+              <option value="MASRVI">{isFr ? "Masrvi (MASRVI)" : "مصرفي (MASRVI)"}</option>
+              <option value="SEDAD">{isFr ? "Sedad (SEDAD)" : "سداد (SEDAD)"}</option>
+              <option value="BIMBANK">{isFr ? "BimBank (BIMBANK)" : "بيم بنك (BIMBANK)"}</option>
+              <option value="BCIPAY">{isFr ? "BCI Pay (BCIPAY)" : "بي سي آي باي (BCIPAY)"}</option>
+              <option value="CLICK">{isFr ? "Click (CLICK)" : "كليك (CLICK)"}</option>
             </select>
           </div>
 
@@ -252,7 +287,7 @@ export default function Expenses() {
               className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm shadow-rose-500/20 transition-all flex items-center justify-center gap-2"
             >
               <Plus size={16} />
-              <span>تسجيل المصروف في اليومية</span>
+              <span>{isFr ? "Enregistrer la dépense" : "تسجيل المصروف في اليومية"}</span>
             </button>
           </div>
         </div>
@@ -263,10 +298,15 @@ export default function Expenses() {
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
             <Receipt size={16} className="text-slate-500" />
-            <span>بيان المصروفات المسجلة لهذا اليوم ({filteredExpenses.length})</span>
+            <span>
+              {isFr 
+                ? `Relevé des dépenses enregistrées aujourd'hui (${filteredExpenses.length})`
+                : `بيان المصروفات المسجلة لهذا اليوم (${filteredExpenses.length})`
+              }
+            </span>
           </h3>
           <span className="text-xs font-bold text-slate-500 font-sans">
-            الإجمالي: {formatCurrency(dailyExpenses)}
+            {isFr ? "Total :" : "الإجمالي:"} {formatCurrency(dailyExpenses)}
           </span>
         </div>
 
@@ -275,19 +315,23 @@ export default function Expenses() {
             <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
               <Receipt size={28} />
             </div>
-            <h4 className="text-base font-bold text-slate-800 mb-1">لا توجد مصروفات مسجلة</h4>
-            <p className="text-xs text-slate-400">لم يتم إضافة أي مصروفات لتاريخ {dateFilter}</p>
+            <h4 className="text-base font-bold text-slate-800 mb-1">
+              {isFr ? "Aucune dépense enregistrée" : "لا توجد مصروفات مسجلة"}
+            </h4>
+            <p className="text-xs text-slate-400">
+              {isFr ? `Aucune dépense ajoutée pour la date du ${dateFilter}` : `لم يتم إضافة أي مصروفات لتاريخ ${dateFilter}`}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-right border-collapse">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">بيان المصروف</th>
-                  <th className="py-3.5 px-4 text-center">الفئة</th>
-                  <th className="py-3.5 px-4 text-center">طريقة الدفع</th>
-                  <th className="py-3.5 px-4 text-left">المبلغ</th>
-                  <th className="py-3.5 px-4 text-center">الإجراءات</th>
+                  <th className="py-3.5 px-4">{isFr ? "Description" : "بيان المصروف"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Catégorie" : "الفئة"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Mode de paiement" : "طريقة الدفع"}</th>
+                  <th className="py-3.5 px-4 text-left">{isFr ? "Montant" : "المبلغ"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Actions" : "الإجراءات"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
@@ -320,14 +364,14 @@ export default function Expenses() {
                         <button
                           onClick={() => setEditingExpense(expense)}
                           className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="تعديل"
+                          title={isFr ? "Modifier" : "تعديل"}
                         >
                           <Edit size={16} />
                         </button>
                         <button
                           onClick={() => setDeletingExpense(expense)}
                           className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="حذف"
+                          title={isFr ? "Supprimer" : "حذف"}
                         >
                           <Trash2 size={16} />
                         </button>

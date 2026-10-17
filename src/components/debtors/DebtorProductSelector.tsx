@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import { loadStoreData } from "@/utils/localStorage";
 import { formatCurrency } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import type { Product } from "@/types";
+import { useLocale } from "@/hooks/useLocale";
 
 interface DebtorProductItem {
   productId: string;
@@ -24,6 +24,9 @@ interface DebtorProductSelectorProps {
 }
 
 const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorProductSelectorProps) => {
+  const { locale } = useLocale();
+  const isFr = locale === 'fr';
+
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -48,8 +51,8 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
     // Check if product has enough quantity in inventory
     if (selectedProduct.quantity < quantity) {
       toast({
-        title: "تحذير",
-        description: `الكمية المتاحة في المخزون: ${selectedProduct.quantity} فقط`,
+        title: isFr ? "Avertissement" : "تحذير",
+        description: isFr ? `Quantité disponible en stock : ${selectedProduct.quantity} seulement` : `الكمية المتاحة في المخزون: ${selectedProduct.quantity} فقط`,
         variant: "destructive"
       });
       return;
@@ -66,8 +69,8 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
       // Check total quantity doesn't exceed inventory
       if (selectedProduct.quantity < newQuantity) {
         toast({
-          title: "تحذير",
-          description: `الكمية المتاحة في المخزون: ${selectedProduct.quantity} فقط`,
+          title: isFr ? "Avertissement" : "تحذير",
+          description: isFr ? `Quantité disponible en stock : ${selectedProduct.quantity} seulement` : `الكمية المتاحة في المخزون: ${selectedProduct.quantity} فقط`,
           variant: "destructive"
         });
         return;
@@ -89,8 +92,8 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
     }
 
     toast({
-      title: "تم بنجاح",
-      description: "تمت إضافة المنتج بنجاح"
+      title: isFr ? "Succès" : "تم بنجاح",
+      description: isFr ? "Produit ajouté avec succès" : "تمت إضافة المنتج بنجاح"
     });
 
     setSelectedProduct(null);
@@ -114,8 +117,8 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
     const inventoryProduct = products.find(p => p.code === productItem.productCode);
     if (inventoryProduct && inventoryProduct.quantity < newQuantity) {
       toast({
-        title: "تحذير",
-        description: `الكمية المتاحة في المخزون: ${inventoryProduct.quantity} فقط`,
+        title: isFr ? "Avertissement" : "تحذير",
+        description: isFr ? `Quantité disponible en stock : ${inventoryProduct.quantity} seulement` : `الكمية المتاحة في المخزون: ${inventoryProduct.quantity} فقط`,
         variant: "destructive"
       });
       return;
@@ -133,18 +136,18 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Package className="w-5 h-5" />
-          إضافة منتجات للمديون
+          {isFr ? "Ajouter des produits au débiteur" : "إضافة منتجات للمديون"}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Product Search */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
-            <label className="block mb-2 font-medium">البحث عن منتج</label>
+            <label className="block mb-2 font-medium">{isFr ? "Rechercher un produit" : "البحث عن منتج"}</label>
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="ابحث بالاسم أو الرمز..."
+              placeholder={isFr ? "Rechercher par nom ou code..." : "ابحث بالاسم أو الرمز..."}
               className="focus:ring-2 focus:ring-blue-500"
             />
             {searchTerm && filteredProducts.length > 0 && (
@@ -160,10 +163,10 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
                   >
                     <div className="font-medium">{product.name}</div>
                     <div className="text-sm text-gray-600">
-                      الرمز: {product.code} | السعر: {formatCurrency(product.price)}
+                      {isFr ? "Code : " : "الرمز: "}{product.code} | {isFr ? "Prix : " : "السعر: "}{formatCurrency(product.price)}
                     </div>
                     <div className={`text-sm font-semibold ${product.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      الكمية المتاحة: {product.quantity}
+                      {isFr ? `Quantité disponible : ${product.quantity}` : `الكمية المتاحة: ${product.quantity}`}
                     </div>
                   </div>
                 ))}
@@ -171,7 +174,7 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
             )}
           </div>
           <div>
-            <label className="block mb-2 font-medium">الكمية</label>
+            <label className="block mb-2 font-medium">{isFr ? "Quantité" : "الكمية"}</label>
             <Input
               type="number"
               value={quantity}
@@ -182,7 +185,7 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
             />
             {selectedProduct && (
               <p className={`text-sm mt-1 ${selectedProduct.quantity > 10 ? 'text-green-600' : selectedProduct.quantity > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
-                متاح في المخزون: {selectedProduct.quantity} وحدة
+                {isFr ? `Disponible en stock : ${selectedProduct.quantity} unités` : `متاح في المخزون: ${selectedProduct.quantity} وحدة`}
               </p>
             )}
           </div>
@@ -194,19 +197,19 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
           className="w-full md:w-auto bg-blue-600 hover:bg-blue-700"
         >
           <Plus className="w-4 h-4 mr-2" />
-          إضافة منتج
+          {isFr ? "Ajouter le produit" : "إضافة منتج"}
         </Button>
 
         {/* Selected Products List */}
         {selectedProducts.length > 0 && (
           <div className="mt-6">
-            <h4 className="font-semibold mb-3">المنتجات المحددة</h4>
+            <h4 className="font-semibold mb-3">{isFr ? "Produits sélectionnés" : "المنتجات المحددة"}</h4>
             <div className="space-y-2">
               {selectedProducts.map((item, index) => (
                 <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                   <div className="flex-1">
                     <div className="font-medium">{item.productName}</div>
-                    <div className="text-sm text-gray-600">الرمز: {item.productCode}</div>
+                    <div className="text-sm text-gray-600">{isFr ? "Code : " : "الرمز: "}{item.productCode}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -233,7 +236,7 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
                       variant="destructive"
                       onClick={() => handleRemoveProduct(index)}
                     >
-                      حذف
+                      {isFr ? "Supprimer" : "حذف"}
                     </Button>
                   </div>
                 </div>
@@ -241,7 +244,7 @@ const DebtorProductSelector = ({ selectedProducts, onProductsChange }: DebtorPro
             </div>
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <div className="flex justify-between items-center">
-                <span className="font-semibold">المجموع الكلي:</span>
+                <span className="font-semibold">{isFr ? "Total général :" : "المجموع الكلي:"}</span>
                 <span className="text-xl font-bold text-blue-600">
                   {formatCurrency(totalAmount)}
                 </span>

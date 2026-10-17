@@ -8,8 +8,12 @@ import { Plus, Edit, Trash2, Warehouse as WarehouseIcon } from "lucide-react";
 import { Warehouse } from "@/types";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { Switch } from "@/components/ui/switch";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function WarehouseManager() {
+  const { locale, isRTL } = useLocale();
+  const isFr = locale === 'fr';
+
   const { warehouses, addWarehouse, updateWarehouse, deleteWarehouse } = useWarehouses();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -61,7 +65,10 @@ export default function WarehouseManager() {
   };
 
   const handleDelete = (warehouse: Warehouse) => {
-    if (confirm(`هل أنت متأكد من حذف المخزن "${warehouse.name}"؟`)) {
+    const confirmMsg = isFr
+      ? `Êtes-vous sûr de vouloir supprimer le dépôt "${warehouse.name}" ?`
+      : `هل أنت متأكد من حذف المخزن "${warehouse.name}"؟`;
+    if (confirm(confirmMsg)) {
       deleteWarehouse(warehouse.id);
     }
   };
@@ -71,12 +78,12 @@ export default function WarehouseManager() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <WarehouseIcon className="w-5 h-5" />
-            إدارة المخازن
+            <WarehouseIcon className="w-5 h-5 text-blue-600" />
+            <span>{isFr ? "Gestion des Dépôts / Magasins" : "إدارة المخازن"}</span>
           </CardTitle>
-          <Button onClick={handleAdd}>
-            <Plus className="w-4 h-4 mr-2" />
-            إضافة مخزن
+          <Button onClick={handleAdd} className="gap-2 font-bold cursor-pointer">
+            <Plus className="w-4 h-4" />
+            <span>{isFr ? "Ajouter un dépôt" : "إضافة مخزن"}</span>
           </Button>
         </div>
       </CardHeader>
@@ -84,51 +91,56 @@ export default function WarehouseManager() {
         <div className="space-y-4">
           {warehouses.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              لا توجد مخازن. قم بإضافة مخزن جديد.
+              {isFr
+                ? "Aucun dépôt enregistré. Veuillez ajouter un nouveau dépôt."
+                : "لا توجد مخازن. قم بإضافة مخزن جديد."}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {warehouses.map((warehouse) => (
                 <div
                   key={warehouse.id}
-                  className={`border rounded-lg p-4 ${
-                    warehouse.isActive ? "border-green-200 bg-green-50" : "border-gray-200 bg-gray-50"
+                  className={`border rounded-xl p-4 transition-all shadow-xs ${
+                    warehouse.isActive ? "border-green-200 bg-green-50/50" : "border-slate-200 bg-slate-50/50"
                   }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{warehouse.name}</h3>
+                      <h3 className="font-bold text-lg text-slate-900">{warehouse.name}</h3>
                       {warehouse.location && (
-                        <p className="text-sm text-gray-600">{warehouse.location}</p>
+                        <p className="text-sm text-slate-600 mt-0.5">{warehouse.location}</p>
                       )}
                       {warehouse.description && (
-                        <p className="text-sm text-gray-500 mt-1">{warehouse.description}</p>
+                        <p className="text-xs text-slate-500 mt-1">{warehouse.description}</p>
                       )}
                     </div>
                     <div
-                      className={`px-2 py-1 rounded text-xs ${
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                         warehouse.isActive
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-700"
+                          ? "bg-green-100 text-green-700 border border-green-200"
+                          : "bg-slate-100 text-slate-700 border border-slate-200"
                       }`}
                     >
-                      {warehouse.isActive ? "نشط" : "غير نشط"}
+                      {warehouse.isActive
+                        ? (isFr ? "Actif" : "نشط")
+                        : (isFr ? "Inactif" : "غير نشط")}
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-4">
+                  <div className="flex gap-2 mt-4 pt-3 border-t border-slate-200/60">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleEdit(warehouse)}
-                      className="flex-1"
+                      className="flex-1 gap-1 cursor-pointer"
                     >
-                      <Edit className="w-4 h-4 mr-1" />
-                      تعديل
+                      <Edit className="w-4 h-4" />
+                      <span>{isFr ? "Modifier" : "تعديل"}</span>
                     </Button>
                     <Button
                       variant="destructive"
                       size="sm"
                       onClick={() => handleDelete(warehouse)}
+                      className="cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -151,42 +163,49 @@ export default function WarehouseManager() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
           <DialogHeader>
             <DialogTitle>
-              {selectedWarehouse ? "تعديل المخزن" : "إضافة مخزن جديد"}
+              {selectedWarehouse
+                ? (isFr ? "Modifier le dépôt" : "تعديل المخزن")
+                : (isFr ? "Ajouter un nouveau dépôt" : "إضافة مخزن جديد")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">اسم المخزن *</Label>
+              <Label htmlFor="name">{isFr ? "Nom du dépôt *" : "اسم المخزن *"}</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="أدخل اسم المخزن"
+                placeholder={isFr ? "Ex: Dépôt Central, Magasin 1..." : "أدخل اسم المخزن"}
+                className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="location">الموقع</Label>
+              <Label htmlFor="location">{isFr ? "Emplacement / Adresse" : "الموقع"}</Label>
               <Input
                 id="location"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="أدخل موقع المخزن"
+                placeholder={isFr ? "Ex: Zone Industrielle, Alger..." : "أدخل موقع المخزن"}
+                className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="description">الوصف</Label>
+              <Label htmlFor="description">{isFr ? "Description / Notes" : "الوصف"}</Label>
               <Input
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="أدخل وصف المخزن"
+                placeholder={isFr ? "Détails supplémentaires..." : "أدخل وصف المخزن"}
+                className="mt-1"
               />
             </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="isActive">المخزن نشط</Label>
+            <div className="flex items-center justify-between pt-1">
+              <Label htmlFor="isActive" className="cursor-pointer">
+                {isFr ? "Dépôt actif" : "المخزن نشط"}
+              </Label>
               <Switch
                 id="isActive"
                 checked={formData.isActive}
@@ -196,7 +215,7 @@ export default function WarehouseManager() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button
               variant="outline"
               onClick={() => {
@@ -204,11 +223,14 @@ export default function WarehouseManager() {
                 setIsEditModalOpen(false);
                 resetForm();
               }}
+              className="cursor-pointer"
             >
-              إلغاء
+              {isFr ? "Annuler" : "إلغاء"}
             </Button>
-            <Button onClick={handleSubmit} disabled={!formData.name.trim()}>
-              {selectedWarehouse ? "تحديث" : "إضافة"}
+            <Button onClick={handleSubmit} disabled={!formData.name.trim()} className="cursor-pointer">
+              {selectedWarehouse
+                ? (isFr ? "Mettre à jour" : "تحديث")
+                : (isFr ? "Ajouter" : "إضافة")}
             </Button>
           </DialogFooter>
         </DialogContent>

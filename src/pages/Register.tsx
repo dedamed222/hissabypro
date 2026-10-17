@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function Register() {
   const navigate = useNavigate();
   const { locale } = useLocale();
+  const isFr = locale === 'fr';
   const t = translations[locale];
   const { toast } = useToast();
   const { register: registerUser, isAuthenticated } = useAuth();
@@ -46,7 +47,9 @@ export default function Register() {
 
   const renderPasswordStrength = () => {
     const colors = ["bg-red-500", "bg-yellow-500", "bg-blue-500", "bg-green-500"];
-    const labels = ["ضعيفة جدًا", "ضعيفة", "متوسطة", "قوية"];
+    const labels = isFr
+      ? ["Très faible", "Faible", "Moyen", "Fort"]
+      : ["ضعيفة جدًا", "ضعيفة", "متوسطة", "قوية"];
     return (
       <div className="mt-1">
         <div className="flex h-1 w-full space-x-1 rtl:space-x-reverse">
@@ -75,20 +78,20 @@ export default function Register() {
         .object({
           username: z
             .string()
-            .min(3, "اسم المستخدم يجب أن يكون 3 أحرف على الأقل")
-            .max(20, "اسم المستخدم يجب ألا يتجاوز 20 حرفًا")
-            .regex(/^[a-zA-Z0-9_-]+$/, "اسم المستخدم يجب أن يحتوي على أحرف إنجليزية وأرقام ورموز - و _ فقط"),
+            .min(3, isFr ? "Le nom d'utilisateur doit contenir au moins 3 caractères" : "اسم المستخدم يجب أن يكون 3 أحرف على الأقل")
+            .max(20, isFr ? "Le nom d'utilisateur ne doit pas dépasser 20 caractères" : "اسم المستخدم يجب ألا يتجاوز 20 حرفًا")
+            .regex(/^[a-zA-Z0-9_-]+$/, isFr ? "Le nom d'utilisateur ne peut contenir que des lettres, chiffres, tirets et underscores" : "اسم المستخدم يجب أن يحتوي على أحرف إنجليزية وأرقام ورموز - و _ فقط"),
           password: z
             .string()
-            .min(8, "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
-            .regex(/[A-Z]/, "كلمة المرور يجب أن تحتوي على حرف كبير واحد على الأقل")
-            .regex(/[0-9]/, "كلمة المرور يجب أن تحتوي على رقم واحد على الأقل"),
+            .min(8, isFr ? "Le mot de passe doit contenir au moins 8 caractères" : "كلمة المرور يجب أن تكون 8 أحرف على الأقل")
+            .regex(/[A-Z]/, isFr ? "Le mot de passe doit contenir au moins une lettre majuscule" : "كلمة المرور يجب أن تحتوي على حرف كبير واحد على الأقل")
+            .regex(/[0-9]/, isFr ? "Le mot de passe doit contenir au moins un chiffre" : "كلمة المرور يجب أن تحتوي على رقم واحد على الأقل"),
           confirmPassword: z.string(),
-          email: z.string().email("البريد الإلكتروني غير صالح"),
-          name: z.string().min(2, "الاسم يجب أن يكون حرفين على الأقل"),
+          email: z.string().email(isFr ? "Adresse email invalide" : "البريد الإلكتروني غير صالح"),
+          name: z.string().min(2, isFr ? "Le nom doit comporter au moins 2 caractères" : "الاسم يجب أن يكون حرفين على الأقل"),
         })
         .refine((data) => data.password === data.confirmPassword, {
-          message: "كلمتا المرور غير متطابقتين",
+          message: isFr ? "Les deux mots de passe ne correspondent pas" : "كلمتا المرور غير متطابقتين",
           path: ["confirmPassword"],
         });
       schema.parse(formData);
@@ -97,7 +100,7 @@ export default function Register() {
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
       } else {
-        setError("حدث خطأ أثناء التحقق من البيانات");
+        setError(isFr ? "Erreur lors de la validation des données" : "حدث خطأ أثناء التحقق من البيانات");
       }
       return false;
     }
@@ -121,15 +124,15 @@ export default function Register() {
       if (result.success) {
         setSuccess(true);
         toast({
-          title: "تم إنشاء الحساب بنجاح",
-          description: "يرجى التحقق من بريدك الإلكتروني لتفعيل الحساب",
+          title: isFr ? "Compte créé avec succès" : "تم إنشاء الحساب بنجاح",
+          description: isFr ? "Veuillez vérifier votre email pour activer votre compte" : "يرجى التحقق من بريدك الإلكتروني لتفعيل الحساب",
         });
       } else {
-        setError(result.error || "حدث خطأ أثناء إنشاء الحساب");
+        setError(result.error || (isFr ? "Une erreur est survenue lors de la création du compte" : "حدث خطأ أثناء إنشاء الحساب"));
       }
     } catch (err) {
       console.error("Error registering user:", err);
-      setError("حدث خطأ أثناء إنشاء الحساب");
+      setError(isFr ? "Une erreur est survenue lors de la création du compte" : "حدث خطأ أثناء إنشاء الحساب");
     } finally {
       setLoading(false);
     }
@@ -140,15 +143,19 @@ export default function Register() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
         <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md text-center">
           <CheckCircle className="mx-auto text-green-500" size={64} />
-          <h1 className="text-2xl font-bold text-gray-900">تم إنشاء الحساب!</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{isFr ? "Compte créé !" : "تم إنشاء الحساب!"}</h1>
           <p className="text-gray-600">
-            تم إرسال رسالة تحقق إلى <strong>{formData.email}</strong>. يرجى التحقق من بريدك الإلكتروني لتفعيل حسابك ثم تسجيل الدخول.
+            {isFr ? (
+              <>Un message de vérification a été envoyé à <strong>{formData.email}</strong>. Veuillez vérifier votre boîte de réception pour activer votre compte puis vous connecter.</>
+            ) : (
+              <>تم إرسال رسالة تحقق إلى <strong>{formData.email}</strong>. يرجى التحقق من بريدك الإلكتروني لتفعيل حسابك ثم تسجيل الدخول.</>
+            )}
           </p>
           <Link
             to="/login"
             className="inline-block w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-arab-blue hover:bg-arab-blue-dark text-center"
           >
-            الذهاب إلى تسجيل الدخول
+            {isFr ? "Se connecter" : "الذهاب إلى تسجيل الدخول"}
           </Link>
         </div>
       </div>
@@ -196,7 +203,9 @@ export default function Register() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm dir-auto"
                 placeholder={t.usernamePlaceholder}
               />
-              <p className="mt-1 text-xs text-gray-500">اسم المستخدم يجب أن يحتوي على أحرف إنجليزية وأرقام فقط (3-20 حرف)</p>
+              <p className="mt-1 text-xs text-gray-500">
+                {isFr ? "Le nom d'utilisateur ne doit contenir que des lettres et chiffres (3-20 caractères)" : "اسم المستخدم يجب أن يحتوي على أحرف إنجليزية وأرقام فقط (3-20 حرف)"}
+              </p>
             </div>
 
             <div>
@@ -233,7 +242,9 @@ export default function Register() {
                 </button>
               </div>
               {renderPasswordStrength()}
-              <p className="mt-1 text-xs text-gray-500">كلمة المرور يجب أن تكون 8 أحرف على الأقل، وتحتوي على حرف كبير ورقم</p>
+              <p className="mt-1 text-xs text-gray-500">
+                {isFr ? "Le mot de passe doit comporter au moins 8 caractères, une majuscule et un chiffre" : "كلمة المرور يجب أن تكون 8 أحرف على الأقل، وتحتوي على حرف كبير ورقم"}
+              </p>
             </div>
 
             <div>

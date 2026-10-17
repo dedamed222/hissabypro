@@ -14,6 +14,7 @@ import {
 } from "@/lib/database";
 import { loadStoreData, saveStoreData } from "@/utils/localStorage";
 import { formatCurrency, formatDate, normalizeArabic } from "@/utils/formatters";
+import { useLocale } from "@/hooks/useLocale";
 import {
   Supplier,
   Customer,
@@ -69,6 +70,8 @@ interface EnrichedSupplier extends Supplier {
 
 export default function Suppliers() {
   const navigate = useNavigate();
+  const { t, locale, isRTL } = useLocale();
+  const isFr = locale === 'fr';
 
   // Core State
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -202,12 +205,15 @@ export default function Suppliers() {
           customerName: inv.customer_name,
           total: Number(inv.total) || 0,
           date: inv.date || (inv.created_at ? inv.created_at.split('T')[0] : ''),
+          createdAt: inv.created_at || new Date().toISOString(),
+          paymentMethod: inv.payment_method || 'cash',
           status: inv.status,
           type: inv.type,
           products: [],
           items: (inv.invoice_items || []).map((it: any) => ({
             productId: it.product_id,
             productName: it.product_name,
+            productCode: it.product_code || '',
             quantity: Number(it.quantity) || 1,
             price: Number(it.price) || 0,
             total: Number(it.total) || 0
@@ -241,7 +247,7 @@ export default function Suppliers() {
 
     } catch (err: any) {
       console.error("Error loading suppliers data:", err);
-      setError("حدث خطأ أثناء تحميل بيانات الموردين، يجري الاعتماد على البيانات المحلية.");
+      setError(isFr ? "Erreur lors du chargement des données fournisseurs, utilisation du mode local." : "حدث خطأ أثناء تحميل بيانات الموردين، يجري الاعتماد على البيانات المحلية.");
     } finally {
       setLoading(false);
     }
@@ -432,7 +438,7 @@ export default function Suppliers() {
     setError("");
 
     if (!formData.name.trim()) {
-      setError("يرجى إدخال اسم المورد");
+      setError(isFr ? "Veuillez saisir le nom du fournisseur" : "يرجى إدخال اسم المورد");
       return;
     }
 
@@ -460,13 +466,17 @@ export default function Suppliers() {
             phone: formData.phone.trim(),
             email: formData.email.trim(),
             address: formData.address.trim(),
-            company: "مورد وعميل",
-            notes: `مسجل تلقائياً كمورد وعميل في نفس الوقت`
+            company: isFr ? "Fournisseur & Client" : "مورد وعميل",
+            notes: isFr ? "Enregistré automatiquement comme fournisseur et client" : "مسجل تلقائياً كمورد وعميل في نفس الوقت"
           }).catch(err => console.warn("Auto-create customer skipped:", err));
         }
       }
 
-      setSuccessMessage(selectedSupplier ? "تم تعديل بيانات المورد بنجاح" : "تمت إضافة المورد وربطه بنجاح");
+      setSuccessMessage(
+        selectedSupplier
+          ? (isFr ? "Fournisseur mis à jour avec succès" : "تم تعديل بيانات المورد بنجاح")
+          : (isFr ? "Fournisseur ajouté et lié avec succès" : "تمت إضافة المورد وربطه بنجاح")
+      );
       setTimeout(() => setSuccessMessage(""), 4000);
 
       setIsModalOpen(false);
@@ -474,7 +484,7 @@ export default function Suppliers() {
       await loadData();
     } catch (err: any) {
       console.error("Error saving supplier:", err);
-      setError("حدث خطأ أثناء حفظ البيانات");
+      setError(isFr ? "Une erreur est survenue lors de l'enregistrement" : "حدث خطأ أثناء حفظ البيانات");
     } finally {
       setLoading(false);
     }
@@ -482,7 +492,10 @@ export default function Suppliers() {
 
   // Convert / Link Supplier as Customer with 1 click
   const handleLinkAsCustomer = async (supplier: Supplier) => {
-    if (!window.confirm(`هل تريد تسجيل المورد "${supplier.name}" كعميل في النظام أيضاً لتوحيد كشف حسابه؟`)) return;
+    const confirmMsg = isFr
+      ? `Voulez-vous également enregistrer le fournisseur "${supplier.name}" comme client pour unifier son relevé de compte ?`
+      : `هل تريد تسجيل المورد "${supplier.name}" كعميل في النظام أيضاً لتوحيد كشف حسابه؟`;
+    if (!window.confirm(confirmMsg)) return;
 
     setLoading(true);
     try {
@@ -491,16 +504,20 @@ export default function Suppliers() {
         phone: supplier.phone || '',
         email: supplier.email || '',
         address: supplier.address || '',
-        company: "مورد وعميل",
-        notes: "تمت ترقيته لعميل ومورد معاً"
+        company: isFr ? "Fournisseur & Client" : "مورد وعميل",
+        notes: isFr ? "Converti en client et fournisseur conjoint" : "تمت ترقيته لعميل ومورد معاً"
       });
 
-      setSuccessMessage(`تم ربط المورد "${supplier.name}" كعميل بنجاح. أصبحت حساباته ومقاصته موحدة الآن!`);
+      setSuccessMessage(
+        isFr
+          ? `Le fournisseur "${supplier.name}" a été lié en tant que client avec succès !`
+          : `تم ربط المورد "${supplier.name}" كعميل بنجاح. أصبحت حساباته ومقاصته موحدة الآن!`
+      );
       setTimeout(() => setSuccessMessage(""), 4000);
       await loadData();
     } catch (err) {
       console.error("Error linking customer:", err);
-      setError("فشل إنشاء حساب العميل للمورد");
+      setError(isFr ? "Échec de la liaison du client" : "فشل إنشاء حساب العميل للمورد");
     } finally {
       setLoading(false);
     }
@@ -508,7 +525,10 @@ export default function Suppliers() {
 
   // Delete Supplier
   const handleDelete = async (supplier: Supplier) => {
-    if (!window.confirm(`هل أنت متأكد من حذف المورد "${supplier.name}"؟`)) return;
+    const confirmDelete = isFr
+      ? `Êtes-vous sûr de vouloir supprimer le fournisseur "${supplier.name}" ?`
+      : `هل أنت متأكد من حذف المورد "${supplier.name}"؟`;
+    if (!window.confirm(confirmDelete)) return;
 
     setLoading(true);
     try {
@@ -518,12 +538,16 @@ export default function Suppliers() {
       storeData.suppliers = (storeData.suppliers || []).filter((s: any) => s.id !== supplier.id);
       saveStoreData(storeData);
 
-      setSuccessMessage(`تم حذف المورد "${supplier.name}" بنجاح`);
+      setSuccessMessage(
+        isFr
+          ? `Le fournisseur "${supplier.name}" a été supprimé avec succès`
+          : `تم حذف المورد "${supplier.name}" بنجاح`
+      );
       setTimeout(() => setSuccessMessage(""), 4000);
       await loadData();
     } catch (err) {
       console.error("Error deleting supplier:", err);
-      setError("حدث خطأ أثناء حذف المورد");
+      setError(isFr ? "Erreur lors de la suppression du fournisseur" : "حدث خطأ أثناء حذف المورد");
     } finally {
       setLoading(false);
     }
@@ -550,13 +574,15 @@ export default function Suppliers() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <span>إدارة الموردين والعملاء المشتركين</span>
+              <span>{isFr ? "Gestion des Fournisseurs & Clients Mixtes" : "إدارة الموردين والعملاء المشتركين"}</span>
               <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                ربط شامل ومقاصة
+                {isFr ? "Liaison & Compensation" : "ربط شامل ومقاصة"}
               </span>
             </h1>
             <p className="text-xs text-slate-500">
-              متابعة الموردين، المنتجات الموردة، وربطهم بحساباتهم كعملاء في الأرشيف والديون وكشف الحساب
+              {isFr
+                ? "Suivi des fournisseurs, des articles approvisionnés et rapprochement avec leurs comptes clients"
+                : "متابعة الموردين، المنتجات الموردة، وربطهم بحساباتهم كعملاء في الأرشيف والديون وكشف الحساب"}
             </p>
           </div>
         </div>
@@ -567,7 +593,7 @@ export default function Suppliers() {
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all cursor-pointer"
           >
             <Plus size={16} />
-            <span>إضافة مورد جديد</span>
+            <span>{isFr ? "Nouveau Fournisseur" : "إضافة مورد جديد"}</span>
           </button>
         </div>
       </div>
@@ -605,9 +631,13 @@ export default function Suppliers() {
             <Truck size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">إجمالي الموردين</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Total Fournisseurs" : "إجمالي الموردين"}
+            </p>
             <h3 className="text-xl font-black text-slate-900 mt-0.5 font-sans">{stats.totalSuppliers}</h3>
-            <p className="text-[11px] font-bold text-indigo-600 mt-0.5">جهات توريد مسجلة</p>
+            <p className="text-[11px] font-bold text-indigo-600 mt-0.5">
+              {isFr ? "Fournisseurs enregistrés" : "جهات توريد مسجلة"}
+            </p>
           </div>
         </div>
 
@@ -617,9 +647,13 @@ export default function Suppliers() {
             <ArrowRightLeft size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">موردون وعملاء معاً</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Fournisseurs & Clients" : "موردون وعملاء معاً"}
+            </p>
             <h3 className="text-xl font-black text-purple-800 mt-0.5 font-sans">{stats.dualCount}</h3>
-            <p className="text-[11px] font-bold text-purple-600 mt-0.5">حسابات مشتركة بمقاصة</p>
+            <p className="text-[11px] font-bold text-purple-600 mt-0.5">
+              {isFr ? "Comptes avec compensation" : "حسابات مشتركة بمقاصة"}
+            </p>
           </div>
         </div>
 
@@ -629,9 +663,13 @@ export default function Suppliers() {
             <TrendingDown size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">مستحقات الموردين (له)</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Dû aux Fournisseurs (Lui)" : "مستحقات الموردين (له)"}
+            </p>
             <h3 className="text-xl font-black text-emerald-700 mt-0.5 font-sans">{formatCurrency(stats.totalPayables)}</h3>
-            <p className="text-[11px] font-bold text-slate-400 mt-0.5">ذمم دائنة للتوريد</p>
+            <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+              {isFr ? "Dettes Fournisseurs (+)" : "ذمم دائنة للتوريد"}
+            </p>
           </div>
         </div>
 
@@ -641,9 +679,13 @@ export default function Suppliers() {
             <TrendingUp size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-500 truncate">ديونهم كعملاء (عليه)</p>
+            <p className="text-xs font-semibold text-slate-500 truncate">
+              {isFr ? "Créances Clients (Moi)" : "ديونهم كعملاء (عليه)"}
+            </p>
             <h3 className="text-xl font-black text-rose-600 mt-0.5 font-sans">{formatCurrency(stats.totalReceivables)}</h3>
-            <p className="text-[11px] font-bold text-slate-400 mt-0.5">مبيعات وفواتير آجلة</p>
+            <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+              {isFr ? "Ventes et factures à terme (-)" : "مبيعات وفواتير آجلة"}
+            </p>
           </div>
         </div>
 
@@ -661,14 +703,20 @@ export default function Suppliers() {
             <DollarSign size={22} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold text-slate-700 truncate">صافي المقاصة الكلية</p>
+            <p className="text-xs font-bold text-slate-700 truncate">
+              {isFr ? "Solde Net de Compensation" : "صافي المقاصة الكلية"}
+            </p>
             <h3 className={`text-xl font-black mt-0.5 font-sans ${
               stats.totalNet > 0 ? "text-emerald-700" : stats.totalNet < 0 ? "text-rose-700" : "text-slate-700"
             }`}>
               {formatCurrency(Math.abs(stats.totalNet))}
             </h3>
             <p className="text-[11px] font-bold mt-0.5">
-              {stats.totalNet > 0 ? "صافي مستحق للموردين" : stats.totalNet < 0 ? "صافي مطلوب لصالحنا" : "الحسابات متزنة"}
+              {stats.totalNet > 0
+                ? (isFr ? "Solde net dû au fournisseur" : "صافي مستحق للموردين")
+                : stats.totalNet < 0
+                ? (isFr ? "Solde net à notre faveur" : "صافي مطلوب لصالحنا")
+                : (isFr ? "Comptes équilibrés" : "الحسابات متزنة")}
             </p>
           </div>
         </div>
@@ -679,18 +727,18 @@ export default function Suppliers() {
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-400`} size={16} />
             <input
               type="text"
-              placeholder="البحث باسم المورد، رقم الهاتف، العنوان، أو الأصناف الموردة..."
+              placeholder={isFr ? "Rechercher par nom, téléphone, adresse ou article fourni..." : "البحث باسم المورد، رقم الهاتف، العنوان، أو الأصناف الموردة..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pr-10 pl-4 py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
+              className={`w-full ${isRTL ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4 text-left'} py-2.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all`}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600`}
               >
                 <X size={14} />
               </button>
@@ -707,7 +755,7 @@ export default function Suppliers() {
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              الكل ({enrichedSuppliers.length})
+              {isFr ? `Tous (${enrichedSuppliers.length})` : `الكل (${enrichedSuppliers.length})`}
             </button>
 
             <button
@@ -719,7 +767,7 @@ export default function Suppliers() {
               }`}
             >
               <ArrowRightLeft size={13} />
-              <span>عملاء وموردون معاً ({stats.dualCount})</span>
+              <span>{isFr ? `Fournisseurs & Clients (${stats.dualCount})` : `عملاء وموردون معاً (${stats.dualCount})`}</span>
             </button>
 
             <button
@@ -730,7 +778,7 @@ export default function Suppliers() {
                   : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60"
               }`}
             >
-              مستحقات للمورد (له)
+              {isFr ? "Dû au Fournisseur (Lui)" : "مستحقات للمورد (له)"}
             </button>
 
             <button
@@ -741,7 +789,7 @@ export default function Suppliers() {
                   : "bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60"
               }`}
             >
-              ديون على العميل (عليه)
+              {isFr ? "Créances Client (Moi)" : "ديون على العميل (عليه)"}
             </button>
           </div>
         </div>
@@ -753,42 +801,58 @@ export default function Suppliers() {
           <div className="flex items-center gap-2">
             <Users size={18} className="text-blue-600" />
             <h3 className="font-bold text-sm text-slate-900">
-              دليل الموردين والحسابات المشتركة ({filteredSuppliers.length} مورد)
+              {isFr
+                ? `Répertoire des Fournisseurs & Comptes Mixtes (${filteredSuppliers.length})`
+                : `دليل الموردين والحسابات المشتركة (${filteredSuppliers.length} مورد)`}
             </h3>
           </div>
-          <span className="text-xs text-slate-500 font-medium">
-            انقر على «كشف الحساب والمقاصة» لمعاينة تسوية الحساب الموحدة
+          <span className="text-xs text-slate-500 font-medium hidden sm:inline-block">
+            {isFr
+              ? "Cliquez sur « Relevé & Solde » pour consulter la compensation consolidée"
+              : "انقر على «كشف الحساب والمقاصة» لمعاينة تسوية الحساب الموحدة"}
           </span>
         </div>
 
         {loading ? (
           <div className="p-12 text-center text-slate-500">
             <Loader2 size={28} className="animate-spin text-blue-600 mx-auto mb-2" />
-            <p className="text-xs font-bold">جاري تحميل واستجلاب بيانات الموردين والعملاء...</p>
+            <p className="text-xs font-bold">
+              {isFr ? "Chargement des données fournisseurs et clients..." : "جاري تحميل واستجلاب بيانات الموردين والعملاء..."}
+            </p>
           </div>
         ) : filteredSuppliers.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
             <Truck size={36} className="mx-auto text-slate-300 mb-2" />
             <p className="text-xs font-bold text-slate-700 mb-1">
-              {searchQuery ? "لا توجد نتائج تطابق بحثك" : "لا يوجد موردين مسجلين في هذا القسم"}
+              {searchQuery
+                ? (isFr ? "Aucun résultat ne correspond à votre recherche" : "لا توجد نتائج تطابق بحثك")
+                : (isFr ? "Aucun fournisseur enregistré dans cette section" : "لا يوجد موردين مسجلين في هذا القسم")}
             </p>
             <p className="text-[11px] text-slate-400">
-              يمكنك إضافة مورد جديد وربطه تلقائياً كعميل بنقرة واحدة
+              {isFr
+                ? "Vous pouvez ajouter un nouveau fournisseur et le lier automatiquement en tant que client en un clic"
+                : "يمكنك إضافة مورد جديد وربطه تلقائياً كعميل بنقرة واحدة"}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs">
+            <table className={`w-full ${isRTL ? 'text-right' : 'text-left'} border-collapse text-xs`}>
               <thead>
                 <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-700 font-bold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">اسم المورد والنشاط</th>
-                  <th className="py-3.5 px-4">بيانات الاتصال</th>
-                  <th className="py-3.5 px-4 text-center">أصناف التوريد</th>
-                  <th className="py-3.5 px-4 text-center bg-emerald-50/50 text-emerald-800">مستحقاته كمورد (له +)</th>
-                  <th className="py-3.5 px-4 text-center bg-rose-50/50 text-rose-800">ديونه كعميل (عليه -)</th>
-                  <th className="py-3.5 px-4 text-center bg-slate-100/60 font-black">صافي المقاصة المالية</th>
-                  <th className="py-3.5 px-4 text-center">حركات الأرشيف</th>
-                  <th className="py-3.5 px-4 text-center">الإجراءات</th>
+                  <th className="py-3.5 px-4">{isFr ? "Fournisseur & Activité" : "اسم المورد والنشاط"}</th>
+                  <th className="py-3.5 px-4">{isFr ? "Coordonnées" : "بيانات الاتصال"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Articles Fournis" : "أصناف التوريد"}</th>
+                  <th className="py-3.5 px-4 text-center bg-emerald-50/50 text-emerald-800">
+                    {isFr ? "Dû au Fournisseur (Lui +)" : "مستحقاته كمورد (له +)"}
+                  </th>
+                  <th className="py-3.5 px-4 text-center bg-rose-50/50 text-rose-800">
+                    {isFr ? "Créances Client (Moi -)" : "ديونه كعميل (عليه -)"}
+                  </th>
+                  <th className="py-3.5 px-4 text-center bg-slate-100/60 font-black">
+                    {isFr ? "Solde Net de Compensation" : "صافي المقاصة المالية"}
+                  </th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Factures / Archive" : "حركات الأرشيف"}</th>
+                  <th className="py-3.5 px-4 text-center">{isFr ? "Actions" : "الإجراءات"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-sm">
@@ -812,7 +876,7 @@ export default function Suppliers() {
                               {supplier.isDual && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
                                   <ArrowRightLeft size={10} />
-                                  <span>عميل ومورد</span>
+                                  <span>{isFr ? "Client & Fournisseur" : "عميل ومورد"}</span>
                                 </span>
                               )}
                             </div>
@@ -851,14 +915,14 @@ export default function Suppliers() {
                         {supplier.suppliedProducts.length > 0 ? (
                           <div className="inline-flex flex-col items-center">
                             <span className="font-bold font-sans text-xs px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
-                              {supplier.suppliedProducts.length} صنف بالمخزن
+                              {supplier.suppliedProducts.length} {isFr ? "articles" : "صنف بالمخزن"}
                             </span>
                             <span className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[120px]">
                               {supplier.suppliedProducts[0]?.name}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-400 text-xs">لا أصناف مرتبطة</span>
+                          <span className="text-slate-400 text-xs">{isFr ? "Aucun article lié" : "لا أصناف مرتبطة"}</span>
                         )}
                       </td>
 
@@ -867,7 +931,7 @@ export default function Suppliers() {
                         {supplier.supplierPayables > 0 ? (
                           <span className="text-sm font-black">{formatCurrency(supplier.supplierPayables)}</span>
                         ) : (
-                          <span className="text-slate-400 text-xs">خالص (0)</span>
+                          <span className="text-slate-400 text-xs">{isFr ? "Réglé (0)" : "خالص (0)"}</span>
                         )}
                       </td>
 
@@ -876,7 +940,7 @@ export default function Suppliers() {
                         {supplier.customerDebts > 0 ? (
                           <span className="text-sm font-black">{formatCurrency(supplier.customerDebts)}</span>
                         ) : (
-                          <span className="text-slate-400 text-xs">لا ديون عليه</span>
+                          <span className="text-slate-400 text-xs">{isFr ? "Aucune dette" : "لا ديون عليه"}</span>
                         )}
                       </td>
 
@@ -899,7 +963,11 @@ export default function Suppliers() {
                               ? "bg-rose-100 text-rose-800"
                               : "bg-slate-100 text-slate-600"
                           }`}>
-                            {supplier.netBalance > 0 ? "مستحق له" : supplier.netBalance < 0 ? "مطلوب منه" : "متزن"}
+                            {supplier.netBalance > 0
+                              ? (isFr ? "Dû au fournisseur" : "مستحق له")
+                              : supplier.netBalance < 0
+                              ? (isFr ? "Dû par le client" : "مطلوب منه")
+                              : (isFr ? "Équilibré" : "متزن")}
                           </span>
                         </div>
                       </td>
@@ -909,7 +977,7 @@ export default function Suppliers() {
                         {supplier.archiveInvoicesCount > 0 ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold font-sans">
                             <Receipt size={12} className="text-slate-500" />
-                            <span>{supplier.archiveInvoicesCount} فاتورة</span>
+                            <span>{supplier.archiveInvoicesCount} {isFr ? "factures" : "فاتورة"}</span>
                           </span>
                         ) : (
                           <span className="text-slate-400 text-xs">--</span>
@@ -923,10 +991,10 @@ export default function Suppliers() {
                           <button
                             onClick={() => setClearingModalSupplier(supplier)}
                             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs transition-colors cursor-pointer"
-                            title="كشف حساب وتسوية المقاصة"
+                            title={isFr ? "Relevé de compte et compensation" : "كشف حساب وتسوية المقاصة"}
                           >
                             <FileSpreadsheet size={13} />
-                            <span>كشف الحساب</span>
+                            <span>{isFr ? "Relevé & Solde" : "كشف الحساب"}</span>
                           </button>
 
                           {/* Link as customer button (if not already dual) */}
@@ -934,7 +1002,7 @@ export default function Suppliers() {
                             <button
                               onClick={() => handleLinkAsCustomer(supplier)}
                               className="p-1.5 rounded-lg text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors cursor-pointer"
-                              title="تسجيل وربط كعميل أيضاً لتوحيد الحسابات"
+                              title={isFr ? "Enregistrer aussi comme client pour unifier les comptes" : "تسجيل وربط كعميل أيضاً لتوحيد الحسابات"}
                             >
                               <ArrowRightLeft size={14} />
                             </button>
@@ -944,7 +1012,7 @@ export default function Suppliers() {
                           <button
                             onClick={() => handleEdit(supplier)}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                            title="تعديل المورد"
+                            title={isFr ? "Modifier le fournisseur" : "تعديل المورد"}
                           >
                             <Edit size={14} />
                           </button>
@@ -953,7 +1021,7 @@ export default function Suppliers() {
                           <button
                             onClick={() => handleDelete(supplier)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            title="حذف المورد"
+                            title={isFr ? "Supprimer le fournisseur" : "حذف المورد"}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -978,7 +1046,9 @@ export default function Suppliers() {
                   <Truck size={17} />
                 </div>
                 <h3 className="text-base font-bold text-slate-900">
-                  {selectedSupplier ? "تعديل بيانات المورد" : "إضافة مورد جديد للنظام"}
+                  {selectedSupplier
+                    ? (isFr ? "Modifier les Informations du Fournisseur" : "تعديل بيانات المورد")
+                    : (isFr ? "Ajouter un Nouveau Fournisseur" : "إضافة مورد جديد للنظام")}
                 </h3>
               </div>
               <button
@@ -999,11 +1069,11 @@ export default function Suppliers() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  اسم المورد / الشركة *
+                  {isFr ? "Nom du Fournisseur / Société *" : "اسم المورد / الشركة *"}
                 </label>
                 <input
                   type="text"
-                  placeholder="مثال: مؤسسة النور للتوريدات التجارية"
+                  placeholder={isFr ? "Ex: Société Commerciale, Fournisseur..." : "مثال: مؤسسة النور للتوريدات التجارية"}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3.5 py-2 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-900 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold transition-all"
@@ -1014,11 +1084,11 @@ export default function Suppliers() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    رقم الهاتف / الجوال
+                    {isFr ? "Téléphone / Mobile" : "رقم الهاتف / الجوال"}
                   </label>
                   <input
                     type="tel"
-                    placeholder="مثال: 05XXXXXXXX"
+                    placeholder="05XXXXXXXX"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full px-3.5 py-2 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-900 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-sans font-medium transition-all"
@@ -1028,11 +1098,11 @@ export default function Suppliers() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    البريد الإلكتروني
+                    {isFr ? "Adresse E-mail" : "البريد الإلكتروني"}
                   </label>
                   <input
                     type="email"
-                    placeholder="example@domain.com"
+                    placeholder="contact@fournisseur.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-3.5 py-2 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-900 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-sans font-medium transition-all"
@@ -1042,11 +1112,11 @@ export default function Suppliers() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  العنوان والموقع
+                  {isFr ? "Adresse & Localisation" : "العنوان والموقع"}
                 </label>
                 <input
                   type="text"
-                  placeholder="المدينة، الحي، الشارع الرئيسي"
+                  placeholder={isFr ? "Ville, Quartier, Rue..." : "المدينة، الحي، الشارع الرئيسي"}
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   className="w-full px-3.5 py-2 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-900 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
@@ -1055,10 +1125,10 @@ export default function Suppliers() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  ملاحظات إضافية
+                  {isFr ? "Remarques & Conditions" : "ملاحظات إضافية"}
                 </label>
                 <textarea
-                  placeholder="أضف أي تفاصيل خاصة بالتوريد أو شروط السداد..."
+                  placeholder={isFr ? "Ajouter des détails sur les approvisionnements ou conditions..." : "أضف أي تفاصيل خاصة بالتوريد أو شروط السداد..."}
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="w-full px-3.5 py-2 text-xs bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-900 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
@@ -1078,10 +1148,14 @@ export default function Suppliers() {
                     />
                     <div>
                       <span className="text-xs font-bold text-purple-900 block">
-                        تسجيل هذا المورد كعميل في نفس الوقت تلقائياً
+                        {isFr
+                          ? "Enregistrer automatiquement ce fournisseur comme client"
+                          : "تسجيل هذا المورد كعميل في نفس الوقت تلقائياً"}
                       </span>
                       <p className="text-[11px] text-purple-700 mt-0.5">
-                        يوصى به إذا كان يتعامل معك بالبيع والشراء، لتوحيد كشف حسابه وإجراء المقاصة المالية بسهولة.
+                        {isFr
+                          ? "Recommandé si vous avez des flux d'achats et de ventes avec cette partie pour unifier le relevé."
+                          : "يوصى به إذا كان يتعامل معك بالبيع والشراء، لتوحيد كشف حسابه وإجراء المقاصة المالية بسهولة."}
                       </p>
                     </div>
                   </label>
@@ -1094,7 +1168,7 @@ export default function Suppliers() {
                   onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
                 >
-                  إلغاء
+                  {isFr ? "Annuler" : "إلغاء"}
                 </button>
                 <button
                   type="submit"
@@ -1104,12 +1178,16 @@ export default function Suppliers() {
                   {loading ? (
                     <>
                       <Loader2 size={15} className="animate-spin" />
-                      <span>جاري الحفظ...</span>
+                      <span>{isFr ? "Enregistrement..." : "جاري الحفظ..."}</span>
                     </>
                   ) : (
                     <>
                       <Save size={15} />
-                      <span>{selectedSupplier ? "حفظ التعديلات" : "إضافة المورد"}</span>
+                      <span>
+                        {selectedSupplier
+                          ? (isFr ? "Enregistrer les modifications" : "حفظ التعديلات")
+                          : (isFr ? "Ajouter le Fournisseur" : "إضافة المورد")}
+                      </span>
                     </>
                   )}
                 </button>
@@ -1134,12 +1212,14 @@ export default function Suppliers() {
                     <h3 className="font-bold text-base text-white">{clearingModalSupplier.name}</h3>
                     {clearingModalSupplier.isDual && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-500/30 text-purple-200 border border-purple-400/40">
-                        حساب مشترك (مورد وعميل)
+                        {isFr ? "Compte Conjoint (Fournisseur & Client)" : "حساب مشترك (مورد وعميل)"}
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-slate-300">
-                    ملخص المقاصة المالية الموحدة، الأصناف الموردة، وفواتير المبيعات والأرشيف
+                    {isFr
+                      ? "Synthèse de compensation financière, articles approvisionnés et factures clients"
+                      : "ملخص المقاصة المالية الموحدة، الأصناف الموردة، وفواتير المبيعات والأرشيف"}
                   </p>
                 </div>
               </div>
@@ -1155,19 +1235,27 @@ export default function Suppliers() {
             {/* Financial Clearing Position Banner */}
             <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center shrink-0">
               <div className="p-3 bg-white rounded-xl border border-emerald-200 shadow-xs">
-                <p className="text-[11px] font-bold text-slate-500">مستحقاته كمورد (له علينا)</p>
+                <p className="text-[11px] font-bold text-slate-500">
+                  {isFr ? "Dû au fournisseur (Lui)" : "مستحقاته كمورد (له علينا)"}
+                </p>
                 <p className="text-lg font-black font-sans text-emerald-700 mt-0.5">
                   {formatCurrency(clearingModalSupplier.supplierPayables)}
                 </p>
-                <span className="text-[10px] text-emerald-600 font-semibold">توريدات وبضائع مشتراة</span>
+                <span className="text-[10px] text-emerald-600 font-semibold">
+                  {isFr ? "Approvisionnements & Achats" : "توريدات وبضائع مشتراة"}
+                </span>
               </div>
 
               <div className="p-3 bg-white rounded-xl border border-rose-200 shadow-xs">
-                <p className="text-[11px] font-bold text-slate-500">ديونه كعميل (عليه لنا)</p>
+                <p className="text-[11px] font-bold text-slate-500">
+                  {isFr ? "Créances client (Moi)" : "ديونه كعميل (عليه لنا)"}
+                </p>
                 <p className="text-lg font-black font-sans text-rose-700 mt-0.5">
                   {formatCurrency(clearingModalSupplier.customerDebts)}
                 </p>
-                <span className="text-[10px] text-rose-600 font-semibold">فواتير مبيعات آجلة</span>
+                <span className="text-[10px] text-rose-600 font-semibold">
+                  {isFr ? "Factures de vente à crédit" : "فواتير مبيعات آجلة"}
+                </span>
               </div>
 
               <div className={`p-3 rounded-xl border shadow-xs ${
@@ -1177,7 +1265,9 @@ export default function Suppliers() {
                   ? "bg-rose-50 border-rose-300"
                   : "bg-slate-100 border-slate-300"
               }`}>
-                <p className="text-[11px] font-black text-slate-700">صافي المقاصة المعتمد</p>
+                <p className="text-[11px] font-black text-slate-700">
+                  {isFr ? "Solde Net de Compensation" : "صافي المقاصة المعتمد"}
+                </p>
                 <p className={`text-xl font-black font-sans mt-0.5 ${
                   clearingModalSupplier.netBalance > 0
                     ? "text-emerald-700"
@@ -1194,7 +1284,11 @@ export default function Suppliers() {
                     ? "bg-rose-200 text-rose-900"
                     : "bg-slate-200 text-slate-800"
                 }`}>
-                  {clearingModalSupplier.netBalance > 0 ? "صافي مستحق للمورد" : clearingModalSupplier.netBalance < 0 ? "صافي مطلوب من العميل" : "الحسابات متزنة بالكامل"}
+                  {clearingModalSupplier.netBalance > 0
+                    ? (isFr ? "Solde net en faveur du fournisseur" : "صافي مستحق للمورد")
+                    : clearingModalSupplier.netBalance < 0
+                    ? (isFr ? "Solde net en notre faveur" : "صافي مطلوب من العميل")
+                    : (isFr ? "Comptes parfaitement équilibrés" : "الحسابات متزنة بالكامل")}
                 </span>
               </div>
             </div>
@@ -1209,7 +1303,7 @@ export default function Suppliers() {
                     : "border-transparent text-slate-500 hover:text-slate-800"
                 }`}
               >
-                دفتر المقاصة والديون المتبادلة
+                {isFr ? "Grand Livre & Compensation" : "دفتر المقاصة والديون المتبادلة"}
               </button>
 
               <button
@@ -1220,7 +1314,9 @@ export default function Suppliers() {
                     : "border-transparent text-slate-500 hover:text-slate-800"
                 }`}
               >
-                الأصناف والمنتجات الموردة ({clearingModalSupplier.suppliedProducts.length})
+                {isFr
+                  ? `Articles Fournis (${clearingModalSupplier.suppliedProducts.length})`
+                  : `الأصناف والمنتجات الموردة (${clearingModalSupplier.suppliedProducts.length})`}
               </button>
 
               <button
@@ -1231,7 +1327,9 @@ export default function Suppliers() {
                     : "border-transparent text-slate-500 hover:text-slate-800"
                 }`}
               >
-                فواتير المبيعات والأرشيف ({clearingModalSupplier.archiveInvoicesCount})
+                {isFr
+                  ? `Factures & Archive (${clearingModalSupplier.archiveInvoicesCount})`
+                  : `فواتير المبيعات والأرشيف (${clearingModalSupplier.archiveInvoicesCount})`}
               </button>
             </div>
 
@@ -1242,68 +1340,74 @@ export default function Suppliers() {
                   <div className="p-3.5 bg-blue-50/60 border border-blue-200 rounded-xl text-xs text-slate-700 leading-relaxed">
                     <p className="font-bold text-blue-900 mb-1 flex items-center gap-1.5">
                       <ShieldCheck size={14} className="text-blue-600" />
-                      <span>منظومة المقاصة المحاسبية الآلية:</span>
+                      <span>{isFr ? "Système de compensation automatique :" : "منظومة المقاصة المحاسبية الآلية:"}</span>
                     </p>
-                    تقوم هذه الصفحة بربط قيود التوريد والمستحقات الدائنة مع فواتير المبيعات الآجلة للعميل. يتم خصم ديون مشترياته من مبالغ توريداته تلقائياً لتحديد المبلغ الصافي الفعلي الواجب تحويله أو تحصيله.
+                    {isFr
+                      ? "Cette vue relie les écritures d'approvisionnement (fournisseur) avec les factures de vente (client). Les dettes de ses achats sont automatiquement déduites de ses créances de livraison pour calculer le solde net exact à régler ou à percevoir."
+                      : "تقوم هذه الصفحة بربط قيود التوريد والمستحقات الدائنة مع فواتير المبيعات الآجلة للعميل. يتم خصم ديون مشترياته من مبالغ توريداته تلقائياً لتحديد المبلغ الصافي الفعلي الواجب تحويله أو تحصيله."}
                   </div>
 
                   {/* Summary Comparison Table */}
                   <div className="border border-slate-200 rounded-xl overflow-hidden">
-                    <table className="w-full text-right text-xs">
+                    <table className={`w-full ${isRTL ? 'text-right' : 'text-left'} text-xs`}>
                       <thead className="bg-slate-50 font-bold text-slate-700 border-b border-slate-200">
                         <tr>
-                          <th className="p-2.5">المعاملة</th>
-                          <th className="p-2.5">الصفة</th>
-                          <th className="p-2.5 text-center">التأثير على الحساب</th>
-                          <th className="p-2.5 text-left">المبلغ</th>
+                          <th className="p-2.5">{isFr ? "Opération" : "المعاملة"}</th>
+                          <th className="p-2.5">{isFr ? "Rôle" : "الصفة"}</th>
+                          <th className="p-2.5 text-center">{isFr ? "Impact sur le compte" : "التأثير على الحساب"}</th>
+                          <th className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'}`}>{isFr ? "Montant" : "المبلغ"}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-sans">
                         <tr className="hover:bg-slate-50/50">
-                          <td className="p-2.5 font-medium text-slate-800 font-arabic">
-                            مستحقات التوريد وبضائع المورد
+                          <td className="p-2.5 font-medium text-slate-800">
+                            {isFr ? "Créances de livraison et marchandises fournies" : "مستحقات التوريد وبضائع المورد"}
                           </td>
                           <td className="p-2.5">
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                              بصفته مورداً (دائن)
+                              {isFr ? "Fournisseur (Créditeur)" : "بصفته مورداً (دائن)"}
                             </span>
                           </td>
-                          <td className="p-2.5 text-center font-bold text-emerald-700 font-arabic">
-                            مستحق له في ذمتنا (+)
+                          <td className="p-2.5 text-center font-bold text-emerald-700">
+                            {isFr ? "Dû en notre passif (+)" : "مستحق له في ذمتنا (+)"}
                           </td>
-                          <td className="p-2.5 text-left font-bold text-emerald-700">
+                          <td className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'} font-bold text-emerald-700`}>
                             {formatCurrency(clearingModalSupplier.supplierPayables)}
                           </td>
                         </tr>
 
                         <tr className="hover:bg-slate-50/50">
-                          <td className="p-2.5 font-medium text-slate-800 font-arabic">
-                            ديون مشتريات وفواتير مبيعات العميل
+                          <td className="p-2.5 font-medium text-slate-800">
+                            {isFr ? "Achats et factures de vente du client" : "ديون مشتريات وفواتير مبيعات العميل"}
                           </td>
                           <td className="p-2.5">
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
-                              بصفته عميلاً (مدين)
+                              {isFr ? "Client (Débiteur)" : "بصفته عميلاً (مدين)"}
                             </span>
                           </td>
-                          <td className="p-2.5 text-center font-bold text-rose-700 font-arabic">
-                            مطلوب منه في ذمتنا (-)
+                          <td className="p-2.5 text-center font-bold text-rose-700">
+                            {isFr ? "Exigible de sa part (-)" : "مطلوب منه في ذمتنا (-)"}
                           </td>
-                          <td className="p-2.5 text-left font-bold text-rose-700">
+                          <td className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'} font-bold text-rose-700`}>
                             {formatCurrency(clearingModalSupplier.customerDebts)}
                           </td>
                         </tr>
                       </tbody>
                       <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300">
                         <tr>
-                          <td colSpan={3} className="p-2.5 text-slate-800 font-black font-arabic text-sm">
-                            الصافي المعتمد للمقاصة:
+                          <td colSpan={3} className="p-2.5 text-slate-800 font-black text-sm">
+                            {isFr ? "Solde Net Validé pour Compensation :" : "الصافي المعتمد للمقاصة:"}
                           </td>
-                          <td className="p-2.5 text-left font-black text-sm">
+                          <td className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'} font-black text-sm`}>
                             <span className={clearingModalSupplier.netBalance > 0 ? "text-emerald-700" : "text-rose-700"}>
                               {formatCurrency(Math.abs(clearingModalSupplier.netBalance))}
                             </span>
-                            <span className="text-[10px] text-slate-500 mr-1 font-arabic">
-                              {clearingModalSupplier.netBalance > 0 ? "(له)" : clearingModalSupplier.netBalance < 0 ? "(عليه)" : "(0)"}
+                            <span className="text-[10px] text-slate-500 mx-1">
+                              {clearingModalSupplier.netBalance > 0
+                                ? (isFr ? "(Lui)" : "(له)")
+                                : clearingModalSupplier.netBalance < 0
+                                ? (isFr ? "(Moi)" : "(عليه)")
+                                : "(0)"}
                             </span>
                           </td>
                         </tr>
@@ -1318,31 +1422,39 @@ export default function Suppliers() {
                   {clearingModalSupplier.suppliedProducts.length === 0 ? (
                     <div className="p-8 text-center text-slate-400">
                       <Package size={32} className="mx-auto text-slate-300 mb-2" />
-                      <p className="text-xs font-bold text-slate-700">لا توجد منتجات مرتبطة بهذا المورد في المخزن حالياً</p>
-                      <p className="text-[11px] text-slate-400">يمكنك ربط المنتجات بالمورد عند إضافتها أو تعديلها من صفحة المنتجات</p>
+                      <p className="text-xs font-bold text-slate-700">
+                        {isFr
+                          ? "Aucun produit associé à ce fournisseur dans le stock actuellement"
+                          : "لا توجد منتجات مرتبطة بهذا المورد في المخزن حالياً"}
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        {isFr
+                          ? "Vous pouvez associer des produits au fournisseur lors de leur création ou modification dans la page Produits"
+                          : "يمكنك ربط المنتجات بالمورد عند إضافتها أو تعديلها من صفحة المنتجات"}
+                      </p>
                     </div>
                   ) : (
                     <div className="border border-slate-200 rounded-xl overflow-hidden">
-                      <table className="w-full text-right text-xs">
+                      <table className={`w-full ${isRTL ? 'text-right' : 'text-left'} text-xs`}>
                         <thead className="bg-slate-50 font-bold text-slate-700 border-b border-slate-200">
                           <tr>
-                            <th className="p-2.5">اسم المنتج</th>
-                            <th className="p-2.5">الكود</th>
-                            <th className="p-2.5 text-center">الكمية المتوفرة</th>
-                            <th className="p-2.5 text-center">سعر التكلفة</th>
-                            <th className="p-2.5 text-center">سعر البيع</th>
-                            <th className="p-2.5 text-left">إجمالي القيمة</th>
+                            <th className="p-2.5">{isFr ? "Nom du Produit" : "اسم المنتج"}</th>
+                            <th className="p-2.5">{isFr ? "Code" : "الكود"}</th>
+                            <th className="p-2.5 text-center">{isFr ? "Qté Disponible" : "الكمية المتوفرة"}</th>
+                            <th className="p-2.5 text-center">{isFr ? "Prix d'Achat" : "سعر التكلفة"}</th>
+                            <th className="p-2.5 text-center">{isFr ? "Prix de Vente" : "سعر البيع"}</th>
+                            <th className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'}`}>{isFr ? "Valeur Totale" : "إجمالي القيمة"}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-sans">
                           {clearingModalSupplier.suppliedProducts.map(prod => (
                             <tr key={prod.id} className="hover:bg-slate-50">
-                              <td className="p-2.5 font-bold text-slate-900 font-arabic">{prod.name}</td>
+                              <td className="p-2.5 font-bold text-slate-900">{prod.name}</td>
                               <td className="p-2.5 font-mono text-slate-600">{prod.code || '-'}</td>
                               <td className="p-2.5 text-center font-bold text-slate-800">{prod.quantity}</td>
                               <td className="p-2.5 text-center text-slate-700">{formatCurrency(prod.cost || 0)}</td>
                               <td className="p-2.5 text-center text-slate-700">{formatCurrency(prod.price || 0)}</td>
-                              <td className="p-2.5 text-left font-black text-slate-900">
+                              <td className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'} font-black text-slate-900`}>
                                 {formatCurrency((prod.quantity || 0) * (prod.cost || 0))}
                               </td>
                             </tr>
@@ -1357,13 +1469,13 @@ export default function Suppliers() {
               {clearingTab === "invoices" && (
                 <div>
                   <div className="border border-slate-200 rounded-xl overflow-hidden">
-                    <table className="w-full text-right text-xs">
+                    <table className={`w-full ${isRTL ? 'text-right' : 'text-left'} text-xs`}>
                       <thead className="bg-slate-50 font-bold text-slate-700 border-b border-slate-200">
                         <tr>
-                          <th className="p-2.5">رقم الفاتورة</th>
-                          <th className="p-2.5">التاريخ</th>
-                          <th className="p-2.5">نوع المعاملة</th>
-                          <th className="p-2.5 text-left">المبلغ الإجمالي</th>
+                          <th className="p-2.5">{isFr ? "N° Facture" : "رقم الفاتورة"}</th>
+                          <th className="p-2.5">{isFr ? "Date" : "التاريخ"}</th>
+                          <th className="p-2.5">{isFr ? "Type" : "نوع المعاملة"}</th>
+                          <th className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'}`}>{isFr ? "Total" : "المبلغ الإجمالي"}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-sans">
@@ -1377,12 +1489,12 @@ export default function Suppliers() {
                             <tr key={inv.id} className="hover:bg-slate-50">
                               <td className="p-2.5 font-mono font-bold text-slate-900">{inv.invoiceNumber}</td>
                               <td className="p-2.5 text-slate-600">{inv.date}</td>
-                              <td className="p-2.5 font-arabic">
+                              <td className="p-2.5">
                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                                  فاتورة مبيعات
+                                  {isFr ? "Facture de vente" : "فاتورة مبيعات"}
                                 </span>
                               </td>
-                              <td className="p-2.5 text-left font-bold text-slate-900">{formatCurrency(inv.total)}</td>
+                              <td className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'} font-bold text-slate-900`}>{formatCurrency(inv.total)}</td>
                             </tr>
                           ))}
                       </tbody>
@@ -1396,8 +1508,8 @@ export default function Suppliers() {
             <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5 shrink-0 text-xs">
               <span className="text-slate-500 font-medium">
                 {clearingModalSupplier.isDual
-                  ? "الحساب مربوط بالعميل في الأرشيف وكشف الحساب والديون"
-                  : "المورد غير مسجل كعميل بعد. انقر على «ربط كعميل» لتوحيد كشف الحساب"}
+                  ? (isFr ? "Compte lié au client dans l'archive, le relevé et les dettes" : "الحساب مربوط بالعميل في الأرشيف وكشف الحساب والديون")
+                  : (isFr ? "Ce fournisseur n'est pas encore enregistré comme client. Cliquez sur « Lier comme client » pour unifier son relevé" : "المورد غير مسجل كعميل بعد. انقر على «ربط كعميل» لتوحيد كشف الحساب")}
               </span>
 
               <div className="flex items-center gap-2">
@@ -1410,7 +1522,7 @@ export default function Suppliers() {
                     className="flex items-center gap-1.5 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold cursor-pointer transition-colors"
                   >
                     <ArrowRightLeft size={14} />
-                    <span>ربط وإنشاء كعميل الآن</span>
+                    <span>{isFr ? "Lier & Créer comme Client" : "ربط وإنشاء كعميل الآن"}</span>
                   </button>
                 )}
 
@@ -1422,7 +1534,7 @@ export default function Suppliers() {
                   className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm shadow-blue-500/20 cursor-pointer transition-all"
                 >
                   <FileSpreadsheet size={14} />
-                  <span>فتح كشف الحساب المالي الكامل</span>
+                  <span>{isFr ? "Ouvrir le Relevé de Compte Complet" : "فتح كشف الحساب المالي الكامل"}</span>
                 </button>
               </div>
             </div>
