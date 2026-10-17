@@ -41,6 +41,20 @@ export default function Customers() {
 
   // Load customers on component mount
   const loadData = async () => {
+    // 1. Immediately render local customers if present
+    try {
+      const store = loadStoreData();
+      if (store.customers && store.customers.length > 0) {
+        setCustomers(store.customers);
+        setFilteredCustomers(store.customers);
+      }
+      if (store.productMovements) {
+        setMovements(store.productMovements);
+      }
+    } catch {
+      // Ignore local read errors
+    }
+
     setLoading(true);
     try {
       const data = await getCustomers();
@@ -59,12 +73,9 @@ export default function Customers() {
       }));
       setCustomers(mapped);
       setFilteredCustomers(mapped);
-
-      const store = loadStoreData();
-      setMovements(store.productMovements || []);
     } catch (err) {
       console.error("Error loading customers:", err);
-      setError(isFr ? "Échec du chargement des données" : "فشل تحميل البيانات من السحابة");
+      // Keep displaying local customers
     } finally {
       setLoading(false);
     }

@@ -35,26 +35,35 @@ export const useProducts = () => {
   const { isAuthenticated } = useAuth();
 
   const loadProducts = useCallback(async () => {
+    // 1. Immediately populate from local cache so the user never waits
+    try {
+      const { loadStoreData } = await import("@/utils/localStorage");
+      const localStore = loadStoreData();
+      if (localStore.products && localStore.products.length > 0) {
+        setProducts(localStore.products);
+      }
+    } catch {
+      // Ignore local read errors
+    }
+
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    // 2. Fetch fresh data from cloud in background
     setLoading(true);
     try {
-      if (isAuthenticated) {
-        const rows = await getProducts();
-        const mapped = rows.map(mapRow);
-        setProducts(mapped);
-      } else {
-        // Guest mode - fallback to localStorage
-        const { loadStoreData } = await import("@/utils/localStorage");
-        const storeData = loadStoreData();
-        setProducts(storeData.products || []);
-      }
+      const rows = await getProducts();
+      const mapped = rows.map(mapRow);
+      setProducts(mapped);
     } catch (err) {
       console.error("Error loading products:", err);
-      setError("فشل تحميل المنتجات");
-      toast({ title: "خطأ", description: "فشل تحميل المنتجات", variant: "destructive" });
+      // Keep local products already loaded
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, toast]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     loadProducts();

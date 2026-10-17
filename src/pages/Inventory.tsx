@@ -25,20 +25,27 @@ export default function Inventory() {
 
   const loadData = async () => {
     try {
+      // 1. Immediately display locally available products and warehouses
+      const { loadStoreData } = await import("@/utils/localStorage");
+      const localStore = loadStoreData();
+      if (localStore.products && localStore.products.length > 0) {
+        setProducts(localStore.products);
+      }
+      if (localStore.warehouses && localStore.warehouses.length > 0) {
+        setWarehouses(localStore.warehouses);
+      }
+
       let productsData: any[] = [];
       let warehousesData: any[] = [];
 
       if (isAuthenticated) {
         [productsData, warehousesData] = await Promise.all([
-          getProducts(),
-          getWarehouses()
+          getProducts().catch(() => []),
+          getWarehouses().catch(() => [])
         ]);
       } else {
-        // Guest mode fallback
-        const { loadStoreData } = await import("@/utils/localStorage");
-        const store = loadStoreData();
-        productsData = store.products || [];
-        warehousesData = store.warehouses || [];
+        productsData = localStore.products || [];
+        warehousesData = localStore.warehouses || [];
       }
 
       const mappedProducts: Product[] = productsData.map(p => ({

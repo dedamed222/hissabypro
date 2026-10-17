@@ -108,12 +108,23 @@ export default function Suppliers() {
 
   // Load all integrated data from Cloud & Local
   const loadData = useCallback(async () => {
-    setLoading(true);
     setError("");
     try {
       const storeData = loadStoreData();
 
-      // Cloud fetches with local fallbacks
+      // 1. Immediately render local cached suppliers and related data
+      if (storeData.suppliers && storeData.suppliers.length > 0) {
+        setSuppliers(storeData.suppliers);
+        setLoading(false);
+      }
+      if (storeData.customers) setCustomers(storeData.customers);
+      if (storeData.products) setProducts(storeData.products);
+      if (storeData.debtors) setDebtors(storeData.debtors);
+      if (storeData.creditors) setCreditors(storeData.creditors);
+      if (storeData.invoices) setInvoices(storeData.invoices);
+      if (storeData.productMovements) setProductMovements(storeData.productMovements);
+
+      // Cloud fetches with local fallbacks in the background
       let [
         dbSuppliers,
         dbCustomers,

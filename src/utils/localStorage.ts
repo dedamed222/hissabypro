@@ -60,127 +60,140 @@ const initialStoreData: StoreData = {
   },
 };
 
-// Load data from localStorage with decryption
+// In-memory cache to avoid repeated expensive AES decryptions on every render
+let cachedStoreData: StoreData | null = null;
+let lastRawDataHash: string | null = null;
+
+// Load data from localStorage with decryption and in-memory caching
 export const loadStoreData = (): StoreData => {
   try {
     const rawData = localStorage.getItem(STORE_KEY);
-    if (rawData) {
-      let parsed: any = null;
+    if (!rawData) {
+      if (cachedStoreData) return cachedStoreData;
+      saveStoreData(initialStoreData);
+      return initialStoreData;
+    }
+
+    // Return cached in-memory data instantly if rawData has not changed
+    if (cachedStoreData && lastRawDataHash === rawData) {
+      return cachedStoreData;
+    }
+
+    let parsed: any = null;
+    try {
+      const decryptedData = CryptoJS.AES.decrypt(rawData, getEncryptionKey()).toString(CryptoJS.enc.Utf8);
+      if (decryptedData) {
+        parsed = JSON.parse(decryptedData);
+      }
+    } catch (decryptErr) {
+      console.warn("Could not decrypt data with device key, attempting plain JSON parse:", decryptErr);
+    }
+
+    // If AES decryption didn't produce an object, fallback to checking if it was stored unencrypted
+    if (!parsed) {
       try {
-        const decryptedData = CryptoJS.AES.decrypt(rawData, getEncryptionKey()).toString(CryptoJS.enc.Utf8);
-        if (decryptedData) {
-          parsed = JSON.parse(decryptedData);
-        }
-      } catch (decryptErr) {
-        console.warn("Could not decrypt data with device key, attempting plain JSON parse:", decryptErr);
+        parsed = JSON.parse(rawData);
+      } catch (jsonErr) {
+        console.warn("Data in localStorage is neither valid encrypted text nor valid JSON:", jsonErr);
       }
+    }
 
-      // If AES decryption didn't produce an object, fallback to checking if it was stored unencrypted
-      if (!parsed) {
-        try {
-          parsed = JSON.parse(rawData);
-        } catch (jsonErr) {
-          console.warn("Data in localStorage is neither valid encrypted text nor valid JSON:", jsonErr);
-        }
-      }
+    if (parsed && typeof parsed === "object") {
+      // Ensure new arrays exist for backward compatibility
+      if (!parsed.clientNotes) parsed.clientNotes = [];
+      if (!parsed.priceChangeHistories) parsed.priceChangeHistories = [];
+      if (!parsed.customerFiles) parsed.customerFiles = [];
+      if (!parsed.productMovements) parsed.productMovements = [];
+      if (!parsed.invoices) parsed.invoices = [];
+      if (!parsed.dailySales) parsed.dailySales = [];
 
-      if (parsed && typeof parsed === "object") {
-        // Ensure new arrays exist for backward compatibility
-        if (!parsed.clientNotes) parsed.clientNotes = [];
-        if (!parsed.priceChangeHistories) parsed.priceChangeHistories = [];
-        if (!parsed.customerFiles) parsed.customerFiles = [];
-        if (!parsed.productMovements) parsed.productMovements = [];
-        if (!parsed.invoices) parsed.invoices = [];
-        if (!parsed.dailySales) parsed.dailySales = [];
+      // Automatic Synchronization: Convert DailySales into official Invoices if not already present
+      let storeNeedsSave = false;
+      if (parsed.dailySales && parsed.dailySales.length > 0) {
+        for (const sale of parsed.dailySales) {
+          const saleInvoiceId = sale.id || `sale_${sale.date}_${sale.productId}`;
+          const saleInvoiceNumber = `INV-SALE-${(sale.id || '').slice(0, 8).toUpperCase() || 'DAILY'}`;
 
-        // Automatic Synchronization: Convert DailySales into official Invoices if not already present
-        let storeNeedsSave = false;
-        if (parsed.dailySales && parsed.dailySales.length > 0) {
-          const processedSaleIds = new Set(
-            parsed.invoices.map((inv: any) => inv.id)
+          // Check if already represented in invoices
+          const alreadyExists = parsed.invoices.some(
+            (inv: any) =>
+              inv.id === saleInvoiceId ||
+              inv.invoiceNumber === saleInvoiceNumber ||
+              (inv.notes && inv.notes.includes(sale.id))
           );
 
-          for (const sale of parsed.dailySales) {
-            const saleInvoiceId = sale.id || `sale_${sale.date}_${sale.productId}`;
-            const saleInvoiceNumber = `INV-SALE-${(sale.id || '').slice(0, 8).toUpperCase() || 'DAILY'}`;
+          if (!alreadyExists) {
+            const saleDate = sale.date || sale.createdAt || new Date().toISOString();
+            const saleQty = Number(sale.quantity) || 1;
+            const saleUnitPrice = Number(sale.unitPrice) || Number(sale.total) || 0;
+            const saleTotal = Number(sale.total) || (saleQty * saleUnitPrice);
 
-            // Check if already represented in invoices
-            const alreadyExists = parsed.invoices.some(
-              (inv: any) =>
-                inv.id === saleInvoiceId ||
-                inv.invoiceNumber === saleInvoiceNumber ||
-                (inv.notes && inv.notes.includes(sale.id))
-            );
-
-            if (!alreadyExists) {
-              const saleDate = sale.date || sale.createdAt || new Date().toISOString();
-              const saleQty = Number(sale.quantity) || 1;
-              const saleUnitPrice = Number(sale.unitPrice) || Number(sale.total) || 0;
-              const saleTotal = Number(sale.total) || (saleQty * saleUnitPrice);
-
-              const newInvoice = {
-                id: saleInvoiceId,
-                invoiceNumber: saleInvoiceNumber,
-                customerId: undefined,
-                customerName: sale.customerName || "مبيعات يومية مباشرة",
-                total: saleTotal,
-                subtotal: saleTotal,
-                discount: 0,
-                tax: 0,
-                paymentMethod: sale.paymentMethod || "cash",
-                status: "paid" as const,
-                type: "sales" as const,
-                notes: `مبيعات يومية - معرّف: ${sale.id || ''}`,
-                date: saleDate.split("T")[0],
-                createdAt: sale.createdAt || (saleDate.includes("T") ? saleDate : `${saleDate}T12:00:00.000Z`),
-                updatedAt: new Date().toISOString(),
-                items: [
-                  {
-                    productId: sale.productId || "",
-                    productName: sale.productName || "منتج",
-                    productCode: sale.productCode || "",
-                    quantity: saleQty,
-                    price: saleUnitPrice,
-                    total: saleTotal,
-                  }
-                ],
-                products: [
-                  {
-                    productId: sale.productId || "",
-                    quantity: saleQty,
-                    price: saleUnitPrice,
-                    name: sale.productName || "منتج",
-                  }
-                ]
-              };
-
-              parsed.invoices.unshift(newInvoice);
-              storeNeedsSave = true;
-
-              // Ensure stock is deducted if it hasn't been accounted for yet
-              if (sale.productId && !sale.stockDeducted) {
-                const prodIndex = parsed.products.findIndex((p: any) => p.id === sale.productId || p.code === sale.productCode);
-                if (prodIndex !== -1) {
-                  // Only deduct if not already reduced
-                  if (typeof sale.remainingQuantity === "undefined") {
-                    parsed.products[prodIndex].quantity = Math.max(0, (parsed.products[prodIndex].quantity || 0) - saleQty);
-                    parsed.products[prodIndex].sold = (parsed.products[prodIndex].sold || 0) + saleQty;
-                    parsed.products[prodIndex].updatedAt = new Date().toISOString();
-                  }
+            const newInvoice = {
+              id: saleInvoiceId,
+              invoiceNumber: saleInvoiceNumber,
+              customerId: undefined,
+              customerName: sale.customerName || "مبيعات يومية مباشرة",
+              total: saleTotal,
+              subtotal: saleTotal,
+              discount: 0,
+              tax: 0,
+              paymentMethod: sale.paymentMethod || "cash",
+              status: "paid" as const,
+              type: "sales" as const,
+              notes: `مبيعات يومية - معرّف: ${sale.id || ''}`,
+              date: saleDate.split("T")[0],
+              createdAt: sale.createdAt || (saleDate.includes("T") ? saleDate : `${saleDate}T12:00:00.000Z`),
+              updatedAt: new Date().toISOString(),
+              items: [
+                {
+                  productId: sale.productId || "",
+                  productName: sale.productName || "منتج",
+                  productCode: sale.productCode || "",
+                  quantity: saleQty,
+                  price: saleUnitPrice,
+                  total: saleTotal,
                 }
-                sale.stockDeducted = true;
+              ],
+              products: [
+                {
+                  productId: sale.productId || "",
+                  quantity: saleQty,
+                  price: saleUnitPrice,
+                  name: sale.productName || "منتج",
+                }
+              ]
+            };
+
+            parsed.invoices.unshift(newInvoice);
+            storeNeedsSave = true;
+
+            // Ensure stock is deducted if it hasn't been accounted for yet
+            if (sale.productId && !sale.stockDeducted) {
+              const prodIndex = parsed.products.findIndex((p: any) => p.id === sale.productId || p.code === sale.productCode);
+              if (prodIndex !== -1) {
+                // Only deduct if not already reduced
+                if (typeof sale.remainingQuantity === "undefined") {
+                  parsed.products[prodIndex].quantity = Math.max(0, (parsed.products[prodIndex].quantity || 0) - saleQty);
+                  parsed.products[prodIndex].sold = (parsed.products[prodIndex].sold || 0) + saleQty;
+                  parsed.products[prodIndex].updatedAt = new Date().toISOString();
+                }
               }
+              sale.stockDeducted = true;
             }
           }
         }
-
-        if (storeNeedsSave) {
-          saveStoreData(parsed);
-        }
-
-        return parsed;
       }
+
+      cachedStoreData = parsed;
+      lastRawDataHash = rawData;
+
+      if (storeNeedsSave) {
+        saveStoreData(parsed);
+      }
+
+      return parsed;
     }
+
     // If no data, initialize and save the default data
     saveStoreData(initialStoreData);
     return initialStoreData;
@@ -193,8 +206,11 @@ export const loadStoreData = (): StoreData => {
 // Save data to localStorage with encryption and auto backup
 export const saveStoreData = (data: StoreData): void => {
   try {
+    // Immediately update memory cache
+    cachedStoreData = data;
     const encryptedData = CryptoJS.AES.encrypt(JSON.stringify(data), getEncryptionKey()).toString();
     localStorage.setItem(STORE_KEY, encryptedData);
+    lastRawDataHash = encryptedData;
     
     // تشغيل النسخ الاحتياطي التلقائي بعد الحفظ
     setTimeout(() => {
