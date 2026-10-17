@@ -10,8 +10,9 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { get, set, del } from "idb-keyval";
 import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
+import { restoreRecoveredData } from "@/utils/restoreData";
 
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 
 // Pages (Lazy Loaded)
 const Home = lazy(() => import("./pages/Home"));
@@ -78,6 +79,35 @@ const persister = createAsyncStoragePersister({
 });
 
 const App = () => {
+  const [restoreChecked, setRestoreChecked] = useState(false);
+
+  useEffect(() => {
+    // Restore recovered data on first load if localStorage is empty
+    restoreRecoveredData().then(({ restored, message }) => {
+      if (restored) {
+        console.log("[DataRestore]", message);
+        // Reload so all contexts pick up the restored data
+        window.location.reload();
+      } else {
+        setRestoreChecked(true);
+      }
+    }).catch((e) => {
+      console.error("[DataRestore] error:", e);
+      setRestoreChecked(true);
+    });
+  }, []);
+
+  if (!restoreChecked && localStorage.getItem("arab-hub-data-restored-v1") !== "done") {
+    // Show a brief loading screen while we check/restore data
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", flexDirection: "column", gap: "16px", background: "#0f172a", color: "#94a3b8", fontFamily: "sans-serif" }}>
+        <div style={{ width: 48, height: 48, border: "3px solid #1e40af", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <p>جاري استعادة البيانات...</p>
+        <style>{"@keyframes spin { to { transform: rotate(360deg); } }"}</style>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
