@@ -390,22 +390,28 @@ export default function AccountStatement() {
   const selectedCustomerData = customers.find(c => c.id === selectedCustomer);
 
   return (
-    <div className={`space-y-6 ${locale === 'ar' ? 'font-arabic' : 'font-sans'}`} dir={isRTL ? "rtl" : "ltr"}>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <FileText className="w-6 h-6" />
-          {t('accountStatementTitle')}
-        </h1>
+    <div className={`space-y-6 pb-20 ${locale === 'ar' ? 'font-arabic' : 'font-sans'}`} dir={isRTL ? "rtl" : "ltr"}>
+      {/* ── Top Header Banner ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+            <FileText size={22} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">{t('accountStatementTitle') || 'كشف حساب العميل'}</h1>
+            <p className="text-xs text-slate-500">
+              استعراض ومتابعة الحركات المالية، المشتريات، المرتجعات، والأرصدة الدائنة والمدينة
+            </p>
+          </div>
+        </div>
       </div>
 
-      <Card className="shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
-          <CardTitle className="flex items-center gap-2">
-            <Search className="w-5 h-5" />
-            {t('filterAccountStatement')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
+      <div className="gsc-card p-5">
+        <div className="flex items-center gap-2 mb-4 font-bold text-sm text-slate-800">
+          <Search className="w-4 h-4 text-blue-600" />
+          <span>{t('filterAccountStatement') || 'تحديد العميل وفلترة كشف الحساب'}</span>
+        </div>
+        <div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label id="select-customer-label" className="block mb-2 font-medium">{t('selectCustomer')}</label>
@@ -491,8 +497,8 @@ export default function AccountStatement() {
               className="max-w-xl"
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {selectedCustomer && filteredTransactions.length > 0 && (
         <Card className="shadow-lg">

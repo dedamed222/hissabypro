@@ -1,7 +1,6 @@
-
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
-import { DollarSign, CreditCard, Banknote } from "lucide-react";
+import { DollarSign, CreditCard, Banknote, Wallet, Building2, Coins } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
 import { TranslationKey } from "@/locales";
 
@@ -20,11 +19,10 @@ export const PaymentMethodCards = ({
 
   const translateMethod = (method: string) => {
     const methodLower = method?.toLowerCase();
-    if (methodLower === 'cash' || method === 'نقدي') return t('cash');
-    if (methodLower === 'bank' || method === 'تحويل بنكي') return t('bankTransfer');
-    if (methodLower === 'electronic' || method === 'دفع إلكتروني') return t('electronicPayment');
+    if (methodLower === 'cash' || method === 'نقدي') return t('cash') || 'نقداً';
+    if (methodLower === 'bank' || method === 'تحويل بنكي') return t('bankTransfer') || 'تحويل بنكي';
+    if (methodLower === 'electronic' || method === 'دفع إلكتروني') return t('electronicPayment') || 'دفع إلكتروني';
     
-    // Check if it's a known key in our translations
     const keys: TranslationKey[] = ['cash', 'card', 'transfer', 'bankTransfer', 'electronicPayment', 'creditPayment'];
     if (keys.includes(methodLower as TranslationKey)) return t(methodLower as TranslationKey);
     
@@ -36,70 +34,47 @@ export const PaymentMethodCards = ({
     switch (methodLower) {
       case 'cash':
       case 'نقدي':
-        return <Banknote className="w-5 h-5" />;
+        return <Banknote className="w-5 h-5 text-emerald-600" />;
       case 'bank':
       case 'تحويل بنكي':
+        return <Building2 className="w-5 h-5 text-blue-600" />;
       case 'electronic':
       case 'دفع إلكتروني':
-        return <CreditCard className="w-5 h-5" />;
+        return <CreditCard className="w-5 h-5 text-purple-600" />;
       default:
-        return <DollarSign className="w-5 h-5" />;
-    }
-  };
-
-  const getPaymentMethodColor = (method: string) => {
-    const methodLower = method?.toLowerCase();
-    switch (methodLower) {
-      case 'cash':
-      case 'نقدي':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'bank':
-      case 'تحويل بنكي':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'electronic':
-      case 'دفع إلكتروني':
-        return 'bg-purple-50 text-purple-700 border-purple-200';
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
+        return <Wallet className="w-5 h-5 text-amber-600" />;
     }
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      {/* Total Sales Card */}
-      <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600 mb-1">{t('totalSales')}</p>
-              <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalSales)}</p>
-            </div>
-            <div className="bg-blue-200 p-3 rounded-full">
-              <DollarSign className="w-6 h-6 text-blue-700" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-6">
+      {/* Total Sales */}
+      <div className="gsc-card p-4 flex items-center gap-3.5">
+        <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <Coins size={22} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-slate-500 truncate">{t('totalSales') || 'إجمالي المبيعات'}</p>
+          <h3 className="text-xl font-black text-slate-900 mt-0.5 font-sans">{formatCurrency(totalSales)}</h3>
+          <p className="text-[11px] font-bold text-blue-600 mt-0.5">كافة طرق الدفع</p>
+        </div>
+      </div>
 
-      {/* Payment Method Cards */}
-      {paymentMethods.slice(0, 3).map((method) => {
+      {paymentMethods.map((method) => {
         const total = getPaymentMethodTotal(method);
-        const colorClass = getPaymentMethodColor(method);
+        const percentage = totalSales > 0 ? ((total / totalSales) * 100).toFixed(0) : 0;
         
         return (
-          <Card key={method} className={`border ${colorClass}`}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium mb-1">{translateMethod(method)}</p>
-                  <p className="text-xl font-bold">{formatCurrency(total)}</p>
-                </div>
-                <div className="p-3 rounded-full bg-white bg-opacity-50">
-                  {getPaymentMethodIcon(method)}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div key={method} className="gsc-card p-4 flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100">
+              {getPaymentMethodIcon(method)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-slate-500 truncate">{translateMethod(method)}</p>
+              <h3 className="text-xl font-black text-slate-900 mt-0.5 font-sans">{formatCurrency(total)}</h3>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5">{percentage}% من المبيعات</p>
+            </div>
+          </div>
         );
       })}
     </div>
