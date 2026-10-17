@@ -82,6 +82,9 @@ export function UnifiedDashboard() {
   // Recent Operations State
   const [recentOperations, setRecentOperations] = useState<any[]>([]);
 
+  // Real Top Selling Products State
+  const [topSellingProducts, setTopSellingProducts] = useState<any[]>([]);
+
   // Load Real Data with Fallbacks to Mockup Values
   const loadDashboardData = useCallback(() => {
     const storeData = loadStoreData();
@@ -205,6 +208,81 @@ export function UnifiedDashboard() {
     } else {
       setRecentOperations(ops);
     }
+
+    // ── Calculate Real Top Selling Products from actual data ──
+    const salesCountMap: { [key: string]: { name: string; qty: number; revenue: number; photoUrl?: string } } = {};
+
+    // 1. Check products sold count
+    if (storeData.products && storeData.products.length > 0) {
+      storeData.products.forEach((p: any) => {
+        if (p.sold && p.sold > 0) {
+          salesCountMap[p.id || p.name] = {
+            name: p.name,
+            qty: p.sold,
+            revenue: (p.price || 0) * p.sold,
+            photoUrl: p.photoUrl,
+          };
+        }
+      });
+    }
+
+    // 2. Aggregate from invoices items
+    if (storeData.invoices && storeData.invoices.length > 0) {
+      storeData.invoices.forEach((inv: any) => {
+        const items = inv.items || inv.products || [];
+        items.forEach((item: any) => {
+          const key = item.productId || item.productName || item.name;
+          if (!key) return;
+          const q = Number(item.quantity) || 0;
+          const p = Number(item.price) || 0;
+          if (q > 0) {
+            if (!salesCountMap[key]) {
+              salesCountMap[key] = {
+                name: item.productName || item.name || key,
+                qty: 0,
+                revenue: 0,
+              };
+            }
+            salesCountMap[key].qty += q;
+            salesCountMap[key].revenue += (Number(item.total) || (q * p));
+          }
+        });
+      });
+    }
+
+    // 3. Aggregate from dailySales
+    if (storeData.dailySales && storeData.dailySales.length > 0) {
+      storeData.dailySales.forEach((sale: any) => {
+        const key = sale.productId || sale.productName;
+        if (!key) return;
+        const q = Number(sale.quantity) || 0;
+        const total = Number(sale.total) || 0;
+        if (q > 0) {
+          if (!salesCountMap[key]) {
+            salesCountMap[key] = {
+              name: sale.productName || key,
+              qty: 0,
+              revenue: 0,
+            };
+          }
+          salesCountMap[key].qty += q;
+          salesCountMap[key].revenue += total;
+        }
+      });
+    }
+
+    const sortedRealTopProducts = Object.values(salesCountMap)
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 5)
+      .map((item, idx) => ({
+        rank: idx + 1,
+        name: item.name,
+        qty: `${item.qty} ${isFr ? "unités" : "وحدة"}`,
+        price: `MRU ${item.revenue.toLocaleString()}`,
+        photoUrl: item.photoUrl,
+      }));
+
+    setTopSellingProducts(sortedRealTopProducts);
   }, [isFr]);
 
   useEffect(() => {
@@ -258,15 +336,6 @@ export function UnifiedDashboard() {
     { name: isFr ? "Masrivi" : "مصرفي", value: 15, percentage: "15%", color: "#ff9900" },
     { name: isFr ? "Sedad" : "السداد", value: 8, percentage: "8%", color: "#8833ff" },
     { name: isFr ? "Autres" : "أخرى", value: 4, percentage: "4%", color: "#8899aa" },
-  ];
-
-  // Top selling products matching image
-  const topProducts = [
-    { rank: 1, name: isFr ? "Eau minérale 1,5L" : "ماء معدني 1.5 لتر", qty: isFr ? "42 unités" : "42 وحدة", price: "MRU 350", emoji: "💧" },
-    { rank: 2, name: isFr ? "Riz 25kg" : "أرز 25 كجم", qty: isFr ? "28 unités" : "28 وحدة", price: "MRU 4 500", emoji: "🍚" },
-    { rank: 3, name: isFr ? "Huile végétale 1L" : "زيت نباتي 1 لتر", qty: isFr ? "25 unités" : "25 وحدة", price: "MRU 1 200", emoji: "🫒" },
-    { rank: 4, name: isFr ? "Sucre 1kg" : "سكر 1 كجم", qty: isFr ? "18 unités" : "18 وحدة", price: "MRU 890", emoji: "🍬" },
-    { rank: 5, name: isFr ? "Lait en poudre" : "حليب بودرة", qty: isFr ? "15 unités" : "15 وحدة", price: "MRU 2 450", emoji: "🥛" },
   ];
 
   // Stock status donut data
@@ -640,19 +709,43 @@ export function UnifiedDashboard() {
           </div>
 
           <div className="space-y-2.5">
-            {topProducts.map((product) => (
-              <div key={product.rank} className="flex items-center gap-2.5">
-                <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 shrink-0">
-                  {product.rank}
-                </span>
-                <span className="text-lg shrink-0">{product.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-slate-800 truncate">{product.name}</p>
-                  <p className="text-[10px] text-slate-400 font-medium">{product.qty}</p>
+            {topSellingProducts.length > 0 ? (
+              topSellingProducts.map((product) => (
+                <div key={product.rank} className="flex items-center gap-2.5">
+                  <span className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 shrink-0">
+                    {product.rank}
+                  </span>
+                  {product.photoUrl ? (
+                    <img
+                      src={product.photoUrl}
+                      alt={product.name}
+                      className="w-7 h-7 rounded-lg object-cover shrink-0 border border-slate-100"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                      <Package className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">{product.name}</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{product.qty}</p>
+                  </div>
+                  <span className="text-xs font-black text-slate-800 shrink-0">{product.price}</span>
                 </div>
-                <span className="text-xs font-black text-slate-800 shrink-0">{product.price}</span>
+              ))
+            ) : (
+              <div className="py-8 text-center text-slate-400">
+                <Package className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                <p className="text-xs font-bold text-slate-600">
+                  {isFr ? "Aucun produit vendu pour le moment" : "لا توجد منتجات مباعة حتى الآن"}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  {isFr
+                    ? "Les produits les plus demandés apparaîtront ici automatiquement"
+                    : "ستظهر المنتجات الأكثر طلباً هنا تلقائياً عند إجراء مبيعات"}
+                </p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
