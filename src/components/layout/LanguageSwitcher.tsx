@@ -1,12 +1,11 @@
-
 import { useLocale } from "@/hooks/useLocale";
-import { translations } from "@/locales";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 
 export function LanguageSwitcher() {
   const { locale, changeLocale } = useLocale();
@@ -15,13 +14,13 @@ export function LanguageSwitcher() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-slate-200 hover:text-white bg-white/5 hover:bg-white/10 transition-colors border border-white/10 outline-none"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium text-white bg-white/10 hover:bg-white/20 transition-colors border border-white/20 outline-none cursor-pointer"
         >
-          <span className="text-sm">{locale === "ar" ? "🇸🇦" : "🇫🇷"}</span>
+          <span className="text-xs sm:text-sm">{locale === "ar" ? "🇸🇦" : "🇫🇷"}</span>
           <span className="text-xs">
             {locale === "ar" ? "العربية" : "Français"}
           </span>
-          <span className="text-[10px] opacity-70">▾</span>
+          <ChevronDown className="w-3 h-3 text-white/80" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="bg-slate-900 border border-slate-800 text-white z-50 min-w-[130px] rounded-xl shadow-xl p-1">
@@ -47,4 +46,3 @@ export function LanguageSwitcher() {
     </DropdownMenu>
   );
 }
-

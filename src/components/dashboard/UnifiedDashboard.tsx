@@ -1,17 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useLocale } from "@/hooks/useLocale";
 import { translations } from "@/locales";
-import { formatCurrency } from "@/utils/formatters";
 import {
   loadStoreData,
   getTodaySales,
-  getYesterdaySales,
   getTodayExpenses,
-  getYesterdayExpenses,
-  getLowStockProducts
+  getLowStockProducts,
 } from "@/utils/localStorage";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -19,10 +16,10 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   PieChart,
   Pie,
-  Cell
+  Cell,
 } from "recharts";
 import {
   TrendingUp,
@@ -30,120 +27,58 @@ import {
   ShoppingCart,
   Calendar,
   Package,
-  Layers,
-  ArrowUpRight,
-  ArrowDownRight,
-  CheckCircle2,
   FileText,
   DollarSign,
   Users,
-  Warehouse,
-  Plus,
-  Clock
+  Search,
+  ChevronRight,
+  ChevronLeft,
+  ChevronDown,
+  Wallet,
+  CreditCard,
+  Truck,
+  Zap,
+  ArrowRight,
+  ArrowLeft,
+  LayoutGrid,
+  BarChart3,
+  Receipt,
 } from "lucide-react";
 
-// Top Stat Card Component with larger icons
-interface StatCardProps {
-  title: string;
-  value: string;
-  change: string;
-  isPositive: boolean;
-  iconBg: string;
-  icon: React.ReactNode;
-}
-
-function TopStatCard({ title, value, change, isPositive, iconBg, icon }: StatCardProps) {
-  return (
-    <div className="gsc-card p-4 flex flex-col justify-between min-w-[155px] flex-1 hover:translate-y-[-2px]">
-      <div className="flex items-center gap-2.5 mb-2">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-xs ${iconBg}`}>
-          {icon}
-        </div>
-        <span className="text-[11px] font-medium text-slate-500 truncate" title={title}>
-          {title}
-        </span>
-      </div>
-
-      <div className="mt-1">
-        <div className="text-base sm:text-lg font-extrabold text-slate-800 tracking-tight whitespace-nowrap">
-          {value}
-        </div>
-        <div className="flex items-center gap-1 mt-1 text-[11px] font-semibold">
-          {isPositive ? (
-            <span className="text-emerald-500 flex items-center gap-0.5">
-              <TrendingUp size={13} strokeWidth={2.5} />
-              <span>{change}</span>
-            </span>
-          ) : (
-            <span className="text-rose-500 flex items-center gap-0.5">
-              <TrendingDown size={13} strokeWidth={2.5} />
-              <span>{change}</span>
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Live Clock Component
-function LiveClock() {
-  const [time, setTime] = useState(() => new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const hours = String(time.getHours()).padStart(2, "0");
-  const minutes = String(time.getMinutes()).padStart(2, "0");
-  const seconds = String(time.getSeconds()).padStart(2, "0");
-
-  return (
-    <div className="gsc-card px-3 py-1.5 flex items-center gap-2 text-xs font-semibold text-slate-700 bg-white shadow-xs">
-      <Clock size={16} className="text-indigo-600 animate-pulse" />
-      <div className="flex items-center font-mono font-bold text-slate-800 text-xs tracking-wider">
-        <span>{hours}</span>
-        <span className="text-indigo-500 mx-0.5">:</span>
-        <span>{minutes}</span>
-        <span className="text-slate-400 text-[10px] ms-1">:{seconds}</span>
-      </div>
-    </div>
-  );
-}
-
 export function UnifiedDashboard() {
-  const { locale } = useLocale();
+  const { locale, isRTL } = useLocale();
+  const isFr = locale === "fr";
   const t = translations[locale];
-  const isRTL = locale === "ar";
+  const navigate = useNavigate();
 
   const [salesRange, setSalesRange] = useState<"7" | "30" | "90">("7");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Dashboard Stats State
+  // Dashboard Stats State (defaults matching the mockup image)
   const [stats, setStats] = useState({
     todaySales: 12450,
     monthSales: 356780,
     todayExpenses: 4230,
     monthExpenses: 8220,
-    estimatedProfit: 161230,
     productsCount: 161,
-    lowStockCount: 5,
+    customersCount: 142,
+    suppliersCount: 48,
   });
 
   // Recent Operations State
   const [recentOperations, setRecentOperations] = useState<any[]>([]);
 
-  // Load Real Data with Fallbacks
+  // Load Real Data with Fallbacks to Mockup Values
   const loadDashboardData = useCallback(() => {
     const storeData = loadStoreData();
 
-    // Actual sales
     const todaySalesActual = getTodaySales();
-    const actualProductsCount = storeData.products.length;
-    const actualLowStock = getLowStockProducts();
+    const actualProductsCount = storeData.products?.length || 0;
+    const actualCustomersCount = storeData.customers?.length || 0;
+    const actualSuppliersCount = storeData.suppliers?.length || 0;
     const todayExpensesActual = getTodayExpenses();
 
-    // Calculate monthly sales & expenses
+    // Calculate monthly sales
     const now = new Date();
     const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
@@ -159,102 +94,71 @@ export function UnifiedDashboard() {
           .reduce((sum, exp) => sum + (exp.amount || 0), 0)
       : 0;
 
-    // Use actual store data if populated, or provide reference default numbers to mirror image
     setStats({
       todaySales: todaySalesActual > 0 ? todaySalesActual : 12450,
       monthSales: monthSalesSum > 0 ? monthSalesSum : 356780,
       todayExpenses: todayExpensesActual > 0 ? todayExpensesActual : 4230,
       monthExpenses: monthExpensesSum > 0 ? monthExpensesSum : 8220,
-      estimatedProfit: (todaySalesActual > 0 || monthSalesSum > 0)
-        ? Math.max(0, (monthSalesSum || 356780) - (monthExpensesSum || 8220))
-        : 161230,
       productsCount: actualProductsCount > 0 ? actualProductsCount : 161,
-      lowStockCount: actualLowStock > 0 ? actualLowStock : 5,
+      customersCount: actualCustomersCount > 0 ? actualCustomersCount : 142,
+      suppliersCount: actualSuppliersCount > 0 ? actualSuppliersCount : 48,
     });
 
-    // Recent operations list
+    // Real recent operations or mockup fallback
     const ops: any[] = [];
-
-    // From invoices
     if (storeData.invoices && storeData.invoices.length > 0) {
-      storeData.invoices.slice(-5).forEach((inv) => {
+      storeData.invoices.slice(-4).reverse().forEach((inv, i) => {
         ops.push({
-          id: inv.id,
+          id: inv.id || String(i),
           type: "sale",
-          title: locale === "ar" ? "بيع" : `Vente ${inv.invoiceNumber}`,
-          subtitle: inv.customerName || (locale === "ar" ? "عميل نقدي" : "Client"),
-          amount: inv.total,
-          time: inv.createdAt ? new Date(inv.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "10:42",
-          status: locale === "ar" ? "مكتمل" : "complété",
-          iconBg: "bg-blue-500",
-          icon: <ShoppingCart size={14} className="text-white" />
+          title: isFr ? `Facture #${inv.invoiceNumber || "F-2026-0045"}` : `فاتورة #${inv.invoiceNumber || "F-2026-0045"}`,
+          amount: `MRU ${(inv.total || 12450).toLocaleString()}`,
+          time: inv.createdAt ? new Date(inv.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "10:42",
+          iconBg: i % 2 === 0 ? "bg-emerald-500" : "bg-blue-500",
+          icon: i % 2 === 0 ? <ShoppingCart className="w-4 h-4 text-white" /> : <FileText className="w-4 h-4 text-white" />,
         });
       });
     }
 
-    // Default operations matching reference image if empty
     if (ops.length === 0) {
       setRecentOperations([
         {
           id: "1",
-          type: "sale",
-          title: locale === "ar" ? "بيع" : "Vente #V-2026-0012",
-          subtitle: "MRU 12 450 · Ahmed Mohamed",
-          amount: 12450,
+          title: isFr ? "Nouvelle vente" : "بيع جديد",
+          amount: "MRU 12 450",
           time: "10:42",
-          status: locale === "ar" ? "مكتمل" : "complété",
-          iconBg: "bg-blue-500",
-          icon: <ShoppingCart size={13} className="text-white" />
+          iconBg: "bg-emerald-500",
+          icon: <ShoppingCart className="w-4 h-4 text-white" />,
         },
         {
           id: "2",
-          type: "invoice",
-          title: locale === "ar" ? "فاتورة" : "Facture #F-2026-0045",
-          subtitle: "MRU 8 750 · Société Nouakchott",
-          amount: 8750,
+          title: isFr ? "Facture #F-2026-0045" : "فاتورة #F-2026-0045",
+          amount: "MRU 8 750",
           time: "09:35",
-          status: locale === "ar" ? "مكتمل" : "complété",
-          iconBg: "bg-emerald-500",
-          icon: <FileText size={13} className="text-white" />
+          iconBg: "bg-blue-500",
+          icon: <FileText className="w-4 h-4 text-white" />,
         },
         {
           id: "3",
-          type: "payment",
-          title: locale === "ar" ? "دفع من عميل" : "Paiement reçu",
-          subtitle: "MRU 5 000 · Client",
-          amount: 5000,
+          title: isFr ? "Paiement reçu" : "دفعة مستلمة",
+          amount: "MRU 5 000",
           time: "08:20",
-          status: locale === "ar" ? "مكتمل" : "complété",
-          iconBg: "bg-indigo-500",
-          icon: <Users size={13} className="text-white" />
+          iconBg: "bg-amber-500",
+          icon: <Wallet className="w-4 h-4 text-white" />,
         },
         {
           id: "4",
-          type: "expense",
-          title: locale === "ar" ? "مصروف" : "Dépense",
-          subtitle: "MRU 2 500 · Fournitures",
-          amount: 2500,
+          title: isFr ? "Dépense" : "مصروف",
+          amount: "MRU 2 500",
           time: "07:50",
-          status: locale === "ar" ? "مكتمل" : "complété",
           iconBg: "bg-rose-500",
-          icon: <DollarSign size={13} className="text-white" />
+          icon: <CreditCard className="w-4 h-4 text-white" />,
         },
-        {
-          id: "5",
-          type: "stock",
-          title: locale === "ar" ? "إدخال مخزون" : "Entrée de stock",
-          subtitle: locale === "ar" ? "منتجات إلكترونية" : "Produits électroniques",
-          amount: null,
-          time: "06:30",
-          status: locale === "ar" ? "مكتمل" : "complété",
-          iconBg: "bg-sky-500",
-          icon: <Warehouse size={13} className="text-white" />
-        }
       ]);
     } else {
-      setRecentOperations(ops.slice(0, 5));
+      setRecentOperations(ops);
     }
-  }, [locale]);
+  }, [isFr]);
 
   useEffect(() => {
     loadDashboardData();
@@ -262,240 +166,347 @@ export function UnifiedDashboard() {
 
   useRealtimeSync(["invoices", "daily_sales", "products", "expenses"], loadDashboardData);
 
-  // Sales trend data matching image
+  // Sales trend area chart data matching mockup curve exactly
   const chartData7Days = [
-    { name: "10/10", value: 16000 },
-    { name: "11/10", value: 23000 },
-    { name: "12/10", value: 19500 },
-    { name: "13/10", value: 31000 },
-    { name: "14/10", value: 24000 },
-    { name: "15/10", value: 42300 },
-    { name: "16/10", value: 36000 }
+    { name: "10/10", value: 11800 },
+    { name: "11/10", value: 15400 },
+    { name: "12/10", value: 21200 },
+    { name: "13/10", value: 16500 },
+    { name: "14/10", value: 21000 },
+    { name: "15/10", value: 17200 },
+    { name: "16/10", value: 24500 },
   ];
 
   const chartData30Days = [
-    { name: "W1", value: 85000 },
-    { name: "W2", value: 110000 },
-    { name: "W3", value: 98000 },
-    { name: "W4", value: 135000 }
+    { name: "S1", value: 85000 },
+    { name: "S2", value: 110000 },
+    { name: "S3", value: 98000 },
+    { name: "S4", value: 135000 },
   ];
 
   const chartData90Days = [
     { name: "M1", value: 310000 },
     { name: "M2", value: 345000 },
-    { name: "M3", value: 356780 }
+    { name: "M3", value: 356780 },
   ];
 
-  const currentChartData = salesRange === "7" ? chartData7Days : salesRange === "30" ? chartData30Days : chartData90Days;
+  const currentChartData =
+    salesRange === "7" ? chartData7Days : salesRange === "30" ? chartData30Days : chartData90Days;
 
   // Donut chart payment methods data matching image
   const paymentMethodsData = [
-    { name: locale === "ar" ? "نقداً" : "Espèces", value: 45, color: "#0ea5e9" }, // cyan blue
-    { name: locale === "ar" ? "بنكيلي" : "Bankily", value: 28, color: "#3b82f6" }, // blue
-    { name: locale === "ar" ? "مصرفي" : "Masrivi", value: 15, color: "#10b981" }, // emerald
-    { name: locale === "ar" ? "السداد" : "Sedad", value: 8, color: "#f59e0b" }, // amber
-    { name: locale === "ar" ? "أخرى" : "Autres", value: 4, color: "#94a3b8" } // gray
+    { name: isFr ? "Espèces" : "نقداً", value: 45, percentage: "45%", color: "#0066ff" },
+    { name: isFr ? "Bankily" : "بنكيلي", value: 28, percentage: "28%", color: "#00cc66" },
+    { name: isFr ? "Masrivi" : "مصرفي", value: 15, percentage: "15%", color: "#ff9900" },
+    { name: isFr ? "Sedad" : "السداد", value: 8, percentage: "8%", color: "#8833ff" },
+    { name: isFr ? "Autres" : "أخرى", value: 4, percentage: "4%", color: "#8899aa" },
   ];
 
+  const chevronIcon = isRTL ? (
+    <ChevronLeft className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+  ) : (
+    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+  );
+
   return (
-    <div className="w-full min-h-screen px-3 sm:px-6 py-4 md:py-6 space-y-4 md:space-y-5">
-      {/* ──────────────── Top Page Bar ──────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            {locale === "ar" ? "لوحة التحكم" : "Tableau de bord"}
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            {locale === "ar" ? "نظرة عامة على نشاط متجرك" : "Aperçu général de votre activité"}
-          </p>
+    <div className="w-full max-w-5xl mx-auto px-3.5 sm:px-6 py-4 space-y-4">
+      {/* ──────────────── 1. Search Bar & Date Picker Row ──────────────── */}
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Search Pill Input */}
+        <div className="relative flex-1">
+          <Search className={cn("w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 pointer-events-none", isRTL ? "right-3.5" : "left-3.5")} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={isFr ? "Rechercher un produit, client, facture..." : "ابحث عن منتج، عميل، فاتورة..."}
+            className={cn(
+              "w-full h-11 bg-white rounded-2xl border border-slate-200/80 shadow-xs text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all",
+              isRTL ? "pr-10 pl-4" : "pl-10 pr-4"
+            )}
+          />
         </div>
 
-        {/* Date & Live Clock Badges */}
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-          <LiveClock />
+        {/* Date Selector Pill */}
+        <button
+          type="button"
+          className="h-11 px-3 sm:px-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shrink-0 cursor-pointer"
+        >
+          <Calendar className="w-4 h-4 text-blue-600" />
+          <span>16/10/2026</span>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+        </button>
+      </div>
 
-          <div className="gsc-card px-3 py-1.5 flex items-center gap-2 text-xs font-semibold text-slate-700">
-            <div className="text-end">
-              <div className="text-[10px] text-slate-400 font-normal leading-tight">
-                {locale === "ar" ? "اليوم" : "Aujourd'hui"}
-              </div>
-              <div className="font-bold text-slate-800 text-xs">
-                16/10/2026
-              </div>
+      {/* ──────────────── 2. KPI Cards Grid (2 Columns x 3 Rows) ──────────────── */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
+        {/* Card 1: Chiffre d'affaires du jour */}
+        <div
+          onClick={() => navigate("/sales")}
+          className="bg-white rounded-2xl p-3 sm:p-4 shadow-xs border border-slate-100 flex items-center justify-between cursor-pointer group hover:shadow-sm transition-all"
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/20">
+              <TrendingUp className="w-5 h-5" />
             </div>
-            <Calendar size={17} className="text-blue-600 ms-1" />
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">
+                {isFr ? "Chiffre d'affaires du jour" : "مبيعات اليوم"}
+              </p>
+              <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight mt-0.5">
+                MRU {stats.todaySales.toLocaleString()}
+              </p>
+              <span className="inline-flex items-center gap-0.5 text-[9.5px] sm:text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-100/60 mt-1">
+                ↑ +12%
+              </span>
+            </div>
           </div>
+          {chevronIcon}
+        </div>
+
+        {/* Card 2: Chiffre d'affaires du mois */}
+        <div
+          onClick={() => navigate("/sales")}
+          className="bg-white rounded-2xl p-3 sm:p-4 shadow-xs border border-slate-100 flex items-center justify-between cursor-pointer group hover:shadow-sm transition-all"
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/20">
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">
+                {isFr ? "Chiffre d'affaires du mois" : "مبيعات الشهر"}
+              </p>
+              <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight mt-0.5">
+                MRU {stats.monthSales.toLocaleString()}
+              </p>
+              <span className="inline-flex items-center gap-0.5 text-[9.5px] sm:text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-100/60 mt-1">
+                ↑ +8%
+              </span>
+            </div>
+          </div>
+          {chevronIcon}
+        </div>
+
+        {/* Card 3: Dépenses du jour */}
+        <div
+          onClick={() => navigate("/expenses")}
+          className="bg-white rounded-2xl p-3 sm:p-4 shadow-xs border border-slate-100 flex items-center justify-between cursor-pointer group hover:shadow-sm transition-all"
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-rose-500/20">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">
+                {isFr ? "Dépenses du jour" : "مصروفات اليوم"}
+              </p>
+              <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight mt-0.5">
+                MRU {stats.todayExpenses.toLocaleString()}
+              </p>
+              <span className="inline-flex items-center gap-0.5 text-[9.5px] sm:text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.2 rounded-full border border-rose-100/60 mt-1">
+                ↓ -5%
+              </span>
+            </div>
+          </div>
+          {chevronIcon}
+        </div>
+
+        {/* Card 4: Produits en stock */}
+        <div
+          onClick={() => navigate("/products")}
+          className="bg-white rounded-2xl p-3 sm:p-4 shadow-xs border border-slate-100 flex items-center justify-between cursor-pointer group hover:shadow-sm transition-all"
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/20">
+              <Package className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">
+                {isFr ? "Produits en stock" : "منتجات في المخزن"}
+              </p>
+              <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight mt-0.5">
+                {stats.productsCount}
+              </p>
+              <span className="inline-flex items-center gap-0.5 text-[9.5px] sm:text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-100/60 mt-1">
+                ↑ +3%
+              </span>
+            </div>
+          </div>
+          {chevronIcon}
+        </div>
+
+        {/* Card 5: Clients */}
+        <div
+          onClick={() => navigate("/customers")}
+          className="bg-white rounded-2xl p-3 sm:p-4 shadow-xs border border-slate-100 flex items-center justify-between cursor-pointer group hover:shadow-sm transition-all"
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-purple-500/20">
+              <Users className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">
+                {isFr ? "Clients" : "العملاء"}
+              </p>
+              <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight mt-0.5">
+                {stats.customersCount}
+              </p>
+              <span className="inline-flex items-center gap-0.5 text-[9.5px] sm:text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-100/60 mt-1">
+                ↑ +5%
+              </span>
+            </div>
+          </div>
+          {chevronIcon}
+        </div>
+
+        {/* Card 6: Fournisseurs */}
+        <div
+          onClick={() => navigate("/suppliers")}
+          className="bg-white rounded-2xl p-3 sm:p-4 shadow-xs border border-slate-100 flex items-center justify-between cursor-pointer group hover:shadow-sm transition-all"
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-cyan-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-cyan-500/20">
+              <Truck className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">
+                {isFr ? "Fournisseurs" : "الموردون"}
+              </p>
+              <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight mt-0.5">
+                {stats.suppliersCount}
+              </p>
+            </div>
+          </div>
+          {chevronIcon}
         </div>
       </div>
 
-      {/* ──────────────── Top 7 Stats Cards Row ──────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 sm:gap-3">
-        {/* 1. إجمالي المبيعات اليوم */}
-        <TopStatCard
-          title={locale === "ar" ? "إجمالي المبيعات اليوم" : "Chiffre d'affaires du jour"}
-          value={`MRU ${stats.todaySales.toLocaleString()}`}
-          change="+12%"
-          isPositive={true}
-          iconBg="bg-emerald-500"
-          icon={<ShoppingCart size={18} />}
-        />
-
-        {/* 2. إجمالي المبيعات هذا الشهر */}
-        <TopStatCard
-          title={locale === "ar" ? "إجمالي المبيعات هذا الشهر" : "Chiffre d'affaires du mois"}
-          value={`MRU ${stats.monthSales.toLocaleString()}`}
-          change="+8%"
-          isPositive={true}
-          iconBg="bg-blue-600"
-          icon={<TrendingUp size={18} />}
-        />
-
-        {/* 3. المصروفات اليوم */}
-        <TopStatCard
-          title={locale === "ar" ? "المصروفات اليوم" : "Dépenses du jour"}
-          value={`MRU ${stats.todayExpenses.toLocaleString()}`}
-          change="-5%"
-          isPositive={false}
-          iconBg="bg-rose-500"
-          icon={<DollarSign size={18} />}
-        />
-
-        {/* 4. المصروفات هذا الشهر */}
-        <TopStatCard
-          title={locale === "ar" ? "المصروفات هذا الشهر" : "Dépenses du mois"}
-          value={`MRU ${stats.monthExpenses.toLocaleString()}`}
-          change="+15%"
-          isPositive={true}
-          iconBg="bg-amber-500"
-          icon={<Layers size={18} />}
-        />
-
-        {/* 5. الربح المتوقع */}
-        <TopStatCard
-          title={locale === "ar" ? "الربح المتوقع" : "Bénéfice estimé"}
-          value={`MRU ${stats.estimatedProfit.toLocaleString()}`}
-          change="+3%"
-          isPositive={true}
-          iconBg="bg-purple-600"
-          icon={<TrendingUp size={18} />}
-        />
-
-        {/* 6. المنتجات في المخزون */}
-        <TopStatCard
-          title={locale === "ar" ? "المنتجات في المخزون" : "Produits en stock"}
-          value={`${stats.productsCount}`}
-          change="+3%"
-          isPositive={true}
-          iconBg="bg-cyan-500"
-          icon={<Package size={18} />}
-        />
-
-        {/* 7. منتجات منخفضة المخزون */}
-        <TopStatCard
-          title={locale === "ar" ? "منتجات منخفضة المخزون" : "Rupture de stock"}
-          value={`${stats.lowStockCount}`}
-          change="-2"
-          isPositive={false}
-          iconBg="bg-red-500"
-          icon={<Package size={18} />}
-        />
-      </div>
-
-      {/* ──────────────── Main Content 4-Columns Grid ──────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
-        {/* Col 1: تطور المبيعات (Sales Evolution Chart) - 4 Cols */}
-        <div className="gsc-card p-4 lg:col-span-4 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs sm:text-sm font-bold text-slate-800">
-              {locale === "ar" ? "تطور المبيعات" : "Évolution des ventes"}
+      {/* ──────────────── 3. Sales Evolution Chart Card ──────────────── */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 space-y-3">
+        {/* Header with Title & Period Filter Pills */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-blue-600" />
+            <h2 className="text-sm sm:text-base font-black text-slate-800">
+              {isFr ? "Évolution des ventes" : "تطور المبيعات"}
             </h2>
-
-            {/* Time range pills */}
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-semibold text-slate-600">
-              <button
-                onClick={() => setSalesRange("7")}
-                className={`px-2 py-0.5 rounded-md transition-all ${
-                  salesRange === "7" ? "bg-white text-blue-600 shadow-xs font-bold" : "hover:text-slate-900"
-                }`}
-              >
-                {locale === "ar" ? "7 أيام" : "7 jours"}
-              </button>
-              <button
-                onClick={() => setSalesRange("30")}
-                className={`px-2 py-0.5 rounded-md transition-all ${
-                  salesRange === "30" ? "bg-white text-blue-600 shadow-xs font-bold" : "hover:text-slate-900"
-                }`}
-              >
-                {locale === "ar" ? "30 يوم" : "30 jours"}
-              </button>
-              <button
-                onClick={() => setSalesRange("90")}
-                className={`px-2 py-0.5 rounded-md transition-all ${
-                  salesRange === "90" ? "bg-white text-blue-600 shadow-xs font-bold" : "hover:text-slate-900"
-                }`}
-              >
-                {locale === "ar" ? "90 يوم" : "90 jours"}
-              </button>
-            </div>
           </div>
 
-          {/* Area Chart Container */}
-          <div className="h-56 relative w-full pt-2">
-            {/* Tooltip Badge mimicking image */}
-            <div className="absolute top-2 start-1/2 -translate-x-1/2 z-10 px-2 py-0.5 rounded-md bg-white border border-slate-200 shadow-xs text-[10px] font-bold text-slate-800">
-              MRU 42 300
-            </div>
-
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={currentChartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 9, fill: "#94a3b8" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 9, fill: "#94a3b8" }}
-                  axisLine={false}
-                  tickLine={false}
-                  domain={[0, 60000]}
-                  ticks={[0, 20000, 40000, 60000]}
-                />
-                <Tooltip
-                  formatter={(val: any) => [`MRU ${Number(val).toLocaleString()}`, "المبيعات"]}
-                  contentStyle={{ backgroundColor: "#ffffff", borderRadius: "8px", fontSize: "11px", border: "1px solid #e2e8f0" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#2563eb"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#salesGrad)"
-                  dot={{ r: 2.5, fill: "#2563eb", strokeWidth: 1, stroke: "#ffffff" }}
-                  activeDot={{ r: 5, fill: "#2563eb" }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-full text-xs font-semibold">
+            <button
+              onClick={() => setSalesRange("7")}
+              className={cn(
+                "px-3 py-1 rounded-full transition-all text-xs cursor-pointer",
+                salesRange === "7"
+                  ? "bg-blue-600 text-white font-bold shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              {isFr ? "7 jours" : "7 أيام"}
+            </button>
+            <button
+              onClick={() => setSalesRange("30")}
+              className={cn(
+                "px-3 py-1 rounded-full transition-all text-xs cursor-pointer",
+                salesRange === "30"
+                  ? "bg-blue-600 text-white font-bold shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              {isFr ? "30 jours" : "30 يوم"}
+            </button>
+            <button
+              onClick={() => setSalesRange("90")}
+              className={cn(
+                "px-3 py-1 rounded-full transition-all text-xs cursor-pointer",
+                salesRange === "90"
+                  ? "bg-blue-600 text-white font-bold shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              {isFr ? "90 jours" : "90 يوم"}
+            </button>
           </div>
         </div>
 
-        {/* Col 2: مبيعات حسب وسيلة الدفع (Donut Chart) - 3 Cols */}
-        <div className="gsc-card p-4 lg:col-span-3 flex flex-col justify-between">
-          <h2 className="text-xs sm:text-sm font-bold text-slate-800 mb-2">
-            {locale === "ar" ? "مبيعات حسب وسيلة الدفع" : "Ventes par moyen de paiement"}
-          </h2>
+        {/* Chart Area with Floating Peak Badge */}
+        <div className="h-52 relative w-full pt-1">
+          {/* Floating Pill Tooltip pointing to last peak */}
+          <div
+            className={cn(
+              "absolute top-2 z-10 px-3 py-1 rounded-xl bg-[#0047cc] text-white shadow-md text-xs font-black tracking-tight",
+              isRTL ? "left-6 sm:left-12" : "right-6 sm:right-12"
+            )}
+          >
+            MRU 24 500
+          </div>
 
-          <div className="flex items-center justify-between gap-2 my-auto">
-            {/* Donut Chart with Centered Total */}
-            <div className="relative w-36 h-36 flex items-center justify-center flex-shrink-0 mx-auto">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={currentChartData} margin={{ top: 25, right: 10, left: -22, bottom: 0 }}>
+              <defs>
+                <linearGradient id="mockupSalesGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#2563eb" stopOpacity={0.28} />
+                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis
+                dataKey="name"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 10.5, fill: "#64748b", fontWeight: 600 }}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 10, fill: "#94a3b8" }}
+                domain={[0, 30000]}
+                ticks={[0, 10000, 20000, 30000]}
+                tickFormatter={(v) => (v === 0 ? "0" : `${v / 1000}k`)}
+              />
+              <RechartsTooltip
+                formatter={(val: any) => [`MRU ${Number(val).toLocaleString()}`, isFr ? "Ventes" : "المبيعات"]}
+                contentStyle={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: "1rem",
+                  border: "1px solid #e2e8f0",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#2563eb"
+                strokeWidth={2.75}
+                fill="url(#mockupSalesGrad)"
+                dot={{ r: 4, fill: "#2563eb", stroke: "#ffffff", strokeWidth: 2 }}
+                activeDot={{ r: 6, fill: "#1d4ed8", stroke: "#ffffff", strokeWidth: 2.5 }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* ──────────────── 4. Split Row: Moyens de paiement & Activités récentes ──────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        {/* Moyens de paiement Donut Card */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
+              <h3 className="text-sm sm:text-base font-black text-slate-800">
+                {isFr ? "Moyens de paiement" : "طرق الدفع"}
+              </h3>
+            </div>
+            {chevronIcon}
+          </div>
+
+          <div className="flex items-center justify-between gap-4 py-2">
+            {/* Donut Chart with Center Text */}
+            <div className="relative w-36 h-36 flex items-center justify-center shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -503,7 +514,7 @@ export function UnifiedDashboard() {
                     cx="50%"
                     cy="50%"
                     innerRadius={44}
-                    outerRadius={62}
+                    outerRadius={64}
                     paddingAngle={3}
                     dataKey="value"
                   >
@@ -513,123 +524,157 @@ export function UnifiedDashboard() {
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
-
-              {/* Center Value */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                <span className="text-[9px] font-medium text-slate-400">MRU</span>
-                <span className="text-xs font-black text-slate-800 leading-tight">356 780</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+                  356 780
+                </span>
+                <span className="text-[10px] font-bold text-slate-400">MRU</span>
               </div>
             </div>
 
-            {/* Legend Column with percentages */}
-            <div className="flex flex-col gap-1.5 flex-1 min-w-[100px]">
-              {paymentMethodsData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="text-[11px] text-slate-600 font-medium truncate">{item.name}</span>
+            {/* Payment Methods Legend */}
+            <div className="flex-1 space-y-2">
+              {paymentMethodsData.map((pm, idx) => (
+                <div key={idx} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: pm.color }} />
+                    <span className="font-semibold text-slate-700">{pm.name}</span>
                   </div>
-                  <span className="text-[11px] font-bold text-slate-800 ps-1">{item.value}%</span>
+                  <span className="font-black text-slate-900">{pm.percentage}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Col 3: أحدث العمليات (Recent Operations List) - 3 Cols */}
-        <div className="gsc-card p-4 lg:col-span-3 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xs sm:text-sm font-bold text-slate-800">
-              {locale === "ar" ? "أحدث العمليات" : "Activités récentes"}
-            </h2>
-            <Link
-              to="/sales"
-              className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold transition-colors"
-            >
-              {locale === "ar" ? "عرض الكل" : "Voir tout"}
-            </Link>
+        {/* Activités récentes Card */}
+        <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-100 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              <h3 className="text-sm sm:text-base font-black text-slate-800">
+                {isFr ? "Activités récentes" : "الأنشطة الأخيرة"}
+              </h3>
+            </div>
+            {chevronIcon}
           </div>
 
-          <div className="space-y-2 mt-1">
+          <div className="space-y-3">
             {recentOperations.map((op) => (
-              <div
-                key={op.id}
-                className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/70 px-1 rounded-lg transition-colors"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-2xs ${op.iconBg}`}>
+              <div key={op.id} className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 sm:gap-3">
+                  <div className={`w-8 h-8 rounded-xl ${op.iconBg} flex items-center justify-center shrink-0 shadow-xs`}>
                     {op.icon}
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-800 truncate leading-tight">
-                      {op.title}
-                    </p>
-                    <p className="text-[10px] text-slate-400 truncate leading-tight">
-                      {op.subtitle}
-                    </p>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 leading-tight">{op.title}</p>
+                    <p className="text-[11px] font-semibold text-slate-500 leading-tight mt-0.5">{op.amount}</p>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 flex-shrink-0 text-end">
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {op.time}
-                  </span>
-                  <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                    {op.status}
-                  </span>
-                </div>
+                <span className="text-[11px] font-semibold text-slate-400">{op.time}</span>
               </div>
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Col 4: إجراءات سريعة (Quick Action Buttons) - 2 Cols */}
-        <div className="gsc-card p-4 lg:col-span-2 flex flex-col justify-between">
-          <h2 className="text-xs sm:text-sm font-bold text-slate-800 mb-2">
-            {locale === "ar" ? "إجراءات سريعة" : "Actions rapides"}
-          </h2>
-
-          <div className="flex flex-col gap-2 mt-auto">
-            {/* 1. بيع جديد (Nouvelle vente) - Vibrant Blue */}
-            <Link
-              to="/create-invoice"
-              className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-98"
-            >
-              <span>{locale === "ar" ? "بيع جديد" : "Nouvelle vente"}</span>
-            </Link>
-
-            {/* 2. إضافة منتج (Ajouter un produit) - Emerald Green */}
-            <Link
-              to="/products"
-              className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-98"
-            >
-              <span>{locale === "ar" ? "إضافة منتج" : "Ajouter un produit"}</span>
-            </Link>
-
-            {/* 3. إضافة عميل (Ajouter un client) - Purple */}
-            <Link
-              to="/customers"
-              className="w-full py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-98"
-            >
-              <span>{locale === "ar" ? "إضافة عميل" : "Ajouter un client"}</span>
-            </Link>
-
-            {/* 4. إضافة مصروف (Enregistrer une dépense) - Amber/Orange */}
-            <Link
-              to="/expenses"
-              className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-98"
-            >
-              <span>{locale === "ar" ? "إضافة مصروف" : "Enregistrer une dépense"}</span>
-            </Link>
-
-            {/* 5. عرض المخزون (Voir l'inventaire) - Slate Blue */}
-            <Link
-              to="/inventory"
-              className="w-full py-2 px-3 rounded-xl bg-slate-600 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-98"
-            >
-              <span>{locale === "ar" ? "عرض المخزون" : "Voir l'inventaire"}</span>
-            </Link>
+      {/* ──────────────── 5. Quick Actions Section (Actions rapides) ──────────────── */}
+      <div className="space-y-3 pt-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4.5 h-4.5 text-blue-600 fill-blue-600" />
+            <h3 className="text-sm sm:text-base font-black text-slate-800">
+              {isFr ? "Actions rapides" : "إجراءات سريعة"}
+            </h3>
           </div>
+          <button
+            onClick={() => navigate("/create-invoice")}
+            className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 cursor-pointer"
+          >
+            <span>{isFr ? "Voir plus" : "عرض المزيد"}</span>
+            {isRTL ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+
+        {/* 6 Actions Square Cards Grid */}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-2.5">
+          {/* Action 1: Nouvelle vente */}
+          <button
+            onClick={() => navigate("/sales")}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-blue-50/80 hover:bg-blue-100/90 border border-blue-100/80 text-blue-700 transition-all cursor-pointer group shadow-2xs"
+          >
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 transition-transform group-hover:scale-110">
+              <ShoppingCart className="w-5 h-5 text-blue-600" />
+            </div>
+            <span className="text-[10px] sm:text-[11px] font-bold text-center leading-tight">
+              {isFr ? "Nouvelle vente" : "بيع جديد"}
+            </span>
+          </button>
+
+          {/* Action 2: Nouvelle facture */}
+          <button
+            onClick={() => navigate("/create-invoice")}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-emerald-50/80 hover:bg-emerald-100/90 border border-emerald-100/80 text-emerald-700 transition-all cursor-pointer group shadow-2xs"
+          >
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 transition-transform group-hover:scale-110">
+              <FileText className="w-5 h-5 text-emerald-600" />
+            </div>
+            <span className="text-[10px] sm:text-[11px] font-bold text-center leading-tight">
+              {isFr ? "Nouvelle facture" : "فاتورة جديدة"}
+            </span>
+          </button>
+
+          {/* Action 3: Ajouter un produit */}
+          <button
+            onClick={() => navigate("/products")}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-purple-50/80 hover:bg-purple-100/90 border border-purple-100/80 text-purple-700 transition-all cursor-pointer group shadow-2xs"
+          >
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 transition-transform group-hover:scale-110">
+              <Package className="w-5 h-5 text-purple-600" />
+            </div>
+            <span className="text-[10px] sm:text-[11px] font-bold text-center leading-tight">
+              {isFr ? "Ajouter un produit" : "إضافة منتج"}
+            </span>
+          </button>
+
+          {/* Action 4: Ajouter un client */}
+          <button
+            onClick={() => navigate("/customers")}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-amber-50/80 hover:bg-amber-100/90 border border-amber-100/80 text-amber-700 transition-all cursor-pointer group shadow-2xs"
+          >
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 transition-transform group-hover:scale-110">
+              <Users className="w-5 h-5 text-amber-600" />
+            </div>
+            <span className="text-[10px] sm:text-[11px] font-bold text-center leading-tight">
+              {isFr ? "Ajouter un client" : "إضافة عميل"}
+            </span>
+          </button>
+
+          {/* Action 5: Enregistrer une dépense */}
+          <button
+            onClick={() => navigate("/expenses")}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-cyan-50/80 hover:bg-cyan-100/90 border border-cyan-100/80 text-cyan-700 transition-all cursor-pointer group shadow-2xs"
+          >
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 transition-transform group-hover:scale-110">
+              <Receipt className="w-5 h-5 text-cyan-600" />
+            </div>
+            <span className="text-[10px] sm:text-[11px] font-bold text-center leading-tight">
+              {isFr ? "Enregistrer une dépense" : "تسجيل مصروف"}
+            </span>
+          </button>
+
+          {/* Action 6: Inventaire */}
+          <button
+            onClick={() => navigate("/inventory")}
+            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200/80 text-slate-700 transition-all cursor-pointer group shadow-2xs"
+          >
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 transition-transform group-hover:scale-110">
+              <LayoutGrid className="w-5 h-5 text-slate-600" />
+            </div>
+            <span className="text-[10px] sm:text-[11px] font-bold text-center leading-tight">
+              {isFr ? "Inventaire" : "المخزون"}
+            </span>
+          </button>
         </div>
       </div>
     </div>

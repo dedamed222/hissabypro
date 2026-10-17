@@ -46,6 +46,8 @@ import {
   Layers,
   ArrowRight,
   SlidersHorizontal,
+  Home,
+  MoreHorizontal,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -743,152 +745,116 @@ const Sidebar = () => {
       )}
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* 3. FLOATING DOCK BOTTOM NAVIGATION BAR                    */}
-      {/* Visible when navPosition === 'bottom' (or mobile fallback) */}
+      {/* 3. MOBILE & DESKTOP BOTTOM NAVIGATION BAR (Exact Mockup)    */}
       {/* ────────────────────────────────────────────────────────── */}
       <div
         className={cn(
-          "fixed bottom-2 sm:bottom-4 left-0 right-0 z-40 print:hidden transition-all duration-300 pointer-events-none pb-safe px-3 sm:px-6 flex justify-center",
+          "fixed bottom-0 left-0 right-0 z-40 print:hidden transition-all duration-300 pb-safe bg-white border-t border-slate-200/80 shadow-[0_-4px_25px_rgba(0,0,0,0.06)]",
           !isBottomMode && "lg:hidden"
         )}
       >
-        <div className="pointer-events-auto w-full max-w-lg md:max-w-xl bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_12px_36px_rgba(15,23,42,0.14)] px-2 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between gap-1">
-          {/* Tab 1: Dashboard (الرئيسية) */}
+        <div className="w-full max-w-md mx-auto px-3 sm:px-4 pt-2 pb-1 flex items-center justify-between">
+          {/* Tab 1: Accueil */}
           <NavLink
             to="/dashboard"
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center justify-center flex-1 py-1 px-1.5 rounded-xl transition-all group relative cursor-pointer",
-                isActive ? "text-indigo-600 font-bold" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                "flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer",
+                isActive ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-900"
               )
             }
           >
             {({ isActive }) => (
               <>
-                <div
-                  className={cn(
-                    "p-1.5 rounded-xl transition-transform group-hover:scale-110",
-                    isActive ? "bg-indigo-50 text-indigo-600 shadow-2xs" : ""
-                  )}
-                >
-                  <LayoutDashboard className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-                </div>
-                <span className="text-[10px] sm:text-[11px] leading-tight truncate max-w-[64px]">
-                  {t.home}
+                <Home className={cn("w-5 h-5 transition-transform group-hover:scale-105", isActive ? "text-blue-600 fill-blue-600" : "text-slate-500")} />
+                <span className="text-[11px] font-bold mt-1 leading-tight">
+                  {isFr ? "Accueil" : t.home}
                 </span>
-                {isActive && <span className="w-1 h-1 rounded-full bg-indigo-600 mt-0.5" />}
               </>
             )}
           </NavLink>
 
-          {/* Tab 2: Sales (المبيعات) */}
+          {/* Tab 2: Ventes */}
           <NavLink
             to="/sales"
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center justify-center flex-1 py-1 px-1.5 rounded-xl transition-all group relative cursor-pointer",
-                isActive ? "text-emerald-600 font-bold" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                "flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer",
+                isActive ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-900"
               )
             }
           >
             {({ isActive }) => (
               <>
-                <div
-                  className={cn(
-                    "p-1.5 rounded-xl transition-transform group-hover:scale-110",
-                    isActive ? "bg-emerald-50 text-emerald-600 shadow-2xs" : ""
-                  )}
-                >
-                  <ShoppingCart className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-                </div>
-                <span className="text-[10px] sm:text-[11px] leading-tight truncate max-w-[64px]">
-                  {t.sales}
-                </span>
-                {isActive && <span className="w-1 h-1 rounded-full bg-emerald-600 mt-0.5" />}
-              </>
-            )}
-          </NavLink>
-
-          {/* Centerpiece Hero Action: Create Invoice (+ فاتورة) */}
-          <NavLink
-            to="/create-invoice"
-            onClick={closeSidebar}
-            className={({ isActive }) =>
-              cn(
-                "flex flex-col items-center justify-center -mt-5 sm:-mt-6 flex-shrink-0 px-2 group cursor-pointer"
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <div
-                  className={cn(
-                    "w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center text-white shadow-lg transition-all duration-200 group-hover:scale-105 active:scale-95",
-                    isActive
-                      ? "bg-gradient-to-tr from-indigo-700 via-blue-700 to-sky-500 shadow-indigo-600/40 ring-4 ring-indigo-50"
-                      : "bg-gradient-to-tr from-indigo-600 via-blue-600 to-sky-400 shadow-indigo-500/30 hover:shadow-indigo-500/50"
-                  )}
-                >
-                  <Plus className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5] group-hover:rotate-90 transition-transform duration-200" />
-                </div>
-                <span className="text-[10px] sm:text-[11px] font-bold text-indigo-700 mt-1 leading-tight">
-                  {isFr ? "Facture" : "فاتورة"}
+                <ShoppingCart className={cn("w-5 h-5 transition-transform group-hover:scale-105", isActive ? "text-blue-600 fill-blue-600/20" : "text-slate-500")} />
+                <span className="text-[11px] font-medium mt-1 leading-tight">
+                  {isFr ? "Ventes" : t.sales}
                 </span>
               </>
             )}
           </NavLink>
 
-          {/* Tab 3: Products (المنتجات) */}
+          {/* Tab 3: Produits */}
           <NavLink
             to="/products"
             onClick={closeSidebar}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center justify-center flex-1 py-1 px-1.5 rounded-xl transition-all group relative cursor-pointer",
-                isActive ? "text-cyan-600 font-bold" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                "flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer",
+                isActive ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-900"
               )
             }
           >
             {({ isActive }) => (
               <>
-                <div
-                  className={cn(
-                    "p-1.5 rounded-xl transition-transform group-hover:scale-110",
-                    isActive ? "bg-cyan-50 text-cyan-600 shadow-2xs" : ""
-                  )}
-                >
-                  <Package className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-                </div>
-                <span className="text-[10px] sm:text-[11px] leading-tight truncate max-w-[64px]">
-                  {t.products}
+                <Package className={cn("w-5 h-5 transition-transform group-hover:scale-105", isActive ? "text-blue-600 fill-blue-600/20" : "text-slate-500")} />
+                <span className="text-[11px] font-medium mt-1 leading-tight">
+                  {isFr ? "Produits" : t.products}
                 </span>
-                {isActive && <span className="w-1 h-1 rounded-full bg-cyan-600 mt-0.5" />}
               </>
             )}
           </NavLink>
 
-          {/* Tab 4: More / Command Sheet (المزيد) */}
+          {/* Tab 4: Clients */}
+          <NavLink
+            to="/customers"
+            onClick={closeSidebar}
+            className={({ isActive }) =>
+              cn(
+                "flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer",
+                isActive ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-900"
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Users className={cn("w-5 h-5 transition-transform group-hover:scale-105", isActive ? "text-blue-600 fill-blue-600/20" : "text-slate-500")} />
+                <span className="text-[11px] font-medium mt-1 leading-tight">
+                  {isFr ? "Clients" : t.customers}
+                </span>
+              </>
+            )}
+          </NavLink>
+
+          {/* Tab 5: Plus */}
           <button
             onClick={toggleSidebar}
             className={cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-1.5 rounded-xl transition-all group relative cursor-pointer",
-              sidebarOpen
-                ? "text-indigo-600 font-bold bg-indigo-50/70"
-                : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+              "flex flex-col items-center justify-center flex-1 py-1 transition-all cursor-pointer",
+              sidebarOpen ? "text-blue-600 font-bold" : "text-slate-500 hover:text-slate-900"
             )}
-            title={t.mainMenu}
           >
-            <div className="p-1.5 rounded-xl transition-transform group-hover:scale-110">
-              <Menu className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-            </div>
-            <span className="text-[10px] sm:text-[11px] leading-tight truncate max-w-[64px]">
-              {isFr ? "Menu" : "المزيد"}
+            <MoreHorizontal className={cn("w-5 h-5 transition-transform group-hover:scale-105", sidebarOpen ? "text-blue-600" : "text-slate-500")} />
+            <span className="text-[11px] font-medium mt-1 leading-tight">
+              {isFr ? "Plus" : "المزيد"}
             </span>
-            {sidebarOpen && <span className="w-1 h-1 rounded-full bg-indigo-600 mt-0.5" />}
           </button>
         </div>
+
+        {/* iOS Home Indicator Line */}
+        <div className="w-32 h-1 bg-black/80 rounded-full mx-auto mt-1 mb-1" />
       </div>
 
       {/* ────────────────────────────────────────────────────────── */}

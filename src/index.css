@@ -899,23 +899,23 @@
 
   /* ══════════ GSC EXACT THEME & DASHBOARD STYLES ══════════ */
   .gsc-header-bg {
-    background: linear-gradient(90deg, #091931 0%, #0d284e 50%, #081832 100%);
+    background: linear-gradient(135deg, #0047cc 0%, #0052d9 50%, #0a2f85 100%);
   }
 
   .gsc-dashboard-bg {
-    background-color: #f1f5fa;
+    background-color: #f4f7fc;
   }
 
   .gsc-card {
     background: #ffffff;
-    border-radius: 1.125rem;
-    border: 1px solid #e7eff7;
-    box-shadow: 0 2px 12px rgba(15, 34, 64, 0.04);
+    border-radius: 1rem;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
   .gsc-card:hover {
-    box-shadow: 0 6px 20px rgba(15, 34, 64, 0.07);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.07);
   }
 
   .gsc-bottom-nav {
