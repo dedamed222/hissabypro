@@ -58,7 +58,7 @@ import {
 export default function Creditors() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { locale, isRTL } = useLocale();
+  const { t, locale, isRTL } = useLocale();
   const isFr = locale === "fr";
 
   const [formData, setFormData] = useState({
