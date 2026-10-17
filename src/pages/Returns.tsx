@@ -1,12 +1,11 @@
-
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useReturns } from "@/hooks/useReturns";
 import { useLocale } from "@/hooks/useLocale";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, formatShortDate } from "@/utils/formatters";
 import {
   Undo,
   Search,
-  Trash,
+  Trash2,
   FileText,
   Calendar,
   User,
@@ -14,20 +13,20 @@ import {
   AlertCircle,
   Plus,
   ArrowRight,
-  PackageCheck
+  PackageCheck,
+  Archive as ArchiveIcon,
+  Printer,
+  ChevronDown,
+  RotateCcw,
+  CheckCircle2,
+  Clock,
+  Layers,
+  ShoppingBag,
+  ExternalLink,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,7 +46,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { loadStoreData, saveStoreData } from "@/utils/localStorage";
 
 export default function Returns() {
   const {
@@ -61,28 +62,87 @@ export default function Returns() {
     setSelectedInvoice,
     loading,
     saveReturn,
-    removeReturn
+    removeReturn,
   } = useReturns();
 
-  const { t, formatDate } = useLocale();
+  const { t, locale, isRTL } = useLocale();
+  const isFr = locale === "fr";
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [returnReason, setReturnReason] = useState("");
   const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "archived">("all");
+
+  // KPI Calculations
+  const kpiStats = useMemo(() => {
+    const totalCount = filteredReturns.length;
+    const totalValue = filteredReturns.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+    const totalItems = filteredReturns.reduce((sum, r) => {
+      const itemsCount = (r.items || []).reduce((iSum, it) => iSum + (Number(it.quantity) || 0), 0);
+      return sum + itemsCount;
+    }, 0);
+    const archivedCount = filteredReturns.filter((r) => r.status === "archived").length;
+
+    return {
+      totalCount,
+      totalValue,
+      totalItems,
+      archivedCount,
+    };
+  }, [filteredReturns]);
+
+  // Filter returns by tab/status
+  const displayedReturns = useMemo(() => {
+    return filteredReturns.filter((r) => {
+      if (statusFilter === "archived") return r.status === "archived";
+      if (statusFilter === "active") return r.status !== "archived";
+      return true;
+    });
+  }, [filteredReturns, statusFilter]);
 
   const handleDeleteConfirm = async () => {
     if (deleteId) {
       await removeReturn(deleteId);
       setDeleteId(null);
+      toast({
+        title: isFr ? "Retour supprimé" : "تم حذف المرتجع",
+        description: isFr ? "Le bon de retour a été supprimé avec succès." : "تم حذف سجل الإرجاع بنجاح.",
+      });
+    }
+  };
+
+  const handleArchiveReturn = (returnId: string) => {
+    const store = loadStoreData();
+    if (!store.returns) store.returns = [];
+    const index = store.returns.findIndex((r) => r.id === returnId);
+    if (index >= 0) {
+      const isCurrentlyArchived = store.returns[index].status === "archived";
+      store.returns[index].status = isCurrentlyArchived ? "completed" : "archived";
+      store.returns[index].updatedAt = new Date().toISOString();
+      saveStoreData(store);
+
+      toast({
+        title: isCurrentlyArchived
+          ? isFr ? "Désarchivé" : "تم إلغاء الأرشفة"
+          : isFr ? "Archivé avec succès" : "تمت الأرشفة بنجاح",
+        description: isCurrentlyArchived
+          ? isFr ? "Le retour a été réactivé." : "تم استرجاع المرتجع إلى السجلات النشطة."
+          : isFr ? "Le retour a été déplacé vers l'archive." : "تم نقل المرتجع إلى سجل الأرشيف المركزي.",
+      });
+
+      // Reload returns list
+      window.location.reload();
     }
   };
 
   const handleSelectInvoice = (invoice: any) => {
     setSelectedInvoice(invoice);
     setInvoiceSearchQuery("");
-    // Initialize quantities to 0
     const initialQuants: Record<string, number> = {};
-    invoice.items.forEach((item: any) => {
+    (invoice.items || []).forEach((item: any) => {
       initialQuants[item.productId] = 0;
     });
     setReturnQuantities(initialQuants);
@@ -90,28 +150,28 @@ export default function Returns() {
 
   const handleQuantityChange = (productId: string, val: number, max: number) => {
     const safeVal = Math.max(0, Math.min(val, max));
-    setReturnQuantities(prev => ({ ...prev, [productId]: safeVal }));
+    setReturnQuantities((prev) => ({ ...prev, [productId]: safeVal }));
   };
 
   const calculateReturnTotal = () => {
     if (!selectedInvoice) return 0;
-    return selectedInvoice.items.reduce((sum, item) => {
-      const gty = returnQuantities[item.productId] || 0;
-      return sum + (gty * item.price);
+    return (selectedInvoice.items || []).reduce((sum: number, item: any) => {
+      const qty = returnQuantities[item.productId] || 0;
+      return sum + qty * Number(item.price || 0);
     }, 0);
   };
 
   const handleConfirmReturn = async () => {
     if (!selectedInvoice) return;
 
-    const returnItems = selectedInvoice.items
-      .filter(item => returnQuantities[item.productId] > 0)
-      .map(item => ({
+    const returnItems = (selectedInvoice.items || [])
+      .filter((item: any) => (returnQuantities[item.productId] || 0) > 0)
+      .map((item: any) => ({
         productId: item.productId,
         productName: item.productName,
         quantity: returnQuantities[item.productId],
         price: item.price,
-        total: item.price * returnQuantities[item.productId]
+        total: item.price * returnQuantities[item.productId],
       }));
 
     if (returnItems.length === 0) return;
@@ -127,304 +187,536 @@ export default function Returns() {
         customerName: selectedInvoice.customerName,
         total: total,
         reason: returnReason,
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split("T")[0],
         status: "completed",
-        items: returnItems
+        items: returnItems,
       });
 
       setIsRegisterOpen(false);
       setSelectedInvoice(null);
       setReturnReason("");
       setReturnQuantities({});
+
+      toast({
+        title: isFr ? "Retour enregistré" : "تم تسجيل المرتجع بنجاح",
+        description: isFr ? "Les articles ont été réintégrés au stock." : "تم استعادة الكميات إلى المخزون.",
+      });
     } catch (err) {
       console.error(err);
     }
   };
 
+  const printReturnVoucher = (r: any) => {
+    window.print();
+  };
+
   return (
-    <div className="space-y-6 flex flex-col h-full" dir="rtl">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-xl">
-              <Undo className="w-8 h-8 text-blue-600" />
-            </div>
-            {t("returns")}
-          </h1>
-          <p className="text-gray-500 mt-1">{t("comprehensiveSystem")}</p>
+    <div className="w-full px-3 sm:px-6 py-4 space-y-5" dir={isRTL ? "rtl" : "ltr"}>
+      {/* ──────────────── HEADER ──────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+            <RotateCcw className="w-6 h-6 stroke-[2.2]" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              {isFr ? "Gestion des retours de vente" : "إدارة مرتجعات المبيعات"}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+              {isFr
+                ? "Traitement, annulation et archivage des retours d'articles"
+                : "معالجة مرتجعات المنتجات، تسوية الفواتير والأرشفة التلقائية"}
+            </p>
+          </div>
         </div>
 
-        <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 gap-2 h-11 px-6 rounded-xl transition-all hover:scale-105 active:scale-95">
-              <Plus className="w-5 h-5" />
-              {t("addNewInvoice") || "تسجيل مرتجع جديد"}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[700px] gap-0 p-0 overflow-hidden rounded-2xl" dir="rtl">
-            <DialogHeader className="p-6 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-              <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                <PackageCheck className="w-6 h-6" />
-                {t("returns") || "تسجيل مرتجع"}
-              </DialogTitle>
-            </DialogHeader>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Link directly to Archive */}
+          <Button
+            onClick={() => navigate("/archive?tab=returns")}
+            variant="outline"
+            className="h-10 px-4 rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs gap-2 shadow-xs cursor-pointer"
+          >
+            <ArchiveIcon className="w-4 h-4 text-amber-600" />
+            <span>{isFr ? "Consulter l'archive" : "سجل الأرشيف"}</span>
+            {kpiStats.archivedCount > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black flex items-center justify-center">
+                {kpiStats.archivedCount}
+              </span>
+            )}
+          </Button>
 
-            <div className="p-6 space-y-6">
-              {!selectedInvoice ? (
-                <div className="space-y-4">
-                  <div className="relative">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <Input
-                      placeholder={t("searchInvoicesPlaceholder") || "ابحث عن فاتورة برقمها أو اسم العميل..."}
-                      value={invoiceSearchQuery}
-                      onChange={(e) => setInvoiceSearchQuery(e.target.value)}
-                      className="pr-10 h-12 text-lg border-gray-200 focus:ring-blue-500 rounded-xl"
-                    />
-                  </div>
+          {/* Dialog to register a new return */}
+          <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
+            <DialogTrigger asChild>
+              <Button className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-2 shadow-sm shadow-blue-500/25 transition-all cursor-pointer">
+                <Plus className="w-4 h-4" />
+                <span>{isFr ? "Nouveau retour" : "تسجيل مرتجع جديد"}</span>
+              </Button>
+            </DialogTrigger>
 
-                  {filteredInvoices.length > 0 && (
-                    <div className="border rounded-xl divide-y bg-gray-50/50">
-                      {filteredInvoices.map((inv) => (
-                        <button
-                          key={inv.id}
-                          onClick={() => handleSelectInvoice(inv)}
-                          className="w-full p-4 flex items-center justify-between hover:bg-blue-50 transition-colors group"
-                        >
-                          <div className="text-right">
-                            <p className="font-bold text-gray-900 group-hover:text-blue-700">#{inv.invoiceNumber}</p>
-                            <p className="text-sm text-gray-500">{inv.customerName}</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-bold text-blue-600">{formatCurrency(inv.total)}</span>
-                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 group-hover:translate-x-[-4px] transition-transform" />
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">{t("invoiceNumber")}</p>
-                      <p className="font-black text-blue-900 text-lg">#{selectedInvoice.invoiceNumber}</p>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">{t("customer")}</p>
-                      <p className="font-bold text-blue-900">{selectedInvoice.customerName}</p>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedInvoice(null)} className="text-blue-600 hover:bg-blue-100">
-                      {t("change") || "تغيير"}
-                    </Button>
-                  </div>
+            <DialogContent className="sm:max-w-[700px] gap-0 p-0 overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-100">
+              <DialogHeader className="p-5 bg-gradient-to-r from-[#0047cc] to-[#0052d9] text-white">
+                <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                  <PackageCheck className="w-5 h-5" />
+                  <span>{isFr ? "Enregistrer un retour de marchandise" : "تسجيل مرتجع مبيعات"}</span>
+                </DialogTitle>
+              </DialogHeader>
 
+              <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                {!selectedInvoice ? (
                   <div className="space-y-3">
-                    <p className="font-bold text-gray-700 flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      {t("invoiceItems") || "أجزاء الفاتورة المرتجعة"}
-                    </p>
-                    <ScrollArea className="h-[250px] rounded-xl border p-4 bg-white">
-                      <div className="space-y-4">
-                        {selectedInvoice.items.map((item) => (
-                          <div key={item.productId} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50/50">
-                            <div className="flex-1">
-                              <p className="font-bold text-gray-900">{item.productName}</p>
-                              <p className="text-sm text-gray-500">{formatCurrency(item.price)} × {item.quantity}</p>
+                    <div className="relative">
+                      <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rtl:right-3.5 rtl:left-auto ltr:left-3.5 ltr:right-auto pointer-events-none" />
+                      <Input
+                        placeholder={
+                          isFr
+                            ? "Rechercher une facture par N° ou nom du client..."
+                            : "ابحث عن فاتورة برقمها أو اسم العميل..."
+                        }
+                        value={invoiceSearchQuery}
+                        onChange={(e) => setInvoiceSearchQuery(e.target.value)}
+                        className="rtl:pr-10 rtl:pl-4 ltr:pl-10 ltr:pr-4 h-11 text-sm bg-slate-50 border-slate-200 rounded-xl"
+                      />
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-[300px] overflow-y-auto bg-slate-50/50">
+                      {filteredInvoices.length > 0 ? (
+                        filteredInvoices.map((inv) => (
+                          <button
+                            key={inv.id}
+                            onClick={() => handleSelectInvoice(inv)}
+                            className="w-full p-3.5 flex items-center justify-between hover:bg-blue-50/80 transition-colors cursor-pointer text-start"
+                          >
+                            <div>
+                              <p className="font-bold text-slate-900 text-sm">#{inv.invoiceNumber}</p>
+                              <p className="text-xs text-slate-500">{inv.customerName}</p>
                             </div>
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2 bg-white p-1 rounded-lg border shadow-sm">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-blue-600"
-                                  onClick={() => handleQuantityChange(item.productId, (returnQuantities[item.productId] || 0) - 1, item.quantity)}
-                                >-</Button>
-                                <Input
-                                  type="number"
-                                  className="w-16 h-8 text-center border-none focus:ring-0 font-bold"
-                                  value={returnQuantities[item.productId] || 0}
-                                  onChange={(e) => handleQuantityChange(item.productId, parseInt(e.target.value) || 0, item.quantity)}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-blue-600"
-                                  onClick={() => handleQuantityChange(item.productId, (returnQuantities[item.productId] || 0) + 1, item.quantity)}
-                                >+</Button>
+                            <div className="flex items-center gap-2.5">
+                              <span className="font-black text-blue-600 text-sm">
+                                {formatCurrency(inv.total)}
+                              </span>
+                              <ArrowRight className="w-4 h-4 text-slate-400 rtl:rotate-180" />
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center text-slate-400 text-xs">
+                          {isFr ? "Aucune facture trouvée" : "لا توجد فواتير مطابقة للبحث"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Selected invoice summary banner */}
+                    <div className="bg-blue-50/80 p-3.5 rounded-xl border border-blue-100 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-blue-600 font-bold uppercase block">
+                          {isFr ? "Facture source" : "الفاتورة الأصلية"}
+                        </span>
+                        <span className="font-black text-blue-950 text-sm">#{selectedInvoice.invoiceNumber}</span>
+                        <span className="text-xs text-slate-500 block">{selectedInvoice.customerName}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedInvoice(null)}
+                        className="text-blue-600 hover:bg-blue-100 text-xs font-bold"
+                      >
+                        {isFr ? "Changer" : "تغيير"}
+                      </Button>
+                    </div>
+
+                    {/* Invoice items to return */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-blue-600" />
+                        <span>{isFr ? "Sélectionner les quantités à retourner" : "حدد الكميات المرتجعة لكل منتج"}</span>
+                      </label>
+
+                      <div className="space-y-2.5 max-h-[220px] overflow-y-auto">
+                        {(selectedInvoice.items || []).map((item: any) => (
+                          <div
+                            key={item.productId}
+                            className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white shadow-xs"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-slate-900 text-xs truncate">{item.productName}</p>
+                              <p className="text-[11px] text-slate-500">
+                                {formatCurrency(item.price)} × {item.quantity}{" "}
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  ({isFr ? "Acheté" : "تم شراؤه"})
+                                </span>
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                                <button
+                                  type="button"
+                                  className="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-black text-sm flex items-center justify-center border border-slate-200 cursor-pointer"
+                                  onClick={() =>
+                                    handleQuantityChange(
+                                      item.productId,
+                                      (returnQuantities[item.productId] || 0) - 1,
+                                      item.quantity
+                                    )
+                                  }
+                                >
+                                  -
+                                </button>
+                                <span className="w-10 text-center font-black text-sm text-blue-600">
+                                  {returnQuantities[item.productId] || 0}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="w-7 h-7 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-black text-sm flex items-center justify-center border border-slate-200 cursor-pointer"
+                                  onClick={() =>
+                                    handleQuantityChange(
+                                      item.productId,
+                                      (returnQuantities[item.productId] || 0) + 1,
+                                      item.quantity
+                                    )
+                                  }
+                                >
+                                  +
+                                </button>
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
-                    </ScrollArea>
+                    </div>
+
+                    {/* Return Reason */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">
+                        {isFr ? "Motif du retour (optionnel)" : "سبب الإرجاع (اختياري)"}
+                      </label>
+                      <Input
+                        placeholder={
+                          isFr
+                            ? "Ex: Produit défectueux, changement d'avis..."
+                            : "مثال: عيب مصنعي، منتج تالف، تبديل مقاس..."
+                        }
+                        value={returnReason}
+                        onChange={(e) => setReturnReason(e.target.value)}
+                        className="h-10 text-xs bg-slate-50 border-slate-200 rounded-xl"
+                      />
+                    </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700">{t("reason") || "سبب الارتجاع"}</label>
-                    <Input
-                      placeholder={t("notes") || "مثلاً: منتج تالف، تغيير رأي..."}
-                      value={returnReason}
-                      onChange={(e) => setReturnReason(e.target.value)}
-                      className="h-12 border-gray-200 rounded-xl"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {selectedInvoice && (
-              <DialogFooter className="p-6 bg-gray-50 border-t flex items-center justify-between sm:justify-between w-full">
-                <div className="text-right">
-                  <p className="text-sm text-gray-500 font-medium">{t("total") || "إجمالي المرتجع"}</p>
-                  <p className="text-2xl font-black text-blue-700">{formatCurrency(calculateReturnTotal())}</p>
-                </div>
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setIsRegisterOpen(false)} className="rounded-xl px-6 border-gray-300">
-                    {t("cancel") || "إلغاء"}
-                  </Button>
-                  <Button
-                    onClick={handleConfirmReturn}
-                    disabled={calculateReturnTotal() <= 0}
-                    className="bg-green-600 hover:bg-green-700 text-white rounded-xl px-8 shadow-lg shadow-green-100"
-                  >
-                    {t("confirm") || "تأكيد المرتجع"}
-                  </Button>
-                </div>
-              </DialogFooter>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Search Bar */}
-      <Card className="border-none shadow-md bg-white/50 backdrop-blur-sm overflow-hidden rounded-2xl">
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <Input
-              placeholder={t("searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pr-10 h-11 bg-white border-gray-200 focus:ring-blue-500 rounded-xl"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Summary Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-xl border-none rounded-2xl overflow-hidden group">
-          <CardContent className="p-6 relative">
-            <div className="flex items-center justify-between relative z-10">
-              <div>
-                <p className="text-blue-100 text-sm font-bold uppercase tracking-wider opacity-80">{t("returns")}</p>
-                <h3 className="text-4xl font-black mt-1">{filteredReturns.length}</h3>
-              </div>
-              <div className="p-4 bg-white/20 rounded-2xl backdrop-blur-lg group-hover:scale-110 transition-transform">
-                <Undo className="w-8 h-8 text-white" />
-              </div>
-            </div>
-            {/* Decorative background shape */}
-            <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Returns Table */}
-      <Card className="shadow-xl border-none overflow-hidden flex-1 rounded-2xl bg-white">
-        <CardHeader className="bg-gray-50/50 border-b border-gray-100 p-6">
-          <CardTitle className="text-xl font-bold flex items-center gap-2 text-gray-800">
-            <FileText className="w-6 h-6 text-blue-500" />
-            {t("returns")}
-            <Badge variant="secondary" className="mr-auto bg-blue-100 text-blue-700 border-none font-bold">
-              {filteredReturns.length}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
-            <Table className="block md:table">
-              <TableHeader className="hidden md:table-header-group">
-                <TableRow className="bg-gray-50/30">
-                  <TableHead className="text-right py-5 text-gray-600 font-bold"><Hash className="w-4 h-4 inline ml-1 opacity-70" /> {t("code")}</TableHead>
-                  <TableHead className="text-right py-5 text-gray-600 font-bold"><User className="w-4 h-4 inline ml-1 opacity-70" /> {t("customerName")}</TableHead>
-                  <TableHead className="text-right py-5 text-gray-600 font-bold"><Calendar className="w-4 h-4 inline ml-1 opacity-70" /> {t("date")}</TableHead>
-                  <TableHead className="text-right py-5 text-gray-600 font-bold">{t("total")}</TableHead>
-                  <TableHead className="text-right py-5 text-gray-600 font-bold">{t("status")}</TableHead>
-                  <TableHead className="text-center py-5 text-gray-600 font-bold">{t("actions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="block md:table-row-group">
-                {loading && filteredReturns.length === 0 ? (
-                  <TableRow className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
-                    <TableCell colSpan={6} className="text-center py-24 block md:table-cell">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-gray-500 font-bold text-lg">{t("loading")}</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : filteredReturns.length === 0 ? (
-                  <TableRow className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
-                    <TableCell colSpan={6} className="text-center py-24 block md:table-cell">
-                      <div className="flex flex-col items-center gap-4 opacity-40">
-                        <AlertCircle className="w-20 h-20 text-gray-300" />
-                        <span className="text-gray-500 font-bold text-xl">{t("noData")}</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredReturns.map((item) => (
-                    <TableRow key={item.id} className="mobile-card-row hover:bg-blue-50/30 transition-colors border-b border-gray-50 group">
-                      <TableCell data-label={t("code")} className="font-mono text-blue-600 font-black text-base py-5 md:py-5">#{item.returnNumber}</TableCell>
-                      <TableCell data-label={t("customerName")} className="font-bold text-gray-800 py-5 md:py-5">{item.customerName}</TableCell>
-                      <TableCell data-label={t("date")} className="text-gray-500 font-medium py-5 md:py-5">{formatDate(item.date)}</TableCell>
-                      <TableCell data-label={t("total")} className="font-black text-emerald-600 text-lg py-5 md:py-5">{formatCurrency(item.total)}</TableCell>
-                      <TableCell data-label={t("status")} className="py-5 md:py-5">
-                        <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 font-bold px-3 py-1 rounded-lg">
-                          {t("completed") || "مكتمل"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell data-label={t("actions")} className="text-center py-5 md:py-5">
-                        <div className="flex items-center justify-end md:justify-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteId(item.id)}
-                            className="text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all h-10 w-10"
-                          >
-                            <Trash className="w-5 h-5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
                 )}
-              </TableBody>
-            </Table>
+              </div>
+
+              {selectedInvoice && (
+                <DialogFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between w-full">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-medium block">
+                      {isFr ? "Montant à rembourser" : "إجمالي المبلغ المسترد"}
+                    </span>
+                    <span className="text-xl font-black text-blue-600">
+                      {formatCurrency(calculateReturnTotal())}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsRegisterOpen(false)}
+                      className="rounded-xl px-4 text-xs font-bold"
+                    >
+                      {t("cancel") || "إلغاء"}
+                    </Button>
+                    <Button
+                      onClick={handleConfirmReturn}
+                      disabled={calculateReturnTotal() <= 0}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 text-xs font-bold shadow-xs cursor-pointer"
+                    >
+                      {isFr ? "Confirmer le retour" : "تأكيد واسترجاع للمخزن"}
+                    </Button>
+                  </div>
+                </DialogFooter>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* ──────────────── KPI SUMMARY CARDS ──────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Card 1: Total Returns Count */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">
+              {isFr ? "Total des retours" : "إجمالي المرتجعات"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Undo className="w-5 h-5" />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <p className="text-2xl font-black text-slate-900 tracking-tight">{kpiStats.totalCount}</p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "Bons de retour émis" : "عمليات إرجاع مسجلة"}
+          </span>
+        </div>
+
+        {/* Card 2: Total Return Value */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">
+              {isFr ? "Valeur remboursée" : "قيمة المرتجعات"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <ShoppingBag className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-rose-600 tracking-tight">
+            {formatCurrency(kpiStats.totalValue)}
+          </p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "Montant total restitué" : "إجمالي المبالغ المستردة"}
+          </span>
+        </div>
+
+        {/* Card 3: Total Returned Items */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">
+              {isFr ? "Unités retournées" : "القطع المرتجعة"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Layers className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-slate-900 tracking-tight">{kpiStats.totalItems}</p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "Articles réintégrés au stock" : "تمت إعادتها للمستودع"}
+          </span>
+        </div>
+
+        {/* Card 4: Archived Returns */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">
+              {isFr ? "Retours archivés" : "المرتجعات المؤرشفة"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <ArchiveIcon className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-indigo-600 tracking-tight">{kpiStats.archivedCount}</p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "Classés dans l'archive" : "محفوظة في الأرشيف المركزي"}
+          </span>
+        </div>
+      </div>
+
+      {/* ──────────────── SEARCH & FILTER BAR ──────────────── */}
+      <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rtl:right-3.5 rtl:left-auto ltr:left-3.5 ltr:right-auto pointer-events-none" />
+          <Input
+            placeholder={
+              isFr ? "Rechercher par N° retour, client..." : "البحث برقم المرتجع، العميل أو الفاتورة..."
+            }
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="rtl:pr-10 rtl:pl-4 ltr:pl-10 ltr:pr-4 h-10 text-xs bg-slate-50 border-slate-200 rounded-xl"
+          />
+        </div>
+
+        {/* Tabs: All / Active / Archived */}
+        <div className="flex items-center gap-1.5 w-full sm:w-auto bg-slate-100/80 p-1 rounded-xl text-xs">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              statusFilter === "all" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {isFr ? "Tous" : "الكل"} ({filteredReturns.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("active")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              statusFilter === "active" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {isFr ? "Actifs" : "النشطة"}
+          </button>
+          <button
+            onClick={() => setStatusFilter("archived")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              statusFilter === "archived" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {isFr ? "Archivés" : "المؤرشفة"}
+          </button>
+        </div>
+      </div>
+
+      {/* ──────────────── RETURNS DATA TABLE ──────────────── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-right border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-600 font-bold uppercase tracking-wider">
+                <th className="py-3.5 px-4">{isFr ? "N° Retour" : "رقم المرتجع"}</th>
+                <th className="py-3.5 px-4">{isFr ? "N° Facture" : "الفاتورة"}</th>
+                <th className="py-3.5 px-4">{isFr ? "Client" : "العميل"}</th>
+                <th className="py-3.5 px-4">{isFr ? "Articles retournés" : "المنتجات المرتجعة"}</th>
+                <th className="py-3.5 px-4">{isFr ? "Date" : "التاريخ"}</th>
+                <th className="py-3.5 px-4 text-center">{isFr ? "Montant" : "المبلغ المسترد"}</th>
+                <th className="py-3.5 px-4 text-center">{isFr ? "Statut" : "الحالة"}</th>
+                <th className="py-3.5 px-4 text-center">{isFr ? "Actions" : "الإجراءات"}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {displayedReturns.length > 0 ? (
+                displayedReturns.map((item) => {
+                  const isArchived = item.status === "archived";
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-50/60 transition-colors group">
+                      {/* Code */}
+                      <td className="py-3.5 px-4 font-mono font-bold text-blue-600">
+                        #{item.returnNumber}
+                      </td>
+
+                      {/* Invoice Ref */}
+                      <td className="py-3.5 px-4 font-mono text-slate-600 font-medium">
+                        {item.invoiceNumber ? (
+                          <span className="bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
+                            #{item.invoiceNumber}
+                          </span>
+                        ) : (
+                          "---"
+                        )}
+                      </td>
+
+                      {/* Customer */}
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {item.customerName || (isFr ? "Client comptoir" : "عميل نقدي")}
+                      </td>
+
+                      {/* Items */}
+                      <td className="py-3.5 px-4 text-slate-600">
+                        <div className="flex flex-col gap-0.5 max-w-xs truncate">
+                          {(item.items || []).map((it: any, i: number) => (
+                            <span key={i} className="truncate">
+                              • {it.productName} ({it.quantity}x)
+                            </span>
+                          ))}
+                          {item.reason && (
+                            <span className="text-[10px] text-amber-600 font-medium">
+                              {isFr ? "Motif:" : "السبب:"} {item.reason}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Date */}
+                      <td className="py-3.5 px-4 text-slate-500 font-medium">
+                        {formatShortDate(item.date || item.createdAt)}
+                      </td>
+
+                      {/* Total */}
+                      <td className="py-3.5 px-4 text-center font-black text-rose-600 font-sans text-sm">
+                        {formatCurrency(item.total)}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3.5 px-4 text-center">
+                        {isArchived ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <ArchiveIcon size={12} />
+                            <span>{isFr ? "Archivé" : "مؤرشف"}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 size={12} />
+                            <span>{isFr ? "Complété" : "مكتمل"}</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* Print voucher */}
+                          <button
+                            onClick={() => printReturnVoucher(item)}
+                            className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition-colors cursor-pointer"
+                            title={isFr ? "Imprimer le reçu" : "طباعة الإيصال"}
+                          >
+                            <Printer size={15} />
+                          </button>
+
+                          {/* Archive toggle */}
+                          <button
+                            onClick={() => handleArchiveReturn(item.id)}
+                            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+                            title={
+                              isArchived
+                                ? isFr ? "Désarchiver" : "إلغاء الأرشفة"
+                                : isFr ? "Archiver" : "أرشفة إلى سجل الأرشيف"
+                            }
+                          >
+                            <ArchiveIcon size={15} />
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            onClick={() => setDeleteId(item.id)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title={t("delete")}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <Undo className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                    <p className="font-bold text-slate-600 text-sm">
+                      {isFr ? "Aucun retour enregistré" : "لا توجد عمليات إرجاع مسجلة"}
+                    </p>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      {isFr
+                        ? "Cliquez sur 'Nouveau retour' pour enregistrer un retour d'article."
+                        : "انقر على زر 'تسجيل مرتجع جديد' لإضافة أول عملية إرجاع."}
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent dir="rtl" className="rounded-2xl">
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-bold text-gray-900">{t("deleteConfirmation")}</AlertDialogTitle>
-            <AlertDialogDescription className="text-base text-gray-600">
+            <AlertDialogTitle className="text-lg font-bold text-slate-900">
+              {t("deleteConfirmation")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-slate-500">
               {t("cannotUndo")}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-3 mt-6">
+          <AlertDialogFooter className="flex gap-2">
+            <AlertDialogCancel className="rounded-xl text-xs font-bold">
+              {t("cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700 text-white rounded-xl h-11 px-8"
+              className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold"
             >
               {t("confirm")}
             </AlertDialogAction>
-            <AlertDialogCancel className="rounded-xl h-11 px-6">{t("cancel")}</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

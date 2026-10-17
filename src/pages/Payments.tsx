@@ -1,489 +1,420 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { formatCurrency } from "@/utils/formatters";
-import { loadStoreData } from "@/utils/localStorage";
+import { formatCurrency, formatShortDate } from "@/utils/formatters";
+import { loadStoreData, saveStoreData } from "@/utils/localStorage";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import type { Invoice } from "@/types";
 import {
   CreditCard,
   Search,
   Filter,
   Eye,
-  Bell,
   Plus,
   Clock,
-  CheckCircle,
+  CheckCircle2,
   AlertCircle,
   Calendar,
   User,
-  DollarSign
+  DollarSign,
+  Archive as ArchiveIcon,
+  Printer,
+  Wallet,
+  Building2,
+  ArrowUpRight,
+  TrendingUp,
 } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
 
 export default function Payments() {
-  const { locale } = useLocale();
-  const isFr = locale === 'fr';
+  const { locale, isRTL } = useLocale();
+  const isFr = locale === "fr";
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [methodFilter, setMethodFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<string>("all");
-  const { toast } = useToast();
 
-  // Load invoices data
   useEffect(() => {
     const storeData = loadStoreData();
     setInvoices(storeData.invoices || []);
   }, []);
 
-  // Filter invoices based on search and filters
-  const getFilteredInvoices = (status: string) => {
-    return invoices.filter(invoice => {
+  // Compute dynamic KPIs
+  const kpis = useMemo(() => {
+    const paidInvoices = invoices.filter((i) => i.status === "paid");
+    const totalCollected = paidInvoices.reduce((sum, i) => sum + Number(i.total || 0), 0);
+
+    const bankilyTotal = paidInvoices
+      .filter((i) => (i.paymentMethod || "").toLowerCase().includes("bankily"))
+      .reduce((sum, i) => sum + Number(i.total || 0), 0);
+
+    const masriviTotal = paidInvoices
+      .filter(
+        (i) =>
+          (i.paymentMethod || "").toLowerCase().includes("masrivi") ||
+          (i.paymentMethod || "").toLowerCase().includes("sedad")
+      )
+      .reduce((sum, i) => sum + Number(i.total || 0), 0);
+
+    const cashTotal = paidInvoices
+      .filter(
+        (i) =>
+          (i.paymentMethod || "").toLowerCase().includes("cash") ||
+          (i.paymentMethod || "").toLowerCase().includes("espèces") ||
+          (i.paymentMethod || "").toLowerCase().includes("نقدا") ||
+          (!i.paymentMethod && i.status === "paid")
+      )
+      .reduce((sum, i) => sum + Number(i.total || 0), 0);
+
+    const pendingTotal = invoices
+      .filter((i) => i.status === "pending")
+      .reduce((sum, i) => sum + Number(i.total || 0), 0);
+
+    return {
+      totalCollected,
+      bankilyTotal,
+      masriviTotal,
+      cashTotal,
+      pendingTotal,
+      paidCount: paidInvoices.length,
+    };
+  }, [invoices]);
+
+  // Filtered transactions
+  const displayedPayments = useMemo(() => {
+    return invoices.filter((inv) => {
+      const cust = (inv.customerName || "").toLowerCase();
+      const num = (inv.invoiceNumber || "").toLowerCase();
       const matchesSearch =
-        invoice.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase());
+        cust.includes(searchTerm.toLowerCase()) || num.includes(searchTerm.toLowerCase());
 
-      const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
-      const matchesPaymentMethod = paymentMethodFilter === "all" || invoice.paymentMethod === paymentMethodFilter;
-      const matchesInvoiceStatus = status === "all" || invoice.status === status;
+      const method = (inv.paymentMethod || "cash").toLowerCase();
+      const matchesMethod =
+        methodFilter === "all" ||
+        (methodFilter === "bankily" && method.includes("bankily")) ||
+        (methodFilter === "masrivi" && (method.includes("masrivi") || method.includes("sedad"))) ||
+        (methodFilter === "cash" && (method.includes("cash") || method.includes("espèces") || method.includes("نقدا")));
 
-      return matchesSearch && matchesStatus && matchesPaymentMethod && matchesInvoiceStatus;
+      const matchesStatus = statusFilter === "all" || inv.status === statusFilter;
+
+      return matchesSearch && matchesMethod && matchesStatus;
     });
-  };
+  }, [invoices, searchTerm, methodFilter, statusFilter]);
 
-  // Get paid invoices
-  const paidInvoices = getFilteredInvoices("paid");
+  const handleArchiveInvoice = (id: string) => {
+    const store = loadStoreData();
+    const updated = (store.invoices || []).map((inv) =>
+      inv.id === id ? { ...inv, status: ("archived" as any), updatedAt: new Date().toISOString() } : inv
+    );
+    store.invoices = updated;
+    saveStoreData(store);
+    setInvoices(updated);
 
-  // Get unpaid invoices
-  const unpaidInvoices = getFilteredInvoices("pending");
-
-  // Get pending invoices (waiting for payment)
-  const pendingInvoices = invoices.filter(invoice =>
-    invoice.status === "pending" &&
-    (invoice.notes?.includes("دفع متأخر") ||
-     invoice.notes?.includes("جدول زمني") ||
-     invoice.notes?.includes("échéancier") ||
-     invoice.notes?.includes("retard"))
-  );
-
-  // Calculate payment percentage (mock calculation)
-  const getPaymentPercentage = (invoice: Invoice) => {
-    return Math.floor(Math.random() * 100);
-  };
-
-  // Get next payment date (mock)
-  const getNextPaymentDate = (invoice: Invoice) => {
-    const date = new Date();
-    date.setDate(date.getDate() + Math.floor(Math.random() * 30) + 1);
-    return date.toLocaleDateString(isFr ? 'fr-FR' : 'ar-MR');
-  };
-
-  // Send reminder function
-  const sendReminder = (invoice: Invoice) => {
     toast({
-      title: isFr ? "Rappel envoyé" : "تم إرسال التذكير",
-      description: isFr 
-        ? `Rappel de paiement envoyé au client ${invoice.customerName}`
-        : `تم إرسال تذكير دفع للعميل ${invoice.customerName}`,
+      title: isFr ? "Paiement archivé" : "تمت أرشفة الدفعة",
+      description: isFr
+        ? "La transaction a été classée dans l'archive financière."
+        : "تم حفظ الفاتورة والدفعة في الأرشيف المركزي.",
     });
   };
 
-  // Get unique payment methods
-  const paymentMethods = [...new Set(invoices.map(invoice => invoice.paymentMethod))].filter(Boolean);
+  const getMethodBadge = (method?: string) => {
+    const m = (method || "cash").toLowerCase();
+    if (m.includes("bankily")) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          Bankily
+        </span>
+      );
+    }
+    if (m.includes("masrivi") || m.includes("sedad")) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          {m.includes("sedad") ? "Sedad" : "Masrivi"}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+        {isFr ? "Espèces" : "نقداً"}
+      </span>
+    );
+  };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <CreditCard className="w-8 h-8 text-blue-600" />
-          {isFr ? "Gestion des paiements" : "إدارة المدفوعات"}
-        </h1>
-        <Link to="/create-invoice">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Plus className="w-4 h-4 mr-2" />
-            {isFr ? "Nouvelle facture" : "إضافة فاتورة جديدة"}
+    <div className="w-full px-3 sm:px-6 py-4 space-y-5" dir={isRTL ? "rtl" : "ltr"}>
+      {/* ──────────────── HEADER ──────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
+            <CreditCard className="w-6 h-6 stroke-[2.2]" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              {isFr ? "Journal des paiements & encaissements" : "سجل المدفوعات والتحصيلات"}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+              {isFr
+                ? "Transactions financières, modes de règlement et archivage des flux"
+                : "تتبع التدفقات المالية، وسائل الدفع وأرشفة السجلات المحصلة"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Link to Archive */}
+          <Button
+            onClick={() => navigate("/archive?tab=payments")}
+            variant="outline"
+            className="h-10 px-4 rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs gap-2 shadow-xs cursor-pointer"
+          >
+            <ArchiveIcon className="w-4 h-4 text-amber-600" />
+            <span>{isFr ? "Archives des paiements" : "أرشيف المدفوعات"}</span>
           </Button>
-        </Link>
+
+          {/* New Invoice Button */}
+          <Button
+            onClick={() => navigate("/create-invoice")}
+            className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-2 shadow-sm shadow-blue-500/25 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isFr ? "Nouvelle facture" : "إضافة فاتورة جديدة"}</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Search and Filters */}
-      <Card className="shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            {isFr ? "Recherche et filtres" : "البحث والفلترة"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="relative">
-              <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder={isFr ? "Rechercher dans les factures..." : "البحث في الفواتير..."}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pr-10"
-              />
+      {/* ──────────────── KPI SUMMARY CARDS ──────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Total Collections */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">
+              {isFr ? "Total des encaissements" : "إجمالي المقبوضات"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5" />
             </div>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={isFr ? "Filtrer par statut" : "فلترة حسب الحالة"} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{isFr ? "Tous les statuts" : "جميع الحالات"}</SelectItem>
-                <SelectItem value="paid">{isFr ? "Payée" : "مدفوعة"}</SelectItem>
-                <SelectItem value="pending">{isFr ? "Non payée" : "غير مدفوعة"}</SelectItem>
-                <SelectItem value="cancelled">{isFr ? "Annulée" : "ملغية"}</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder={isFr ? "Mode de paiement" : "طريقة الدفع"} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{isFr ? "Tous les modes" : "جميع طرق الدفع"}</SelectItem>
-                {paymentMethods.map((method) => (
-                  <SelectItem key={method} value={method}>
-                    {method}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full"
-            />
           </div>
-        </CardContent>
-      </Card>
+          <p className="text-2xl font-black text-slate-900 tracking-tight">
+            {formatCurrency(kpis.totalCollected)}
+          </p>
+          <span className="text-[11px] text-emerald-600 font-bold mt-1 block">
+            {kpis.paidCount} {isFr ? "transactions réussies" : "عملية دفع مسددة"}
+          </span>
+        </div>
 
-      {/* Tabs Section */}
-      <Tabs defaultValue="paid" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-blue-50">
-          <TabsTrigger value="paid" className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" />
-            {isFr ? "Factures payées" : "الفواتير المسددة"} ({paidInvoices.length})
-          </TabsTrigger>
-          <TabsTrigger value="unpaid" className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            {isFr ? "Factures impayées" : "الفواتير غير المسددة"} ({unpaidInvoices.length})
-          </TabsTrigger>
-          <TabsTrigger value="pending" className="flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            {isFr ? "En attente" : "قائمة الانتظار"} ({pendingInvoices.length})
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Paid Invoices Tab */}
-        <TabsContent value="paid" className="mt-6">
-          <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
-              <CardTitle className="flex items-center gap-2 text-green-700">
-                <CheckCircle className="w-5 h-5" />
-                {isFr ? "Factures payées" : "الفواتير المسددة"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
-                <Table className="block md:table">
-                  <TableHeader className="hidden md:table-header-group">
-                    <TableRow className="bg-gray-100">
-                      <TableHead className="text-right font-semibold">{isFr ? "N° Facture" : "رقم الفاتورة"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Nom du client" : "اسم العميل"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Montant" : "المبلغ"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Mode de paiement" : "طريقة الدفع"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Date" : "التاريخ"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Statut" : "الحالة"}</TableHead>
-                      <TableHead className="text-center font-semibold">{isFr ? "Actions" : "الإجراءات"}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="block md:table-row-group">
-                    {paidInvoices.length > 0 ? (
-                      paidInvoices.map((invoice) => (
-                        <TableRow key={invoice.id} className="hover:bg-gray-50 mobile-card-row">
-                          <TableCell data-label={isFr ? "N° Facture" : "رقم الفاتورة"} className="font-medium">
-                            <Badge variant="outline" className="font-mono">
-                              {invoice.invoiceNumber}
-                            </Badge>
-                          </TableCell>
-                          <TableCell data-label={isFr ? "Nom du client" : "اسم العميل"}>
-                            <div className="flex items-center gap-2 justify-end md:justify-start">
-                              <User className="w-4 h-4 text-gray-500" />
-                              {invoice.customerName}
-                            </div>
-                          </TableCell>
-                          <TableCell data-label={isFr ? "Montant" : "المبلغ"} className="font-bold text-green-600">
-                            {formatCurrency(invoice.total)}
-                          </TableCell>
-                          <TableCell data-label={isFr ? "Mode de paiement" : "طريقة الدفع"}>
-                            <div className="flex items-center gap-2 justify-end md:justify-start">
-                              <CreditCard className="w-4 h-4" />
-                              {invoice.paymentMethod}
-                            </div>
-                          </TableCell>
-                          <TableCell data-label={isFr ? "Date" : "التاريخ"}>
-                            <div className="flex items-center gap-2 justify-end md:justify-start">
-                              <Calendar className="w-4 h-4 text-gray-500" />
-                              {invoice.date}
-                            </div>
-                          </TableCell>
-                          <TableCell data-label={isFr ? "Statut" : "الحالة"}>
-                            <Badge className="bg-green-100 text-green-800">
-                              {invoice.status === "paid" ? (isFr ? "Payée" : "مسددة") : invoice.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell data-label={isFr ? "Actions" : "الإجراءات"} className="text-center">
-                            <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700 h-10 px-4">
-                              <Eye className="w-4 h-4 mr-1" />
-                              {isFr ? "Voir détails" : "عرض التفاصيل"}
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500 block md:table-cell">
-                          {isFr ? "Aucune facture payée" : "لا توجد فواتير مسددة"}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Unpaid Invoices Tab */}
-        <TabsContent value="unpaid" className="mt-6">
-          <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-red-50 to-pink-50">
-              <CardTitle className="flex items-center gap-2 text-red-700">
-                <AlertCircle className="w-5 h-5" />
-                {isFr ? "Factures impayées" : "الفواتير غير المسددة"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-100">
-                      <TableHead className="text-right font-semibold">{isFr ? "N° Facture" : "رقم الفاتورة"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Nom du client" : "اسم العميل"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Montant dû" : "المبلغ المستحق"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Taux de règlement" : "نسبة التسديد"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Date d'échéance" : "تاريخ الاستحقاق"}</TableHead>
-                      <TableHead className="text-center font-semibold">{isFr ? "Actions" : "الإجراءات"}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {unpaidInvoices.length > 0 ? (
-                      unpaidInvoices.map((invoice) => {
-                        const paymentPercentage = getPaymentPercentage(invoice);
-                        return (
-                          <TableRow key={invoice.id} className="hover:bg-gray-50">
-                            <TableCell className="font-medium">
-                              <Badge variant="outline" className="font-mono">
-                                {invoice.invoiceNumber}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="flex items-center gap-2">
-                              <User className="w-4 h-4 text-gray-500" />
-                              {invoice.customerName}
-                            </TableCell>
-                            <TableCell className="font-bold text-red-600">
-                              {formatCurrency(invoice.total)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Progress value={paymentPercentage} className="h-2 w-full" />
-                                <span className="text-sm font-medium">{paymentPercentage}%</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-gray-500" />
-                              {invoice.date}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-orange-600 hover:text-orange-700"
-                                onClick={() => sendReminder(invoice)}
-                              >
-                                <Bell className="w-4 h-4 mr-1" />
-                                {isFr ? "Envoyer rappel" : "إرسال تذكير"}
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                          {isFr ? "Aucune facture impayée" : "لا توجد فواتير غير مسددة"}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Pending Invoices Tab */}
-        <TabsContent value="pending" className="mt-6">
-          <Card className="shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50">
-              <CardTitle className="flex items-center gap-2 text-yellow-700">
-                <Clock className="w-5 h-5" />
-                {isFr ? "Liste d'attente pour paiement" : "قائمة الانتظار للدفع"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-100">
-                      <TableHead className="text-right font-semibold">{isFr ? "N° Facture" : "رقم الفاتورة"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Client" : "العميل"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Montant total" : "المبلغ الكلي"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Premier acompte" : "الدفعة الأولى"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Restant" : "المتبقي"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Prochaine échéance" : "تاريخ السداد القادم"}</TableHead>
-                      <TableHead className="text-right font-semibold">{isFr ? "Remarques" : "ملاحظات"}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingInvoices.length > 0 ? (
-                      pendingInvoices.map((invoice) => {
-                        const firstPayment = invoice.total * 0.3; // 30% as first payment
-                        const remaining = invoice.total - firstPayment;
-                        const nextPaymentDate = getNextPaymentDate(invoice);
-
-                        return (
-                          <TableRow key={invoice.id} className="hover:bg-gray-50">
-                            <TableCell className="font-medium">
-                              <Badge variant="outline" className="font-mono">
-                                {invoice.invoiceNumber}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="flex items-center gap-2">
-                              <User className="w-4 h-4 text-gray-500" />
-                              {invoice.customerName}
-                            </TableCell>
-                            <TableCell className="font-bold">
-                              {formatCurrency(invoice.total)}
-                            </TableCell>
-                            <TableCell className="text-green-600 font-medium">
-                              {formatCurrency(firstPayment)}
-                            </TableCell>
-                            <TableCell className="text-red-600 font-medium">
-                              {formatCurrency(remaining)}
-                            </TableCell>
-                            <TableCell className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-gray-500" />
-                              {nextPaymentDate}
-                            </TableCell>
-                            <TableCell className="text-sm text-gray-600">
-                              {invoice.notes || (isFr ? "Échéancier de paiement" : "جدول زمني للدفع")}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                          {isFr ? "Aucune facture en attente" : "لا توجد فواتير في قائمة الانتظار"}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-r from-green-50 to-emerald-100 border-green-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-600 mb-1">
-                  {isFr ? "Total des ventes réglées" : "إجمالي المبيعات المسددة"}
-                </p>
-                <p className="text-2xl font-bold text-green-700">
-                  {formatCurrency(paidInvoices.reduce((sum, inv) => sum + inv.total, 0))}
-                </p>
-              </div>
-              <div className="bg-green-200 p-3 rounded-full">
-                <CheckCircle className="w-6 h-6 text-green-700" />
-              </div>
+        {/* Bankily */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">Bankily</span>
+            <div className="w-9 h-9 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+              <Wallet className="w-5 h-5" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-black text-emerald-600 tracking-tight">
+            {formatCurrency(kpis.bankilyTotal)}
+          </p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "Paiements mobiles" : "متحصلات محفظة بنكيلي"}
+          </span>
+        </div>
 
-        <Card className="bg-gradient-to-r from-red-50 to-pink-100 border-red-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-red-600 mb-1">
-                  {isFr ? "Montants dus" : "المبالغ المستحقة"}
-                </p>
-                <p className="text-2xl font-bold text-red-700">
-                  {formatCurrency(unpaidInvoices.reduce((sum, inv) => sum + inv.total, 0))}
-                </p>
-              </div>
-              <div className="bg-red-200 p-3 rounded-full">
-                <AlertCircle className="w-6 h-6 text-red-700" />
-              </div>
+        {/* Masrivi / Sedad */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">Masrivi & Sedad</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <CreditCard className="w-5 h-5" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-black text-amber-600 tracking-tight">
+            {formatCurrency(kpis.masriviTotal)}
+          </p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "Transferts bancaires" : "متحصلات مصرفي والسداد"}
+          </span>
+        </div>
 
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-100 border-blue-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-600 mb-1">
-                  {isFr ? "Total des factures" : "إجمالي الفواتير"}
-                </p>
-                <p className="text-2xl font-bold text-blue-700">
-                  {formatCurrency(invoices.reduce((sum, inv) => sum + inv.total, 0))}
-                </p>
-              </div>
-              <div className="bg-blue-200 p-3 rounded-full">
-                <DollarSign className="w-6 h-6 text-blue-700" />
-              </div>
+        {/* Cash / Espèces */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">
+              {isFr ? "Espèces (Caisse)" : "المقبوضات النقدية"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <DollarSign className="w-5 h-5" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-black text-blue-600 tracking-tight">
+            {formatCurrency(kpis.cashTotal)}
+          </p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "Espèces en magasin" : "السيولة النقدية بالصندوق"}
+          </span>
+        </div>
+      </div>
+
+      {/* ──────────────── SEARCH & FILTER BAR ──────────────── */}
+      <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rtl:right-3.5 rtl:left-auto ltr:left-3.5 ltr:right-auto pointer-events-none" />
+          <Input
+            placeholder={
+              isFr ? "Rechercher par client ou facture..." : "ابحث برقم الفاتورة أو اسم العميل..."
+            }
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="rtl:pr-10 rtl:pl-4 ltr:pl-10 ltr:pr-4 h-10 text-xs bg-slate-50 border-slate-200 rounded-xl"
+          />
+        </div>
+
+        {/* Payment Method Filters */}
+        <div className="flex items-center gap-1.5 w-full sm:w-auto bg-slate-100/80 p-1 rounded-xl text-xs overflow-x-auto">
+          <button
+            onClick={() => setMethodFilter("all")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+              methodFilter === "all" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {isFr ? "Toutes les méthodes" : "الكل"} ({invoices.length})
+          </button>
+          <button
+            onClick={() => setMethodFilter("cash")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+              methodFilter === "cash" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {isFr ? "Espèces" : "نقداً"}
+          </button>
+          <button
+            onClick={() => setMethodFilter("bankily")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+              methodFilter === "bankily" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Bankily
+          </button>
+          <button
+            onClick={() => setMethodFilter("masrivi")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+              methodFilter === "masrivi" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Masrivi
+          </button>
+        </div>
+      </div>
+
+      {/* ──────────────── TRANSACTIONS TABLE ──────────────── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-right border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-600 font-bold uppercase tracking-wider">
+                <th className="py-3.5 px-4">{isFr ? "N° Facture" : "رقم الفاتورة"}</th>
+                <th className="py-3.5 px-4">{isFr ? "Client" : "العميل"}</th>
+                <th className="py-3.5 px-4 text-center">{isFr ? "Mode de paiement" : "طريقة الدفع"}</th>
+                <th className="py-3.5 px-4 text-center">{isFr ? "Montant réglé" : "المبلغ المسدد"}</th>
+                <th className="py-3.5 px-4">{isFr ? "Date de transaction" : "التاريخ"}</th>
+                <th className="py-3.5 px-4 text-center">{isFr ? "Statut" : "الحالة"}</th>
+                <th className="py-3.5 px-4 text-center">{isFr ? "Actions" : "الإجراءات"}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {displayedPayments.length > 0 ? (
+                displayedPayments.map((inv) => {
+                  const isPaid = inv.status === "paid";
+                  const isArchived = (inv.status as string) === "archived";
+                  return (
+                    <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors group">
+                      <td className="py-3.5 px-4 font-mono font-bold text-blue-600">
+                        #{inv.invoiceNumber}
+                      </td>
+
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {inv.customerName || (isFr ? "Client comptoir" : "عميل نقدي")}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center">
+                        {getMethodBadge(inv.paymentMethod)}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center font-black text-slate-900 font-sans text-sm">
+                        {formatCurrency(inv.total)}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-slate-500 font-medium">
+                        {formatShortDate(inv.date || inv.createdAt)}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center">
+                        {isArchived ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            <ArchiveIcon size={12} />
+                            <span>{isFr ? "Archivé" : "مؤرشف"}</span>
+                          </span>
+                        ) : isPaid ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 size={12} />
+                            <span>{isFr ? "Encaissé" : "مسدد بالكامل"}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            <Clock size={12} />
+                            <span>{isFr ? "En attente" : "قيد الانتظار"}</span>
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* Print Receipt */}
+                          <button
+                            onClick={() => window.print()}
+                            className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition-colors cursor-pointer"
+                            title={isFr ? "Imprimer le reçu" : "طباعة الإيصال"}
+                          >
+                            <Printer size={15} />
+                          </button>
+
+                          {/* Archive Action */}
+                          <button
+                            onClick={() => handleArchiveInvoice(inv.id)}
+                            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+                            title={isFr ? "Classer dans l'archive" : "أرشفة الفاتورة والدفعة"}
+                          >
+                            <ArchiveIcon size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <CreditCard className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                    <p className="font-bold text-slate-600 text-sm">
+                      {isFr ? "Aucun paiement trouvé" : "لا توجد معاملات دفع مسجلة"}
+                    </p>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      {isFr
+                        ? "Les règlements de vos factures apparaîtront ici."
+                        : "ستظهر جميع عمليات السداد والتحصيل هنا."}
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

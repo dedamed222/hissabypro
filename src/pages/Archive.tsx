@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { loadStoreData } from "@/utils/localStorage";
+import { loadStoreData, saveStoreData } from "@/utils/localStorage";
 import {
   Search,
   Loader2,
@@ -20,25 +20,36 @@ import {
   User,
   Package,
   Clock,
-  ChevronDown
+  ChevronDown,
+  RotateCcw,
+  RefreshCw,
+  Archive as ArchiveIcon,
+  Users,
+  Building,
+  CreditCard,
+  Undo2,
+  Phone
 } from "lucide-react";
 import ExportActions from "@/components/shared/ExportActions";
 import { useLocale } from "@/hooks/useLocale";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ProfessionalInvoice from "@/components/invoice/ProfessionalInvoice";
-import { Invoice, StoreInfo, Customer } from "@/types";
+import { Invoice, StoreInfo, Customer, Return, Debtor, Creditor } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getInvoices, getCustomers, deleteInvoice, upsertInvoice } from "@/lib/database";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { saveStoreData } from "@/utils/localStorage";
 import { updateInvoiceMovements, revertInvoiceMovements } from "@/utils/productMovements";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Archive() {
   const { t, locale, isRTL } = useLocale();
   const isFr = locale === 'fr';
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'invoices';
   const { isAuthenticated, user } = useAuth();
+  const { toast } = useToast();
 
   const [year, setYear] = useState<number>(0); // 0 means All Years
   const [filterType, setFilterType] = useState<string>("all");
@@ -46,6 +57,9 @@ export default function Archive() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [returnsList, setReturnsList] = useState<Return[]>([]);
+  const [debtorsList, setDebtorsList] = useState<Debtor[]>([]);
+  const [creditorsList, setCreditorsList] = useState<Creditor[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
 
@@ -228,13 +242,19 @@ export default function Archive() {
             }
           }
         }
-        allList = combined;
+      allList = combined;
       }
       setInvoices(allList);
+      setReturnsList(localData.returns || []);
+      setDebtorsList(localData.debtors || []);
+      setCreditorsList(localData.creditors || []);
     } catch (error) {
       console.error("Error loading invoices:", error);
       const localData = loadStoreData();
       setInvoices(localData.invoices || []);
+      setReturnsList(localData.returns || []);
+      setDebtorsList(localData.debtors || []);
+      setCreditorsList(localData.creditors || []);
     } finally {
       setLoading(false);
     }
@@ -294,6 +314,93 @@ export default function Archive() {
       debtAmount,
     };
   }, [filteredInvoices]);
+
+  // Returns Filter & Stats
+  const filteredReturns = useMemo(() => {
+    return returnsList.filter(r => {
+      const matchSearch =
+        (r.returnNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (r.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (r.invoiceNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
+      return matchSearch;
+    });
+  }, [returnsList, searchTerm]);
+
+  const returnsStats = useMemo(() => {
+    const totalCount = filteredReturns.length;
+    const totalAmount = filteredReturns.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+    const totalUnits = filteredReturns.reduce((sum, r) => {
+      const items = r.items || (r as any).products || [];
+      return sum + items.reduce((s: number, i: any) => s + (Number(i.quantity) || 0), 0);
+    }, 0);
+    const archivedCount = filteredReturns.filter(r => r.status === 'archived').length;
+    return { totalCount, totalAmount, totalUnits, archivedCount };
+  }, [filteredReturns]);
+
+  // Debtors Filter & Stats
+  const filteredDebtors = useMemo(() => {
+    return debtorsList.filter(d => {
+      const name = d.name || d.debtorName || '';
+      const matchSearch =
+        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (d.phone || '').includes(searchTerm);
+      return matchSearch;
+    });
+  }, [debtorsList, searchTerm]);
+
+  const debtorsStats = useMemo(() => {
+    const totalCount = filteredDebtors.length;
+    const totalAmount = filteredDebtors.reduce((sum, d) => sum + (Number(d.totalAmount || d.amount) || 0), 0);
+    const settledCount = filteredDebtors.filter(d => d.status === 'paid').length;
+    const pendingCount = filteredDebtors.filter(d => d.status !== 'paid').length;
+    return { totalCount, totalAmount, settledCount, pendingCount };
+  }, [filteredDebtors]);
+
+  // Creditors Filter & Stats
+  const filteredCreditors = useMemo(() => {
+    return creditorsList.filter(c => {
+      const matchSearch =
+        (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.phone || '').includes(searchTerm);
+      return matchSearch;
+    });
+  }, [creditorsList, searchTerm]);
+
+  const creditorsStats = useMemo(() => {
+    const totalCount = filteredCreditors.length;
+    const totalAmount = filteredCreditors.reduce((sum, c) => sum + (Number(c.total || c.amount) || 0), 0);
+    const paidCount = filteredCreditors.filter(c => c.status === 'paid').length;
+    const pendingCount = filteredCreditors.filter(c => c.status !== 'paid').length;
+    return { totalCount, totalAmount, paidCount, pendingCount };
+  }, [filteredCreditors]);
+
+  // Payments Filter & Stats
+  const filteredPayments = useMemo(() => {
+    return invoices.filter(inv => {
+      const isPaid = inv.status === 'paid' || inv.status === 'archived';
+      if (!isPaid) return false;
+      const matchSearch =
+        (inv.invoiceNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (inv.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (inv.paymentMethod || '').toLowerCase().includes(searchTerm.toLowerCase());
+      return matchSearch;
+    });
+  }, [invoices, searchTerm]);
+
+  const paymentsStats = useMemo(() => {
+    const totalCount = filteredPayments.length;
+    const totalAmount = filteredPayments.reduce((sum, p) => sum + (Number(p.total) || 0), 0);
+    const bankilyAmount = filteredPayments
+      .filter(p => (p.paymentMethod || '').toLowerCase().includes('bankily'))
+      .reduce((sum, p) => sum + (Number(p.total) || 0), 0);
+    const masriviAmount = filteredPayments
+      .filter(p => (p.paymentMethod || '').toLowerCase().includes('masrivi') || (p.paymentMethod || '').toLowerCase().includes('sedad'))
+      .reduce((sum, p) => sum + (Number(p.total) || 0), 0);
+    const cashAmount = filteredPayments
+      .filter(p => (p.paymentMethod || '').toLowerCase().includes('cash') || (p.paymentMethod || '').toLowerCase().includes('espèces') || !p.paymentMethod)
+      .reduce((sum, p) => sum + (Number(p.total) || 0), 0);
+    return { totalCount, totalAmount, bankilyAmount, masriviAmount, cashAmount };
+  }, [filteredPayments]);
 
   const exportColumns = [
     {
@@ -495,6 +602,91 @@ export default function Archive() {
     loadAllData();
   };
 
+  const handleRestoreReturn = (id: string) => {
+    const store = loadStoreData();
+    store.returns = (store.returns || []).map((r) =>
+      r.id === id ? { ...r, status: "active" as any, updatedAt: new Date().toISOString() } : r
+    );
+    saveStoreData(store);
+    toast({
+      title: isFr ? "Retour restauré" : "تمت استعادة المرتجع",
+      description: isFr ? "Le retour a été réactivé avec succès" : "تمت استعادة المرتجع إلى القائمة النشطة بنجاح",
+    });
+    loadAllData();
+  };
+
+  const handleDeleteReturn = (id: string) => {
+    const store = loadStoreData();
+    store.returns = (store.returns || []).filter((r) => r.id !== id);
+    saveStoreData(store);
+    toast({
+      title: isFr ? "Retour supprimé" : "تم حذف المرتجع",
+      description: isFr ? "Le retour a été supprimé des archives" : "تم حذف المرتجع من الأرشيف نهائياً",
+    });
+    loadAllData();
+  };
+
+  const handleRestoreDebtor = (id: string) => {
+    const store = loadStoreData();
+    store.debtors = (store.debtors || []).map((d) =>
+      d.id === id ? { ...d, status: "pending" as any, updatedAt: new Date().toISOString() } : d
+    );
+    saveStoreData(store);
+    toast({
+      title: isFr ? "Créance restaurée" : "تمت استعادة سجل العميل",
+      description: isFr ? "Le compte a été réactivé" : "تمت إعادة سجل الدين إلى القائمة النشطة بنجاح",
+    });
+    loadAllData();
+  };
+
+  const handleDeleteDebtor = (id: string) => {
+    const store = loadStoreData();
+    store.debtors = (store.debtors || []).filter((d) => d.id !== id);
+    saveStoreData(store);
+    toast({
+      title: isFr ? "Créance supprimée" : "تم حذف السجل",
+      description: isFr ? "Supprimé des archives" : "تم حذف السجل من الأرشيف نهائياً",
+    });
+    loadAllData();
+  };
+
+  const handleRestoreCreditor = (id: string) => {
+    const store = loadStoreData();
+    store.creditors = (store.creditors || []).map((c) =>
+      c.id === id ? { ...c, status: "pending" as any, updatedAt: new Date().toISOString() } : c
+    );
+    saveStoreData(store);
+    toast({
+      title: isFr ? "Dette fournisseur restaurée" : "تمت استعادة دين المورد",
+      description: isFr ? "Le fournisseur a été réactivé" : "تمت إعادة حساب المورد إلى القائمة النشطة بنجاح",
+    });
+    loadAllData();
+  };
+
+  const handleDeleteCreditor = (id: string) => {
+    const store = loadStoreData();
+    store.creditors = (store.creditors || []).filter((c) => c.id !== id);
+    saveStoreData(store);
+    toast({
+      title: isFr ? "Fournisseur supprimé" : "تم حذف السجل",
+      description: isFr ? "Supprimé des archives" : "تم حذف السجل من الأرشيف نهائياً",
+    });
+    loadAllData();
+  };
+
+  const handleRestorePayment = (id: string) => {
+    const store = loadStoreData();
+    store.invoices = (store.invoices || []).map((inv) =>
+      inv.id === id ? { ...inv, status: "pending" as any, updatedAt: new Date().toISOString() } : inv
+    );
+    saveStoreData(store);
+    toast({
+      title: isFr ? "Paiement réinitialisé" : "تمت إعادة المعاملة",
+      description: isFr ? "La facture est repassée en attente" : "تمت إعادة الفاتورة إلى قائمة المستحقات غير المسددة",
+    });
+    loadAllData();
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
@@ -584,8 +776,46 @@ export default function Archive() {
         </div>
       </div>
 
-      {/* ── Summary KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 print:hidden">
+      {/* ── Top Archive Navigation Tabs ── */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 overflow-x-auto print:hidden">
+        {[
+          { id: "invoices", label: isFr ? "Factures & Ventes" : "الفواتير والمبيعات", icon: FileText, count: invoices.length },
+          { id: "returns", label: isFr ? "Retours Produits" : "المرتجعات", icon: RotateCcw, count: returnsList.length },
+          { id: "debtors", label: isFr ? "Créances Clients" : "ديون العملاء", icon: Users, count: debtorsList.length },
+          { id: "creditors", label: isFr ? "Dettes Fournisseurs" : "ديون الموردين", icon: Building, count: creditorsList.length },
+          { id: "payments", label: isFr ? "Paiements Reçus" : "المدفوعات المحصلة", icon: CreditCard, count: filteredPayments.length },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setSearchParams({ tab: tab.id })}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all shadow-sm ${
+                isActive
+                  ? "bg-blue-600 text-white shadow-blue-500/20"
+                  : "bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+              <span
+                className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                  isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Tab: Invoices & Sales ── */}
+      {activeTab === "invoices" && (
+        <>
+          {/* ── Summary KPI Cards ── */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 print:hidden">
         {/* Total Invoices */}
         <div className="gsc-card p-4 flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
@@ -902,6 +1132,563 @@ export default function Archive() {
           </div>
         )}
       </div>
+        </>
+      )}
+
+      {/* ── Tab: Returns Archive ── */}
+      {activeTab === "returns" && (
+        <>
+          {/* Returns KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 print:hidden">
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <RotateCcw size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Total des retours" : "إجمالي المرتجعات"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{returnsStats.totalCount}</h3>
+                <p className="text-[11px] font-bold text-rose-600 mt-0.5">{formatCurrency(returnsStats.totalAmount)}</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <DollarSign size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Valeur remboursée" : "قيمة المبالغ المرجعة"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{formatCurrency(returnsStats.totalAmount)}</h3>
+                <p className="text-[11px] font-bold text-amber-600 mt-0.5">{returnsStats.totalUnits} {isFr ? "unités" : "قطعة"}</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <Package size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Articles retournés" : "عدد الأصناف المسترجعة"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{returnsStats.totalUnits}</h3>
+                <p className="text-[11px] font-bold text-purple-600 mt-0.5">{isFr ? "Unités en stock" : "قطع أعيدت للمخزن"}</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <ArchiveIcon size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Retours archivés" : "مرتجعات مؤرشفة"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{returnsStats.archivedCount}</h3>
+                <p className="text-[11px] font-bold text-blue-600 mt-0.5">{isFr ? "Statut archivé" : "حالة مؤرشفة"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Returns Search */}
+          <div className="gsc-card p-4 print:hidden">
+            <div className="relative">
+              <Search className={`absolute ${isRTL ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2 text-slate-400`} size={17} />
+              <input
+                type="text"
+                placeholder={isFr ? "Rechercher un retour par N°, client..." : "البحث برقم المرتجع أو اسم العميل..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm ${isRTL ? "pl-4 pr-10" : "pr-4 pl-10"} py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all`}
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className={`absolute ${isRTL ? "left-3" : "right-3"} top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600`}
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Returns Table */}
+          <div className="gsc-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "N° Retour" : "رقم المرتجع"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Client" : "العميل"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "N° Facture liée" : "الفاتورة الأصلية"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Date" : "التاريخ"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Montant" : "المبلغ المرجع"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Statut" : "الحالة"}</th>
+                    <th className="py-3.5 px-4 text-center">{isFr ? "Actions" : "الإجراءات"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredReturns.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-12 text-slate-400">
+                        <RotateCcw className="w-10 h-10 mx-auto text-slate-300 mb-2 opacity-50" />
+                        <p className="font-semibold text-slate-600">{isFr ? "Aucun retour enregistré dans l'archive" : "لا توجد مرتجعات في الأرشيف"}</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredReturns.map((ret) => (
+                      <tr key={ret.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-800">{ret.returnNumber}</td>
+                        <td className="py-3.5 px-4 font-semibold text-slate-900">{ret.customerName}</td>
+                        <td className="py-3.5 px-4 text-xs font-mono text-slate-500">{ret.invoiceNumber || ret.invoiceId || "-"}</td>
+                        <td className="py-3.5 px-4 text-xs text-slate-600">{formatDate(ret.date || ret.createdAt)}</td>
+                        <td className="py-3.5 px-4 font-black text-rose-600">{formatCurrency(ret.total)}</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            ret.status === "archived" ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          }`}>
+                            {ret.status === "archived" ? (isFr ? "Archivé" : "مؤرشف") : (isFr ? "Actif" : "نشط")}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleRestoreReturn(ret.id)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title={isFr ? "Restaurer en actif" : "استعادة إلى النشط"}
+                            >
+                              <Undo2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteReturn(ret.id)}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                              title={isFr ? "Supprimer définitivement" : "حذف نهائي"}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Tab: Debtors Archive ── */}
+      {activeTab === "debtors" && (
+        <>
+          {/* Debtors KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 print:hidden">
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <Users size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Total des créances" : "إجمالي ديون العملاء"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{formatCurrency(debtorsStats.totalAmount)}</h3>
+                <p className="text-[11px] font-bold text-amber-600 mt-0.5">{debtorsStats.totalCount} {isFr ? "dossiers" : "عميل"}</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Dettes soldées" : "ديون مسددة بالكامل"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{debtorsStats.settledCount}</h3>
+                <p className="text-[11px] font-bold text-emerald-600 mt-0.5">{isFr ? "Payé" : "مسدد"}</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                <AlertCircle size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Créances en attente" : "ديون معلقة / متبقية"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{debtorsStats.pendingCount}</h3>
+                <p className="text-[11px] font-bold text-red-600 mt-0.5">{isFr ? "À recouvrer" : "قيد التحصيل"}</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <ArchiveIcon size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Total dossiers archivés" : "إجمالي السجلات المؤرشفة"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{debtorsStats.totalCount}</h3>
+                <p className="text-[11px] font-bold text-blue-600 mt-0.5">{isFr ? "Historique" : "سجل كامل"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Debtors Search */}
+          <div className="gsc-card p-4 print:hidden">
+            <div className="relative">
+              <Search className={`absolute ${isRTL ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2 text-slate-400`} size={17} />
+              <input
+                type="text"
+                placeholder={isFr ? "Rechercher par nom ou téléphone..." : "البحث باسم العميل أو رقم الهاتف..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm ${isRTL ? "pl-4 pr-10" : "pr-4 pl-10"} py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all`}
+              />
+            </div>
+          </div>
+
+          {/* Debtors Table */}
+          <div className="gsc-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Client" : "العميل"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Téléphone" : "رقم الهاتف"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Date" : "التاريخ"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Montant" : "المبلغ"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Statut" : "الحالة"}</th>
+                    <th className="py-3.5 px-4 text-center">{isFr ? "Actions" : "الإجراءات"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredDebtors.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-slate-400">
+                        <Users className="w-10 h-10 mx-auto text-slate-300 mb-2 opacity-50" />
+                        <p className="font-semibold text-slate-600">{isFr ? "Aucune créance dans l'archive" : "لا توجد سجلات ديون في الأرشيف"}</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredDebtors.map((deb) => (
+                      <tr key={deb.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-slate-800">{deb.name || deb.debtorName}</td>
+                        <td className="py-3.5 px-4 text-xs font-mono text-slate-600">{deb.phone || "-"}</td>
+                        <td className="py-3.5 px-4 text-xs text-slate-600">{formatDate(deb.date || deb.createdAt)}</td>
+                        <td className="py-3.5 px-4 font-black text-amber-700">{formatCurrency(deb.totalAmount || deb.amount || 0)}</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            deb.status === "paid" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}>
+                            {deb.status === "paid" ? (isFr ? "Soldé" : "مسدد") : (isFr ? "En attente" : "معلق")}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleRestoreDebtor(deb.id)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title={isFr ? "Restaurer en actif" : "استعادة إلى القائمة النشطة"}
+                            >
+                              <Undo2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDebtor(deb.id)}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                              title={isFr ? "Supprimer définitivement" : "حذف نهائي"}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Tab: Creditors Archive ── */}
+      {activeTab === "creditors" && (
+        <>
+          {/* Creditors KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 print:hidden">
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <Building size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Total dettes fournisseurs" : "إجمالي ديون الموردين"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{formatCurrency(creditorsStats.totalAmount)}</h3>
+                <p className="text-[11px] font-bold text-indigo-600 mt-0.5">{creditorsStats.totalCount} {isFr ? "fournisseurs" : "مورد"}</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Dettes réglées" : "ديون مسددة"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{creditorsStats.paidCount}</h3>
+                <p className="text-[11px] font-bold text-emerald-600 mt-0.5">{isFr ? "Réglé" : "تم السداد"}</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <Clock size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Dettes en attente" : "ديون معلقة / متبقية"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{creditorsStats.pendingCount}</h3>
+                <p className="text-[11px] font-bold text-amber-600 mt-0.5">{isFr ? "À régler" : "مستحقة للدفع"}</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center shrink-0">
+                <ArchiveIcon size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Fournisseurs archivés" : "سجلات مؤرشفة"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{creditorsStats.totalCount}</h3>
+                <p className="text-[11px] font-bold text-slate-600 mt-0.5">{isFr ? "Historique" : "سجل كامل"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Creditors Search */}
+          <div className="gsc-card p-4 print:hidden">
+            <div className="relative">
+              <Search className={`absolute ${isRTL ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2 text-slate-400`} size={17} />
+              <input
+                type="text"
+                placeholder={isFr ? "Rechercher par fournisseur ou téléphone..." : "البحث باسم المورد أو رقم الهاتف..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm ${isRTL ? "pl-4 pr-10" : "pr-4 pl-10"} py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all`}
+              />
+            </div>
+          </div>
+
+          {/* Creditors Table */}
+          <div className="gsc-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Fournisseur" : "المورد"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Téléphone" : "رقم الهاتف"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Date" : "التاريخ"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Montant" : "المبلغ"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Statut" : "الحالة"}</th>
+                    <th className="py-3.5 px-4 text-center">{isFr ? "Actions" : "الإجراءات"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredCreditors.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-slate-400">
+                        <Building className="w-10 h-10 mx-auto text-slate-300 mb-2 opacity-50" />
+                        <p className="font-semibold text-slate-600">{isFr ? "Aucune dette fournisseur dans l'archive" : "لا توجد ديون موردين في الأرشيف"}</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCreditors.map((cred) => (
+                      <tr key={cred.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-slate-800">{cred.name}</td>
+                        <td className="py-3.5 px-4 text-xs font-mono text-slate-600">{cred.phone || "-"}</td>
+                        <td className="py-3.5 px-4 text-xs text-slate-600">{formatDate(cred.date || cred.createdAt)}</td>
+                        <td className="py-3.5 px-4 font-black text-indigo-700">{formatCurrency(cred.total || cred.amount || 0)}</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            cred.status === "paid" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}>
+                            {cred.status === "paid" ? (isFr ? "Réglé" : "مسدد") : (isFr ? "En attente" : "معلق")}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleRestoreCreditor(cred.id)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title={isFr ? "Restaurer en actif" : "استعادة إلى القائمة النشطة"}
+                            >
+                              <Undo2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCreditor(cred.id)}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                              title={isFr ? "Supprimer définitivement" : "حذف نهائي"}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Tab: Payments Archive ── */}
+      {activeTab === "payments" && (
+        <>
+          {/* Payments KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 print:hidden">
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <CreditCard size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Total des encaissements" : "إجمالي المدفوعات المحصلة"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{formatCurrency(paymentsStats.totalAmount)}</h3>
+                <p className="text-[11px] font-bold text-emerald-600 mt-0.5">{paymentsStats.totalCount} {isFr ? "paiements" : "دفعة"}</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                <DollarSign size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Via Bankily" : "تحصيلات بنكيلي"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{formatCurrency(paymentsStats.bankilyAmount)}</h3>
+                <p className="text-[11px] font-bold text-orange-600 mt-0.5">Bankily</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <TrendingUp size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "Via Masrivi / Sedad" : "تحصيلات مصرفي / سداد"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{formatCurrency(paymentsStats.masriviAmount)}</h3>
+                <p className="text-[11px] font-bold text-blue-600 mt-0.5">Masrivi / Sedad</p>
+              </div>
+            </div>
+
+            <div className="gsc-card p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Receipt size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-slate-500 truncate">
+                  {isFr ? "En Espèces (Cash)" : "تحصيلات نقداً (Cash)"}
+                </p>
+                <h3 className="text-xl font-black text-slate-900 mt-0.5">{formatCurrency(paymentsStats.cashAmount)}</h3>
+                <p className="text-[11px] font-bold text-emerald-600 mt-0.5">{isFr ? "Cash direct" : "نقدي"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payments Search */}
+          <div className="gsc-card p-4 print:hidden">
+            <div className="relative">
+              <Search className={`absolute ${isRTL ? "right-3.5" : "left-3.5"} top-1/2 -translate-y-1/2 text-slate-400`} size={17} />
+              <input
+                type="text"
+                placeholder={isFr ? "Rechercher par N° facture, client ou mode..." : "البحث برقم الفاتورة، اسم العميل، أو طريقة الدفع..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm ${isRTL ? "pl-4 pr-10" : "pr-4 pl-10"} py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all`}
+              />
+            </div>
+          </div>
+
+          {/* Payments Table */}
+          <div className="gsc-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "N° Facture / Reçu" : "رقم الفاتورة / الإيصال"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Client" : "العميل"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Mode de Paiement" : "طريقة الدفع"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Date" : "التاريخ"}</th>
+                    <th className={`py-3.5 px-4 ${isRTL ? "text-right" : "text-left"}`}>{isFr ? "Montant" : "المبلغ"}</th>
+                    <th className="py-3.5 px-4 text-center">{isFr ? "Actions" : "الإجراءات"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredPayments.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-slate-400">
+                        <CreditCard className="w-10 h-10 mx-auto text-slate-300 mb-2 opacity-50" />
+                        <p className="font-semibold text-slate-600">{isFr ? "Aucun paiement archivé" : "لا توجد مدفوعات في الأرشيف"}</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPayments.map((pay) => (
+                      <tr key={pay.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-800">{pay.invoiceNumber}</td>
+                        <td className="py-3.5 px-4 font-semibold text-slate-900">{pay.customerName}</td>
+                        <td className="py-3.5 px-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-slate-100 text-slate-700">
+                            {pay.paymentMethod || "cash"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-xs text-slate-600">{formatDate(pay.date || pay.createdAt)}</td>
+                        <td className="py-3.5 px-4 font-black text-emerald-600">{formatCurrency(pay.total)}</td>
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => {
+                                setSelectedInvoice(pay);
+                                setTimeout(() => window.print(), 100);
+                              }}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title={isFr ? "Imprimer le reçu" : "طباعة الإيصال"}
+                            >
+                              <Printer size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleRestorePayment(pay.id)}
+                              className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                              title={isFr ? "Rétablir en impayé" : "إعادة إلى المستحقات غير المسددة"}
+                            >
+                              <Undo2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── Edit Invoice Modal ── */}
       {isEditModalOpen && editingInvoice && (

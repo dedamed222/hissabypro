@@ -1,19 +1,54 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { loadStoreData, saveStoreData, generateId } from "@/utils/localStorage";
-import { Plus, User, FileText, Package, BarChart3 } from "lucide-react";
+import {
+  Plus,
+  User,
+  Package,
+  BarChart3,
+  Archive as ArchiveIcon,
+  Search,
+  CheckCircle2,
+  Clock,
+  Trash2,
+  DollarSign,
+  Phone,
+  MessageCircle,
+  Printer,
+  ChevronDown,
+  Layers,
+  Calendar,
+  AlertCircle,
+  Wallet,
+} from "lucide-react";
 import type { Debtor, Customer, Product } from "@/types";
 import CustomerSelector from "@/components/invoice/CustomerSelector";
-import DebtorProductSelector from "@/components/debtors/DebtorProductSelector";
-import DebtorsList from "@/components/debtors/DebtorsList";
 import ProductSearch from "@/components/sales/ProductSearch";
 import { useProductSearch } from "@/hooks/useProductSearch";
 import { useToast } from "@/hooks/use-toast";
 import { getDebtors, upsertDebtor, deleteDebtor, updateDebtorStatus } from "@/lib/database";
 import { useLocale } from "@/hooks/useLocale";
+import { formatCurrency, formatShortDate } from "@/utils/formatters";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface DebtorProductItem {
   productId: string;
@@ -27,16 +62,17 @@ interface DebtorProductItem {
 export default function Debtors() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { locale } = useLocale();
-  const isFr = locale === 'fr';
+  const { locale, isRTL } = useLocale();
+  const isFr = locale === "fr";
+
   const [formData, setFormData] = useState({
     debtorName: "",
     phone: "",
     notes: "",
     productCode: "",
     productName: "",
-    quantity: "",
-    price: ""
+    quantity: "1",
+    price: "",
   });
   const [selectedProducts, setSelectedProducts] = useState<DebtorProductItem[]>([]);
   const [error, setError] = useState("");
@@ -44,12 +80,9 @@ export default function Debtors() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [debtorsList, setDebtorsList] = useState<Debtor[]>([]);
-  
-  // For editing
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<typeof formData>(formData);
-  const [editProducts, setEditProducts] = useState<DebtorProductItem[]>([]);
-  const [selectedEditCustomer, setSelectedEditCustomer] = useState<Customer | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [searchTermDebtor, setSearchTermDebtor] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "paid" | "archived">("all");
 
   // Product search functionality
   const {
@@ -57,12 +90,12 @@ export default function Debtors() {
     searchTerm,
     setSearchTerm,
     showProductSearch,
-    setShowProductSearch
+    setShowProductSearch,
   } = useProductSearch();
 
   const data = loadStoreData();
 
-  // Fetch debtors from Supabase on mount and merge with localStorage
+  // Load debtors on mount
   useEffect(() => {
     const fetchDebtors = async () => {
       try {
@@ -70,7 +103,6 @@ export default function Debtors() {
         const storeData = loadStoreData();
         const localDebtors: Debtor[] = storeData.debtors || [];
 
-        // Map Supabase records to local Debtor type
         const mappedRemote: Debtor[] = remoteDebtors.map((d: any) => ({
           id: d.id,
           name: d.name,
@@ -83,22 +115,18 @@ export default function Debtors() {
           date: d.date || d.created_at || new Date().toISOString(),
           createdAt: d.created_at,
           updatedAt: d.updated_at,
-          status: d.status || 'pending'
+          status: d.status || "pending",
         }));
 
-        // Merge: remote records take priority; add local records not in remote
         const remoteIds = new Set(mappedRemote.map((d) => d.id));
         const localOnly = localDebtors.filter((d) => !remoteIds.has(d.id));
         const merged = [...mappedRemote, ...localOnly];
 
-        // Update localStorage with merged data
         storeData.debtors = merged;
         saveStoreData(storeData);
-
         setDebtorsList(merged);
       } catch (err) {
-        console.error("Failed to fetch debtors from Supabase:", err);
-        // Fall back to localStorage
+        console.error("Failed to fetch debtors:", err);
         const storeData = loadStoreData();
         setDebtorsList(storeData.debtors || []);
       }
@@ -106,685 +134,766 @@ export default function Debtors() {
     fetchDebtors();
   }, []);
 
-  const handleToggleStatus = async (id: string, currentStatus: 'pending' | 'paid') => {
-    const newStatus: 'pending' | 'paid' = currentStatus === 'pending' ? 'paid' : 'pending';
-    
+  // KPIs
+  const kpis = useMemo(() => {
+    const totalAmount = debtorsList.reduce((acc, d) => acc + Number(d.totalAmount || d.amount || 0), 0);
+    const paidAmount = debtorsList
+      .filter((d) => d.status === "paid" || d.status === ("archived" as any))
+      .reduce((acc, d) => acc + Number(d.totalAmount || d.amount || 0), 0);
+    const pendingAmount = debtorsList
+      .filter((d) => d.status !== "paid" && d.status !== ("archived" as any))
+      .reduce((acc, d) => acc + Number(d.totalAmount || d.amount || 0), 0);
+    const uniqueDebtors = new Set(debtorsList.map((d) => d.name || d.debtorName)).size;
+    const archivedCount = debtorsList.filter((d) => d.status === ("archived" as any)).length;
+
+    return {
+      totalAmount,
+      paidAmount,
+      pendingAmount,
+      uniqueDebtors,
+      archivedCount,
+    };
+  }, [debtorsList]);
+
+  // Filtered Debtors
+  const displayedDebtors = useMemo(() => {
+    return debtorsList.filter((d) => {
+      const name = (d.name || d.debtorName || "").toLowerCase();
+      const phone = (d.phone || "").toLowerCase();
+      const matchesSearch =
+        name.includes(searchTermDebtor.toLowerCase()) || phone.includes(searchTermDebtor.toLowerCase());
+
+      const isArchived = d.status === ("archived" as any);
+      if (statusFilter === "archived") return matchesSearch && isArchived;
+      if (statusFilter === "paid") return matchesSearch && d.status === "paid" && !isArchived;
+      if (statusFilter === "pending") return matchesSearch && d.status === "pending" && !isArchived;
+      return matchesSearch;
+    });
+  }, [debtorsList, searchTermDebtor, statusFilter]);
+
+  const handleToggleStatus = async (id: string, currentStatus: "pending" | "paid") => {
+    const newStatus: "pending" | "paid" = currentStatus === "pending" ? "paid" : "pending";
+
     try {
       const storeData = loadStoreData();
-      const updatedDebtors = (storeData.debtors || []).map((d: Debtor) => 
+      const updatedDebtors = (storeData.debtors || []).map((d: Debtor) =>
         d.id === id ? { ...d, status: newStatus, updatedAt: new Date().toISOString() } : d
       );
-      
+
       storeData.debtors = updatedDebtors;
       saveStoreData(storeData);
       setDebtorsList(updatedDebtors);
 
-      // Sync to Supabase
       if (id.length === 36) {
         await updateDebtorStatus(id, newStatus);
       }
 
       toast({
-        title: newStatus === 'paid'
-          ? (isFr ? "Payé" : "تم التسديد")
-          : (isFr ? "Réinitialisé" : "تمت إعادة التعيين"),
-        description: newStatus === 'paid'
-          ? (isFr ? "La dette a été marquée comme payée" : "تم وضع علامة مسدد على المديونية")
-          : (isFr ? "La dette a été remise en attente" : "تمت إعادة المديونية إلى قائمة الانتظار")
+        title:
+          newStatus === "paid"
+            ? isFr ? "Créance soldée" : "تم تسديد الدين بنجاح"
+            : isFr ? "Remis en attente" : "تمت إعادة الدين لقائمة الانتظار",
+        description: isFr ? "Statut du débiteur mis à jour." : "تم تحديث حالة العميل المدين.",
       });
     } catch (err) {
-      console.error("Error toggling debtor status:", err);
-      const errorMessage = err instanceof Error ? err.message : (isFr ? "Échec de la mise à jour du statut de la dette" : "فشل تحديث حالة المديونية");
-      toast({
-        title: isFr ? "Erreur de synchronisation" : "خطأ في المزامنة",
-        description: errorMessage,
-        variant: "destructive"
-      });
+      console.error(err);
     }
   };
 
-  const handleProductSelect = (product: any) => {
-    setFormData({
-      ...formData,
-      productCode: product.code,
-      productName: product.name,
-      price: String(product.price)
-    });
-    setShowProductSearch(false);
-    setSearchTerm("");
-  };
-
-  const handleCustomerChange = (customerId: string) => {
-    const customer = data.customers?.find((c: Customer) => c.id === customerId);
-    if (customer) {
-      setSelectedCustomer(customer);
-      setFormData({
-        ...formData,
-        debtorName: customer.name,
-        phone: customer.phone || ""
-      });
-    }
-  };
-
-  const handleEditCustomerChange = (customerId: string) => {
-    const customer = data.customers?.find((c: Customer) => c.id === customerId);
-    if (customer) {
-      setSelectedEditCustomer(customer);
-      setEditForm({
-        ...editForm,
-        debtorName: customer.name,
-        phone: customer.phone || ""
-      });
-    }
-  };
-
-  const handleAddProduct = () => {
-    if (!formData.productCode.trim() || !formData.productName.trim()) {
-      setError(isFr ? "Veuillez saisir les informations du produit" : "يرجى إدخال معلومات المنتج");
-      return;
-    }
-    if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
-      setError(isFr ? "Veuillez saisir un prix valide" : "يرجى إدخال سعر صحيح");
-      return;
-    }
-    if (!formData.quantity || isNaN(Number(formData.quantity)) || Number(formData.quantity) <= 0) {
-      setError(isFr ? "Veuillez saisir une quantité valide" : "يرجى إدخال كمية صحيحة");
-      return;
-    }
-
-    const quantity = Number(formData.quantity);
-    const price = Number(formData.price);
-    
-    // Check if product exists in inventory and has enough quantity
+  const handleArchiveDebtor = (id: string) => {
     const storeData = loadStoreData();
-    const product = storeData.products?.find(p => p.code === formData.productCode.trim());
-    if (product && product.quantity < quantity) {
-      setError(isFr ? `Quantité disponible en stock : ${product.quantity} seulement` : `الكمية المتاحة في المخزون: ${product.quantity} فقط`);
-      return;
-    }
-    
-    const productId = Date.now().toString(); // Generate temporary ID
+    const updatedDebtors = (storeData.debtors || []).map((d: Debtor) =>
+      d.id === id
+        ? {
+            ...d,
+            status: (d.status === ("archived" as any) ? "paid" : "archived") as any,
+            updatedAt: new Date().toISOString(),
+          }
+        : d
+    );
 
-    const newProduct: DebtorProductItem = {
-      productId,
-      productCode: formData.productCode.trim(),
-      productName: formData.productName.trim(),
-      quantity,
-      price,
-      total: quantity * price
-    };
+    storeData.debtors = updatedDebtors;
+    saveStoreData(storeData);
+    setDebtorsList(updatedDebtors);
 
-    setSelectedProducts([...selectedProducts, newProduct]);
-    
-    // Clear product fields
-    setFormData({
-      ...formData,
-      productCode: "",
-      productName: "",
-      quantity: "",
-      price: ""
+    toast({
+      title: isFr ? "Créance archivée" : "تمت أرشفة الدين",
+      description: isFr
+        ? "Le dossier a été transféré vers l'archive des débiteurs."
+        : "تم حفظ سجل الدين في الأرشيف المركزي.",
     });
-    setError("");
   };
 
-  const handleRemoveProduct = (index: number) => {
-    const updatedProducts = [...selectedProducts];
-    updatedProducts.splice(index, 1);
-    setSelectedProducts(updatedProducts);
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.debtorName.trim()) {
-      setError(isFr ? "Veuillez entrer le nom du débiteur" : "يرجى إدخال اسم المدين");
-      return;
-    }
-    if (!formData.phone.trim()) {
-      setError(isFr ? "Veuillez entrer le numéro de téléphone" : "يرجى إدخال رقم الهاتف");
-      return;
-    }
-    if (selectedProducts.length === 0) {
-      setError(isFr ? "Veuillez ajouter au moins un produit" : "يرجى إضافة منتج واحد على الأقل");
-      return;
-    }
-
-    setError("");
-    setLoading(true);
+  const handleDelete = async () => {
+    if (!deleteId) return;
 
     try {
       const storeData = loadStoreData();
-      const now = new Date().toISOString();
-      const totalAmount = selectedProducts.reduce((sum, item) => sum + item.total, 0);
+      const updatedDebtors = (storeData.debtors || []).filter((d: Debtor) => d.id !== deleteId);
+      storeData.debtors = updatedDebtors;
+      saveStoreData(storeData);
+      setDebtorsList(updatedDebtors);
 
-      // Update inventory - deduct quantities
-      const updatedProducts = (storeData.products || []).map(product => {
-        const debtorProduct = selectedProducts.find(sp => sp.productCode === product.code);
-        if (debtorProduct) {
-          const newQuantity = product.quantity - debtorProduct.quantity;
-          if (newQuantity < 0) {
-            throw new Error(isFr ? `Quantité insuffisante pour le produit "${product.name}"` : `الكمية المتاحة للمنتج "${product.name}" غير كافية`);
-          }
-          return {
-            ...product,
-            quantity: newQuantity,
-            updatedAt: now
-          };
-        }
-        return product;
+      if (deleteId.length === 36) {
+        await deleteDebtor(deleteId);
+      }
+
+      toast({
+        title: isFr ? "Supprimé" : "تم الحذف",
+        description: isFr ? "Le dossier débiteur a été supprimé." : "تم حذف سجل المدين.",
       });
+      setDeleteId(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-      const newDebtor: Debtor = {
-        id: generateId(),
-        name: formData.debtorName.trim(),
-        debtorName: formData.debtorName.trim(),
-        phone: formData.phone.trim(),
-        products: selectedProducts,
-        totalAmount: totalAmount,
-        amount: totalAmount,
-        notes: formData.notes,
-        date: now,
-        createdAt: now,
-        updatedAt: now,
-        // Legacy fields for backward compatibility
-        productCode: selectedProducts[0]?.productCode || "",
-        productName: selectedProducts[0]?.productName || "",
-        quantity: selectedProducts[0]?.quantity || 0,
-        productPrice: selectedProducts[0]?.price || 0
-      };
+  const handleSubmitNew = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = formData.debtorName.trim();
+    if (!name) {
+      setError(isFr ? "Le nom du client est requis." : "يرجى إدخال اسم العميل المدين.");
+      return;
+    }
 
-      storeData.products = updatedProducts;
-      storeData.debtors = [...(storeData.debtors || []), newDebtor];
+    const price = parseFloat(formData.price) || 0;
+    const quantity = parseInt(formData.quantity) || 1;
+    let total = price * quantity;
+
+    if (selectedProducts.length > 0) {
+      total = selectedProducts.reduce((sum, p) => sum + p.total, 0);
+    }
+
+    if (total <= 0) {
+      setError(isFr ? "Le montant total doit être supérieur à zéro." : "يرجى تحديد مبلغ دين صحيح.");
+      return;
+    }
+
+    setLoading(true);
+    const newDebtor: Debtor = {
+      id: generateId(),
+      name,
+      debtorName: name,
+      phone: formData.phone || selectedCustomer?.phone || "",
+      totalAmount: total,
+      amount: total,
+      notes: formData.notes,
+      products: selectedProducts.length > 0 ? selectedProducts : [
+        {
+          productId: "",
+          productCode: formData.productCode || "",
+          productName: formData.productName || (isFr ? "Vente à terme" : "بضاعة آجلة"),
+          quantity,
+          price,
+          total,
+        },
+      ],
+      date: new Date().toISOString().split("T")[0],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: "pending",
+    };
+
+    try {
+      const storeData = loadStoreData();
+      if (!storeData.debtors) storeData.debtors = [];
+      storeData.debtors.unshift(newDebtor);
       saveStoreData(storeData);
       setDebtorsList(storeData.debtors);
 
-      // --- Sync added debtor to Supabase ---
       try {
         await upsertDebtor({
-          id: newDebtor.id?.length === 36 ? newDebtor.id : undefined,
           name: newDebtor.name,
           phone: newDebtor.phone,
           total_amount: newDebtor.totalAmount,
           notes: newDebtor.notes,
-          date: newDebtor.date,
-          products: newDebtor.products // Note: Supabase debtor table expects 'products' as Json
+          products: newDebtor.products,
+          status: "pending",
         });
       } catch (dbErr) {
-        console.error("Database sync error (add debtor):", dbErr);
+        console.warn("Could not sync to cloud, saved locally:", dbErr);
       }
-      // -------------------------------------
 
-      toast({
-        title: isFr ? "Ajouté avec succès" : "تم بنجاح",
-        description: isFr ? "Le débiteur a été ajouté et le stock mis à jour" : "تمت إضافة المدين وتحديث المخزون بنجاح"
-      });
-
-      // Reset form
+      setIsAddModalOpen(false);
       setFormData({
         debtorName: "",
         phone: "",
         notes: "",
         productCode: "",
         productName: "",
-        quantity: "",
-        price: ""
+        quantity: "1",
+        price: "",
       });
       setSelectedProducts([]);
       setSelectedCustomer(null);
-    } catch (err) {
-      console.error("Error adding debtor:", err);
-      const errorMessage = err instanceof Error ? err.message : (isFr ? "Une erreur est survenue lors de l'ajout de la dette" : "حدث خطأ أثناء إضافة المدين");
-      setError(errorMessage);
+      setError("");
+
       toast({
-        title: isFr ? "Erreur" : "خطأ",
-        description: errorMessage,
-        variant: "destructive"
+        title: isFr ? "Débiteur enregistré" : "تم تسجيل الدين",
+        description: isFr ? "Le compte a été créé avec succès." : "تمت إضافة سجل العميل المدين بنجاح.",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = (debtor: Debtor) => {
-    setEditId(debtor.id);
-    setEditForm({
-      debtorName: debtor.debtorName || debtor.name,
-      phone: debtor.phone || "",
-      notes: debtor.notes || "",
-      productCode: "",
-      productName: "",
-      quantity: "",
-      price: ""
-    });
-
-    // Set edit products
-    if (Array.isArray(debtor.products) && debtor.products.length > 0) {
-      setEditProducts(debtor.products);
-    } else {
-      // Legacy format
-      setEditProducts([{
-        productId: debtor.id,
-        productCode: debtor.productCode || "",
-        productName: debtor.productName || "",
-        quantity: debtor.quantity || 0,
-        price: debtor.productPrice || 0,
-        total: (debtor.quantity || 0) * (debtor.productPrice || 0)
-      }]);
-    }
-
-    // Find matching customer
-    const customer = data.customers?.find((c: Customer) => 
-      c.name === (debtor.debtorName || debtor.name)
-    );
-    setSelectedEditCustomer(customer || null);
+  const handleProductSelect = (product: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      productCode: product.code,
+      productName: product.name,
+      price: String(product.price),
+    }));
+    setShowProductSearch(false);
+    setSearchTerm("");
   };
 
-  const handleEditSubmit = (id: string) => {
-    if (!editForm.debtorName.trim() || !editForm.phone.trim() || editProducts.length === 0) {
-      setError(isFr ? "Veuillez saisir des données valides pour la modification" : "يرجى إدخال بيانات صحيحة عند التعديل");
+  const sendWhatsAppReminder = (d: Debtor) => {
+    const phone = d.phone?.replace(/[^0-9]/g, "");
+    if (!phone) {
+      toast({
+        title: isFr ? "Numéro manquant" : "رقم الهاتف غير متوفر",
+        description: isFr ? "Veuillez renseigner le numéro du client." : "يرجى إضافة رقم هاتف للعميل.",
+        variant: "destructive",
+      });
       return;
     }
-
-    const totalAmount = editProducts.reduce((sum, item) => sum + item.total, 0);
-
-    const storeData = loadStoreData();
-    storeData.debtors = (storeData.debtors || []).map((d: Debtor) => 
-      d.id === id ? {
-        ...d,
-        name: editForm.debtorName.trim(),
-        debtorName: editForm.debtorName.trim(),
-        phone: editForm.phone.trim(),
-        products: editProducts,
-        totalAmount: totalAmount,
-        amount: totalAmount,
-        notes: editForm.notes,
-        updatedAt: new Date().toISOString(),
-        // Update legacy fields with first product
-        productCode: editProducts[0]?.productCode || "",
-        productName: editProducts[0]?.productName || "",
-        quantity: editProducts[0]?.quantity || 0,
-        productPrice: editProducts[0]?.price || 0
-      } : d
+    const msg = encodeURIComponent(
+      isFr
+        ? `Bonjour ${d.name || d.debtorName}, nous vous rappelons votre solde de ${formatCurrency(d.totalAmount || d.amount || 0)} chez notre magasin. Merci de procéder au règlement.`
+        : `السلام عليكم ${d.name || d.debtorName}، نود تذكيركم برصيد دين مستحق قدره ${formatCurrency(d.totalAmount || d.amount || 0)}. شاكرين حسن تعاونكم.`
     );
-    saveStoreData(storeData);
-    setDebtorsList(storeData.debtors);
-    setEditId(null);
-    setSelectedEditCustomer(null);
-    setError("");
+    window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
   };
-
-  const handleDelete = async (id: string) => {
-    const storeData = loadStoreData();
-    const debtorToDelete = (storeData.debtors || []).find((d: Debtor) => d.id === id);
-
-    if (debtorToDelete) {
-      // --- Restore Inventory Logic ---
-      const productsToRestore: { productId: string, quantity: number }[] = [];
-      
-      if (Array.isArray(debtorToDelete.products) && debtorToDelete.products.length > 0) {
-        debtorToDelete.products.forEach((p: any) => {
-          if (p.productId) productsToRestore.push({ productId: p.productId, quantity: p.quantity });
-        });
-      } else if (debtorToDelete.productCode) {
-        // Legacy single product format
-        const product = (storeData.products || []).find((p: any) => p.code === debtorToDelete.productCode);
-        if (product) productsToRestore.push({ productId: product.id, quantity: debtorToDelete.quantity || 0 });
-      }
-
-      // Update Local Inventory
-      const updatedProducts = (storeData.products || []).map((p: Product) => {
-        const restoreItem = productsToRestore.find(ri => ri.productId === p.id);
-        if (restoreItem) {
-          return { ...p, quantity: p.quantity + restoreItem.quantity };
-        }
-        return p;
-      });
-
-      storeData.products = updatedProducts;
-      
-      // Update Cloud Inventory (Supabase)
-      for (const item of productsToRestore) {
-        const productData = updatedProducts.find(p => p.id === item.productId);
-        if (productData) {
-          try {
-            const { upsertProduct } = await import("@/lib/database");
-            await upsertProduct({
-              id: productData.id,
-              code: productData.code,
-              name: productData.name,
-              price: productData.price,
-              cost: productData.cost,
-              quantity: productData.quantity,
-              low_stock_threshold: productData.lowStockThreshold || 0,
-              category: productData.category || undefined,
-              barcode: productData.barcode || undefined,
-              sold: (productData.sold || 0) - item.quantity // Decrement sold count
-            });
-          } catch (err) {
-            console.error("Failed to sync inventory to DB on debtor delete", err);
-          }
-        }
-      }
-    }
-
-    // Filter out the debtor
-    storeData.debtors = (storeData.debtors || []).filter((d: Debtor) => d.id !== id);
-    saveStoreData(storeData);
-    setDebtorsList(storeData.debtors);
-
-    // Sync deletion to Supabase
-    try {
-      if (id.length === 36) {
-        await deleteDebtor(id);
-      }
-    } catch (dbErr) {
-      console.error("Database deletion error (debtor):", dbErr);
-    }
-
-    toast({
-      title: isFr ? "Supprimé" : "تم الحذف",
-      description: isFr ? "La dette a été supprimée et les produits restitués au stock" : "تم حذف المديونية واسترجاع المنتجات للمخزون"
-    });
-
-    setDeleteId(null);
-  };
-
-  // Get existing debtors list for quick selection
-  const existingDebtors = debtorsList;
-  const uniqueDebtorNames = [...new Set(existingDebtors.map(d => d.debtorName || d.name))];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <User className="w-6 h-6" />
-          {isFr ? "Gestion des Débiteurs" : "إدارة المديونين"}
-        </h1>
-        <Button
-          onClick={() => navigate("/debtors/overview")}
-          className="flex items-center gap-2"
-        >
-          <BarChart3 className="w-4 h-4" />
-          {isFr ? "Vue d'ensemble" : "الملخص الشامل"}
-        </Button>
-      </div>
-
-      {/* Existing Debtors Quick Access */}
-      {uniqueDebtorNames.length > 0 && (
-        <Card className="shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
-            <CardTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
-              {isFr ? "Débiteurs actuels" : "المديونين الحاليين"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              {uniqueDebtorNames.map((name, index) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFormData({...formData, debtorName: name})}
-                  className="text-sm hover:bg-blue-50"
-                >
-                  {name}
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Add New Debtor Form */}
-      <Card className="shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="w-5 h-5" />
-            {isFr ? "Ajouter un nouveau débiteur" : "إضافة مدين جديد"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg flex items-center gap-2">
-                <span className="font-medium">{error}</span>
-              </div>
-            )}
-
-            {/* Customer Selection */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <User className="w-5 h-5" />
-                {isFr ? "Informations du débiteur" : "بيانات المدين"}
-              </h3>
-              <CustomerSelector
-                selectedCustomer={selectedCustomer}
-                customers={data.customers || []}
-                onCustomerChange={handleCustomerChange}
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <label className="block mb-2 font-medium">{isFr ? "Nom du débiteur" : "اسم المدين"}</label>
-                  <Input 
-                    value={formData.debtorName} 
-                    onChange={e => setFormData({...formData, debtorName: e.target.value})} 
-                    placeholder={isFr ? "Saisir le nom ou choisir dans la liste" : "أدخل اسم المدين أو اختر من القائمة"} 
-                    className="focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium">{isFr ? "Téléphone" : "رقم الهاتف"}</label>
-                  <Input 
-                    value={formData.phone} 
-                    onChange={e => setFormData({...formData, phone: e.target.value})} 
-                    placeholder={isFr ? "Numéro de téléphone" : "رقم الهاتف"} 
-                    className="focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block mb-2 font-medium">{isFr ? "Notes" : "ملاحظات"}</label>
-                  <Input 
-                    value={formData.notes} 
-                    onChange={e => setFormData({...formData, notes: e.target.value})} 
-                    placeholder={isFr ? "Notes supplémentaires (facultatif)" : "ملاحظات إضافية (اختياري)"} 
-                    className="focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Product Information Section */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                {isFr ? "Informations sur le produit" : "معلومات المنتج"}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative">
-                  <label className="block mb-2 font-medium">{isFr ? "Code produit" : "رمز المنتج"}</label>
-                  <Input 
-                    value={formData.productCode} 
-                    onChange={e => {
-                      setFormData({...formData, productCode: e.target.value});
-                      setSearchTerm(e.target.value);
-                      setShowProductSearch(true);
-                    }}
-                    onFocus={() => setShowProductSearch(true)}
-                    placeholder={isFr ? "Saisir le code produit ou chercher" : "أدخل رمز المنتج أو ابحث"} 
-                    className="focus:ring-2 focus:ring-blue-500"
-                  />
-                  <ProductSearch
-                    show={showProductSearch && (searchTerm.length > 0 || formData.productCode.length > 0)}
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                    filteredProducts={filteredProducts}
-                    onSelect={handleProductSelect}
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium">{isFr ? "Nom du produit" : "اسم المنتج"}</label>
-                  <Input 
-                    value={formData.productName} 
-                    onChange={e => setFormData({...formData, productName: e.target.value})} 
-                    placeholder={isFr ? "Nom du produit" : "اسم المنتج"} 
-                    className="focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium">{isFr ? "Quantité" : "الكمية"}</label>
-                  <Input 
-                    type="number" 
-                    value={formData.quantity} 
-                    onChange={e => setFormData({...formData, quantity: e.target.value})} 
-                    placeholder={isFr ? "Quantité" : "الكمية"} 
-                    className="focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium">{isFr ? "Prix unitaire" : "سعر الوحدة"}</label>
-                  <Input 
-                    type="number" 
-                    value={formData.price} 
-                    onChange={e => setFormData({...formData, price: e.target.value})} 
-                    placeholder="0.00" 
-                    className="focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              
-              <Button 
-                onClick={handleAddProduct} 
-                className="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {isFr ? "Ajouter un produit" : "إضافة منتج"}
-              </Button>
-            </div>
-
-            {/* Selected Products Display */}
-            {selectedProducts.length > 0 && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold mb-3">{isFr ? "Produits sélectionnés" : "المنتجات المحددة"}</h3>
-                <div className="space-y-2">
-                  {selectedProducts.map((product, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border">
-                      <div className="flex-1">
-                        <div className="font-medium">{product.productName}</div>
-                        <div className="text-sm text-gray-600">
-                          {isFr ? "Code" : "الرمز"}: {product.productCode} | {isFr ? "Qté" : "الكمية"}: {product.quantity} | {isFr ? "Prix" : "السعر"}: {product.price}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-green-600">
-                          {(product.total).toFixed(2)} {isFr ? "DZD" : "د.ج"}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleRemoveProduct(index)}
-                        >
-                          {isFr ? "Supprimer" : "حذف"}
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold">{isFr ? "Total :" : "المجموع الكلي:"}</span>
-                    <span className="text-xl font-bold text-blue-600">
-                      {selectedProducts.reduce((sum, item) => sum + item.total, 0).toFixed(2)} {isFr ? "DZD" : "د.ج"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <Button 
-              onClick={handleSubmit} 
-              disabled={loading} 
-              className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
-            >
-              <Plus className="mr-2" size={18} />
-              {loading ? (isFr ? "Ajout en cours..." : "جاري الإضافة...") : (isFr ? "Ajouter un débiteur" : "إضافة مدين")}
-            </Button>
+    <div className="w-full px-3 sm:px-6 py-4 space-y-5" dir={isRTL ? "rtl" : "ltr"}>
+      {/* ──────────────── HEADER ──────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-rose-500 to-red-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20 shrink-0">
+            <Wallet className="w-6 h-6 stroke-[2.2]" />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Debtors List */}
-      <DebtorsList
-        debtors={debtorsList}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onToggleStatus={handleToggleStatus}
-        deleteId={deleteId}
-        setDeleteId={setDeleteId}
-      />
-
-      {/* Edit Modal */}
-      {editId && (
-        <div className="fixed z-50 inset-0 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              {isFr ? "Modifier les données du débiteur" : "تعديل بيانات المدين"}
-            </h3>
-            
-            <div className="space-y-4">
-              <CustomerSelector
-                selectedCustomer={selectedEditCustomer}
-                customers={data.customers || []}
-                onCustomerChange={handleEditCustomerChange}
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-2 font-medium">{isFr ? "Nom du débiteur" : "اسم المدين"}</label>
-                  <Input 
-                    value={editForm.debtorName} 
-                    onChange={e => setEditForm(prev => ({...prev, debtorName: e.target.value}))} 
-                    placeholder={isFr ? "Nom du débiteur" : "اسم المدين"}
-                  />
-                </div>
-                <div>
-                  <label className="block mb-2 font-medium">{isFr ? "Téléphone" : "رقم الهاتف"}</label>
-                  <Input 
-                    value={editForm.phone} 
-                    onChange={e => setEditForm(prev => ({...prev, phone: e.target.value}))} 
-                    placeholder={isFr ? "Numéro de téléphone" : "رقم الهاتف"}
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block mb-2 font-medium">{isFr ? "Notes" : "ملاحظات"}</label>
-                  <Input 
-                    value={editForm.notes} 
-                    onChange={e => setEditForm(prev => ({...prev, notes: e.target.value}))} 
-                    placeholder={isFr ? "Notes supplémentaires" : "ملاحظات إضافية"}
-                  />
-                </div>
-              </div>
-
-              <DebtorProductSelector
-                selectedProducts={editProducts}
-                onProductsChange={setEditProducts}
-              />
-            </div>
-
-            <div className="flex gap-3 justify-end mt-6">
-              <Button 
-                variant="default" 
-                onClick={() => handleEditSubmit(editId)} 
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {isFr ? "Enregistrer les modifications" : "حفظ التعديلات"}
-              </Button>
-              <Button variant="outline" onClick={() => setEditId(null)}>
-                {isFr ? "Annuler" : "إلغاء"}
-              </Button>
-            </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              {isFr ? "Gestion des créances clients (Débiteurs)" : "إدارة ديون العملاء والمدينين"}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+              {isFr
+                ? "Suivi des impayés, rappels WhatsApp et archivage des comptes soldés"
+                : "متابعة ديون العملاء، تذكيرات الواتساب، والتحصيل مع إمكانية الأرشفة"}
+            </p>
           </div>
         </div>
-      )}
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Link to Archive */}
+          <Button
+            onClick={() => navigate("/archive?tab=debtors")}
+            variant="outline"
+            className="h-10 px-4 rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs gap-2 shadow-xs cursor-pointer"
+          >
+            <ArchiveIcon className="w-4 h-4 text-amber-600" />
+            <span>{isFr ? "Archives des créances" : "أرشيف المدينين"}</span>
+            {kpis.archivedCount > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 bg-amber-100 text-amber-700 rounded-full text-[10px] font-black flex items-center justify-center">
+                {kpis.archivedCount}
+              </span>
+            )}
+          </Button>
+
+          {/* Quick Overview Link */}
+          <Button
+            onClick={() => navigate("/debtors/overview")}
+            variant="outline"
+            className="h-10 px-4 rounded-xl border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs gap-2 shadow-xs cursor-pointer"
+          >
+            <BarChart3 className="w-4 h-4 text-blue-600" />
+            <span>{isFr ? "Synthèse globale" : "الملخص الإحصائي"}</span>
+          </Button>
+
+          {/* Add Debtor Modal */}
+          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+            <DialogTrigger asChild>
+              <Button className="h-10 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-2 shadow-sm shadow-blue-500/25 transition-all cursor-pointer">
+                <Plus className="w-4 h-4" />
+                <span>{isFr ? "Nouveau débiteur" : "تسجيل دين جديد"}</span>
+              </Button>
+            </DialogTrigger>
+
+            <DialogContent className="sm:max-w-[620px] gap-0 p-0 overflow-hidden rounded-2xl bg-white shadow-2xl border border-slate-100">
+              <DialogHeader className="p-5 bg-gradient-to-r from-[#0047cc] to-[#0052d9] text-white">
+                <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                  <Wallet className="w-5 h-5" />
+                  <span>{isFr ? "Enregistrer une créance client" : "تسجيل دين جديد على عميل"}</span>
+                </DialogTitle>
+              </DialogHeader>
+
+              <form onSubmit={handleSubmitNew}>
+                <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                  {error && (
+                    <div className="p-3 rounded-xl bg-rose-50 text-rose-600 text-xs font-semibold border border-rose-200">
+                      {error}
+                    </div>
+                  )}
+
+                  {/* Customer Selection */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">
+                      {isFr ? "Sélectionner le client" : "اختر العميل"} *
+                    </label>
+                    <CustomerSelector
+                      selectedCustomer={selectedCustomer}
+                      customers={data.customers || []}
+                      onCustomerChange={(id) => {
+                        const cust = (data.customers || []).find((c) => c.id === id);
+                        if (cust) {
+                          setSelectedCustomer(cust);
+                          setFormData((prev) => ({
+                            ...prev,
+                            debtorName: cust.name,
+                            phone: cust.phone || "",
+                          }));
+                        }
+                      }}
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
+                      <Input
+                        value={formData.debtorName}
+                        onChange={(e) => setFormData({ ...formData, debtorName: e.target.value })}
+                        placeholder={isFr ? "Nom du client..." : "اسم العميل..."}
+                        className="h-10 text-xs bg-slate-50 border-slate-200 rounded-xl"
+                        required
+                      />
+                      <Input
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder={isFr ? "N° de téléphone..." : "رقم الهاتف..."}
+                        className="h-10 text-xs bg-slate-50 border-slate-200 rounded-xl font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Product Details */}
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-3">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Package className="w-4 h-4 text-blue-600" />
+                      <span>{isFr ? "Articles ou montant du crédit" : "بيانات السلع أو مبلغ الدين"}</span>
+                    </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="relative">
+                        <label className="text-[11px] font-bold text-slate-600 mb-1 block">
+                          {isFr ? "Code produit" : "رمز المنتج"}
+                        </label>
+                        <Input
+                          value={formData.productCode}
+                          onChange={(e) => {
+                            setFormData({ ...formData, productCode: e.target.value });
+                            setSearchTerm(e.target.value);
+                            setShowProductSearch(true);
+                          }}
+                          placeholder="Ex: PRD-001"
+                          className="h-9 text-xs bg-white border-slate-200 rounded-xl"
+                        />
+                        <ProductSearch
+                          show={showProductSearch && (searchTerm.length > 0 || formData.productCode.length > 0)}
+                          searchTerm={searchTerm}
+                          setSearchTerm={setSearchTerm}
+                          filteredProducts={filteredProducts}
+                          onSelect={handleProductSelect}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 mb-1 block">
+                          {isFr ? "Nom de l'article" : "اسم الصنف"}
+                        </label>
+                        <Input
+                          value={formData.productName}
+                          onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+                          placeholder={isFr ? "Nom du produit ou motif..." : "اسم الصنف أو بيان الدين..."}
+                          className="h-9 text-xs bg-white border-slate-200 rounded-xl"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 mb-1 block">
+                          {isFr ? "Quantité" : "الكمية"}
+                        </label>
+                        <Input
+                          type="number"
+                          value={formData.quantity}
+                          onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                          placeholder="1"
+                          className="h-9 text-xs bg-white border-slate-200 rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 mb-1 block">
+                          {isFr ? "Montant / Prix unitaire (MRU)" : "المبلغ / سعر الوحدة (أوقية)"}
+                        </label>
+                        <Input
+                          type="number"
+                          value={formData.price}
+                          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                          placeholder="0.00"
+                          className="h-9 text-xs bg-white border-slate-200 rounded-xl font-bold font-sans text-blue-600"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">
+                      {isFr ? "Notes / Modalités de remboursement" : "ملاحظات وطريقة السداد"}
+                    </label>
+                    <Input
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder={isFr ? "Ex: Promesse de paiement le 25..." : "مثال: وعد بالدفع يوم 25 في الشهر..."}
+                      className="h-10 text-xs bg-slate-50 border-slate-200 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between w-full">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">
+                      {isFr ? "Total de la créance" : "إجمالي مبلغ الدين"}
+                    </span>
+                    <span className="text-lg font-black text-rose-600">
+                      {formatCurrency(
+                        (parseFloat(formData.price) || 0) * (parseInt(formData.quantity) || 1)
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsAddModalOpen(false)}
+                      className="rounded-xl px-4 text-xs font-bold"
+                    >
+                      {t("cancel") || "إلغاء"}
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5 text-xs font-bold shadow-xs cursor-pointer"
+                    >
+                      {isFr ? "Enregistrer" : "حفظ الدين"}
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* ──────────────── KPI SUMMARY CARDS ──────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Total Debts */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">
+              {isFr ? "Total des créances" : "إجمالي ديون العملاء"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <DollarSign className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-slate-900 tracking-tight">
+            {formatCurrency(kpis.totalAmount)}
+          </p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "Montant global des crédits" : "إجمالي الديون المسجلة"}
+          </span>
+        </div>
+
+        {/* Pending Unpaid */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">
+              {isFr ? "Solde restant dû" : "الديون المعلقة والمتبقية"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Clock className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-amber-600 tracking-tight">
+            {formatCurrency(kpis.pendingAmount)}
+          </p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "À recouvrer auprès des clients" : "مبالغ مستحقة التحصيل"}
+          </span>
+        </div>
+
+        {/* Paid Amount */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">
+              {isFr ? "Créances recouvrées" : "المبالغ المحصلة"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-emerald-600 tracking-tight">
+            {formatCurrency(kpis.paidAmount)}
+          </p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "Montants déjà encaissés" : "تم سدادها واستلامها"}
+          </span>
+        </div>
+
+        {/* Active Debtors */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500">
+              {isFr ? "Clients débiteurs" : "العملاء المدينين"}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <User className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-2xl font-black text-slate-900 tracking-tight">{kpis.uniqueDebtors}</p>
+          <span className="text-[11px] text-slate-400 font-medium mt-1 block">
+            {isFr ? "Clients ayant un solde ouvert" : "عملاء عليهم حسابات جارية"}
+          </span>
+        </div>
+      </div>
+
+      {/* ──────────────── SEARCH & FILTER BAR ──────────────── */}
+      <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 rtl:right-3.5 rtl:left-auto ltr:left-3.5 ltr:right-auto pointer-events-none" />
+          <Input
+            placeholder={
+              isFr ? "Rechercher par client ou téléphone..." : "ابحث باسم العميل أو رقم الهاتف..."
+            }
+            value={searchTermDebtor}
+            onChange={(e) => setSearchTermDebtor(e.target.value)}
+            className="rtl:pr-10 rtl:pl-4 ltr:pl-10 ltr:pr-4 h-10 text-xs bg-slate-50 border-slate-200 rounded-xl"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 w-full sm:w-auto bg-slate-100/80 p-1 rounded-xl text-xs">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              statusFilter === "all" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {isFr ? "Tous" : "الكل"} ({debtorsList.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("pending")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              statusFilter === "pending" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {isFr ? "En attente" : "قيد الانتظار"}
+          </button>
+          <button
+            onClick={() => setStatusFilter("paid")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              statusFilter === "paid" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {isFr ? "Soldés" : "المسددة"}
+          </button>
+          <button
+            onClick={() => setStatusFilter("archived")}
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              statusFilter === "archived" ? "bg-white text-blue-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {isFr ? "Archivés" : "المؤرشفة"}
+          </button>
+        </div>
+      </div>
+
+      {/* ──────────────── DEBTORS TABLE ──────────────── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-right border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-600 font-bold uppercase tracking-wider">
+                <th className="py-3.5 px-4">{isFr ? "Client débiteur" : "العميل المدين"}</th>
+                <th className="py-3.5 px-4">{isFr ? "Articles / Détail" : "البيان / الأصناف"}</th>
+                <th className="py-3.5 px-4 text-center">{isFr ? "Montant de la créance" : "إجمالي الدين"}</th>
+                <th className="py-3.5 px-4">{isFr ? "Date d'octroi" : "التاريخ"}</th>
+                <th className="py-3.5 px-4 text-center">{isFr ? "Statut" : "الحالة"}</th>
+                <th className="py-3.5 px-4 text-center">{isFr ? "Actions rapides" : "الإجراءات"}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {displayedDebtors.length > 0 ? (
+                displayedDebtors.map((d) => {
+                  const isPaid = d.status === "paid";
+                  const isArchived = d.status === ("archived" as any);
+                  const clientName = d.name || d.debtorName || (isFr ? "Client inconnu" : "عميل بدون اسم");
+                  return (
+                    <tr key={d.id} className="hover:bg-slate-50/60 transition-colors group">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center shrink-0">
+                            {clientName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">{clientName}</p>
+                            {d.phone && (
+                              <p className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                                <Phone size={10} />
+                                {d.phone}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4 font-medium text-slate-700">
+                        <div className="max-w-xs truncate">
+                          {d.products && d.products.length > 0 ? (
+                            d.products.map((p, i) => (
+                              <span key={i} className="block truncate">
+                                • {p.productName} ({p.quantity}x)
+                              </span>
+                            ))
+                          ) : (
+                            <span>{d.notes || (isFr ? "Crédit général" : "دين تجاري")}</span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center font-black text-rose-600 font-sans text-sm">
+                        {formatCurrency(d.totalAmount || d.amount || 0)}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-slate-500 font-medium">
+                        {formatShortDate(d.date || d.createdAt)}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center">
+                        {isArchived ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            <ArchiveIcon size={12} />
+                            <span>{isFr ? "Archivé" : "مؤرشف"}</span>
+                          </span>
+                        ) : isPaid ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 size={12} />
+                            <span>{isFr ? "Soldé" : "مسدد"}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                            <Clock size={12} />
+                            <span>{isFr ? "Impayé" : "مستحق"}</span>
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* WhatsApp Reminder */}
+                          {d.phone && !isPaid && (
+                            <button
+                              onClick={() => sendWhatsAppReminder(d)}
+                              className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                              title={isFr ? "Envoyer rappel WhatsApp" : "إرسال تذكير واتساب"}
+                            >
+                              <MessageCircle size={15} />
+                            </button>
+                          )}
+
+                          {/* Toggle Paid / Pending */}
+                          <button
+                            onClick={() => handleToggleStatus(d.id, isPaid ? "paid" : "pending")}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              isPaid
+                                ? "text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+                                : "text-emerald-600 hover:bg-emerald-50"
+                            }`}
+                            title={isPaid ? (isFr ? "Marquer non soldé" : "إعادة للانتظار") : (isFr ? "Marquer soldé" : "تسجيل التحصيل")}
+                          >
+                            <CheckCircle2 size={15} />
+                          </button>
+
+                          {/* Archive toggle */}
+                          <button
+                            onClick={() => handleArchiveDebtor(d.id)}
+                            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer"
+                            title={
+                              isArchived
+                                ? isFr ? "Désarchiver" : "إلغاء الأرشفة"
+                                : isFr ? "Archiver vers le registre" : "أرشفة الدين"
+                            }
+                          >
+                            <ArchiveIcon size={15} />
+                          </button>
+
+                          {/* Delete */}
+                          <button
+                            onClick={() => setDeleteId(d.id)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title={t("delete")}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <User className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                    <p className="font-bold text-slate-600 text-sm">
+                      {isFr ? "Aucun débiteur trouvé" : "لا توجد ديون مسجلة على العملاء"}
+                    </p>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      {isFr
+                        ? "Cliquez sur 'Nouveau débiteur' pour enregistrer une vente à terme."
+                        : "انقر على زر 'تسجيل دين جديد' لإضافة حساب آجل."}
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-bold text-slate-900">
+              {t("deleteConfirmation")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-slate-500">
+              {t("cannotUndo")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex gap-2">
+            <AlertDialogCancel className="rounded-xl text-xs font-bold">
+              {t("cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold"
+            >
+              {t("confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
