@@ -109,7 +109,7 @@ export default function Archive() {
           }))
         }));
 
-        // Combine DB invoices with any local invoices that haven't synced or from notes
+        // Combine DB invoices with any local invoices
         const localInvs = localData.invoices || [];
         const combined = [...dbMapped];
         for (const locInv of localInvs) {
@@ -117,9 +117,110 @@ export default function Archive() {
             combined.push(locInv);
           }
         }
+
+        // Also ensure any DailySales are represented as registered invoices in Archive
+        if (localData.dailySales && localData.dailySales.length > 0) {
+          for (const ds of localData.dailySales) {
+            const saleInvoiceId = ds.id || `sale_${ds.date}_${ds.productId}`;
+            const saleInvoiceNumber = `INV-SALE-${(ds.id || '').slice(0, 8).toUpperCase() || 'DAILY'}`;
+            const exists = combined.some(inv => inv.id === saleInvoiceId || inv.invoiceNumber === saleInvoiceNumber);
+            if (!exists) {
+              const saleDate = ds.date || ds.createdAt || new Date().toISOString();
+              const saleQty = Number(ds.quantity) || 1;
+              const salePrice = Number(ds.unitPrice) || Number(ds.total) || 0;
+              const saleTotal = Number(ds.total) || (saleQty * salePrice);
+              combined.push({
+                id: saleInvoiceId,
+                invoiceNumber: saleInvoiceNumber,
+                customerId: undefined,
+                customerName: ds.customerName || "مبيعات يومية مباشرة",
+                total: saleTotal,
+                subtotal: saleTotal,
+                discount: 0,
+                tax: 0,
+                paymentMethod: ds.paymentMethod || "cash",
+                status: "paid",
+                type: "sales",
+                notes: `مبيعات يومية - ${ds.productName || ''}`,
+                date: saleDate.split("T")[0],
+                createdAt: ds.createdAt || (saleDate.includes("T") ? saleDate : `${saleDate}T12:00:00.000Z`),
+                updatedAt: new Date().toISOString(),
+                items: [
+                  {
+                    productId: ds.productId || "",
+                    productName: ds.productName || "منتج",
+                    productCode: ds.productCode || "",
+                    quantity: saleQty,
+                    price: salePrice,
+                    total: saleTotal,
+                  }
+                ],
+                products: [
+                  {
+                    productId: ds.productId || "",
+                    quantity: saleQty,
+                    price: salePrice,
+                    name: ds.productName || "منتج",
+                  }
+                ]
+              });
+            }
+          }
+        }
+
         allList = combined;
       } else {
-        allList = localData.invoices || [];
+        const localInvs = localData.invoices || [];
+        const combined = [...localInvs];
+        if (localData.dailySales && localData.dailySales.length > 0) {
+          for (const ds of localData.dailySales) {
+            const saleInvoiceId = ds.id || `sale_${ds.date}_${ds.productId}`;
+            const saleInvoiceNumber = `INV-SALE-${(ds.id || '').slice(0, 8).toUpperCase() || 'DAILY'}`;
+            const exists = combined.some(inv => inv.id === saleInvoiceId || inv.invoiceNumber === saleInvoiceNumber);
+            if (!exists) {
+              const saleDate = ds.date || ds.createdAt || new Date().toISOString();
+              const saleQty = Number(ds.quantity) || 1;
+              const salePrice = Number(ds.unitPrice) || Number(ds.total) || 0;
+              const saleTotal = Number(ds.total) || (saleQty * salePrice);
+              combined.push({
+                id: saleInvoiceId,
+                invoiceNumber: saleInvoiceNumber,
+                customerId: undefined,
+                customerName: ds.customerName || "مبيعات يومية مباشرة",
+                total: saleTotal,
+                subtotal: saleTotal,
+                discount: 0,
+                tax: 0,
+                paymentMethod: ds.paymentMethod || "cash",
+                status: "paid",
+                type: "sales",
+                notes: `مبيعات يومية - ${ds.productName || ''}`,
+                date: saleDate.split("T")[0],
+                createdAt: ds.createdAt || (saleDate.includes("T") ? saleDate : `${saleDate}T12:00:00.000Z`),
+                updatedAt: new Date().toISOString(),
+                items: [
+                  {
+                    productId: ds.productId || "",
+                    productName: ds.productName || "منتج",
+                    productCode: ds.productCode || "",
+                    quantity: saleQty,
+                    price: salePrice,
+                    total: saleTotal,
+                  }
+                ],
+                products: [
+                  {
+                    productId: ds.productId || "",
+                    quantity: saleQty,
+                    price: salePrice,
+                    name: ds.productName || "منتج",
+                  }
+                ]
+              });
+            }
+          }
+        }
+        allList = combined;
       }
       setInvoices(allList);
     } catch (error) {

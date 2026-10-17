@@ -74,6 +74,93 @@ export const loadStoreData = (): StoreData => {
         if (!parsed.customerFiles) parsed.customerFiles = [];
         if (!parsed.productMovements) parsed.productMovements = [];
         if (!parsed.invoices) parsed.invoices = [];
+        if (!parsed.dailySales) parsed.dailySales = [];
+
+        // Automatic Synchronization: Convert DailySales into official Invoices if not already present
+        let storeNeedsSave = false;
+        if (parsed.dailySales && parsed.dailySales.length > 0) {
+          const processedSaleIds = new Set(
+            parsed.invoices.map((inv: any) => inv.id)
+          );
+
+          for (const sale of parsed.dailySales) {
+            const saleInvoiceId = sale.id || `sale_${sale.date}_${sale.productId}`;
+            const saleInvoiceNumber = `INV-SALE-${(sale.id || '').slice(0, 8).toUpperCase() || 'DAILY'}`;
+
+            // Check if already represented in invoices
+            const alreadyExists = parsed.invoices.some(
+              (inv: any) =>
+                inv.id === saleInvoiceId ||
+                inv.invoiceNumber === saleInvoiceNumber ||
+                (inv.notes && inv.notes.includes(sale.id))
+            );
+
+            if (!alreadyExists) {
+              const saleDate = sale.date || sale.createdAt || new Date().toISOString();
+              const saleQty = Number(sale.quantity) || 1;
+              const saleUnitPrice = Number(sale.unitPrice) || Number(sale.total) || 0;
+              const saleTotal = Number(sale.total) || (saleQty * saleUnitPrice);
+
+              const newInvoice = {
+                id: saleInvoiceId,
+                invoiceNumber: saleInvoiceNumber,
+                customerId: undefined,
+                customerName: sale.customerName || "مبيعات يومية مباشرة",
+                total: saleTotal,
+                subtotal: saleTotal,
+                discount: 0,
+                tax: 0,
+                paymentMethod: sale.paymentMethod || "cash",
+                status: "paid" as const,
+                type: "sales" as const,
+                notes: `مبيعات يومية - معرّف: ${sale.id || ''}`,
+                date: saleDate.split("T")[0],
+                createdAt: sale.createdAt || (saleDate.includes("T") ? saleDate : `${saleDate}T12:00:00.000Z`),
+                updatedAt: new Date().toISOString(),
+                items: [
+                  {
+                    productId: sale.productId || "",
+                    productName: sale.productName || "منتج",
+                    productCode: sale.productCode || "",
+                    quantity: saleQty,
+                    price: saleUnitPrice,
+                    total: saleTotal,
+                  }
+                ],
+                products: [
+                  {
+                    productId: sale.productId || "",
+                    quantity: saleQty,
+                    price: saleUnitPrice,
+                    name: sale.productName || "منتج",
+                  }
+                ]
+              };
+
+              parsed.invoices.unshift(newInvoice);
+              storeNeedsSave = true;
+
+              // Ensure stock is deducted if it hasn't been accounted for yet
+              if (sale.productId && !sale.stockDeducted) {
+                const prodIndex = parsed.products.findIndex((p: any) => p.id === sale.productId || p.code === sale.productCode);
+                if (prodIndex !== -1) {
+                  // Only deduct if not already reduced
+                  if (typeof sale.remainingQuantity === "undefined") {
+                    parsed.products[prodIndex].quantity = Math.max(0, (parsed.products[prodIndex].quantity || 0) - saleQty);
+                    parsed.products[prodIndex].sold = (parsed.products[prodIndex].sold || 0) + saleQty;
+                    parsed.products[prodIndex].updatedAt = new Date().toISOString();
+                  }
+                }
+                sale.stockDeducted = true;
+              }
+            }
+          }
+        }
+
+        if (storeNeedsSave) {
+          saveStoreData(parsed);
+        }
+
         return parsed;
       }
     }
