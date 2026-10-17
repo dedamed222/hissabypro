@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import InventoryTabs from "@/components/inventory/InventoryTabs";
 import WarehouseManager from "@/components/inventory/WarehouseManager";
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
+import { Settings, Boxes, Warehouse as WarehouseIcon } from "lucide-react";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export default function Inventory() {
@@ -75,15 +75,49 @@ export default function Inventory() {
   // Real-time sync: reload when products change on any device
   useRealtimeSync(['products'], loadData, user?.id);
 
-  return <div className="space-y-6">
-    <div className="flex items-center justify-between mb-6 mx-[30px]">
-      <h1 className="text-2xl font-bold">المخزون</h1>
-      <Button variant="outline" onClick={() => setShowWarehouseManager(!showWarehouseManager)}>
-        <Settings className="w-4 h-4 mr-2" />
-        {showWarehouseManager ? "عرض المخزون" : "إدارة المخازن"}
-      </Button>
-    </div>
+  return (
+    <div className="space-y-6 pb-20">
+      {/* ── Top Header Banner ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+            <Boxes size={22} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">إدارة المخزون والمستودعات</h1>
+            <p className="text-xs text-slate-500">
+              متابعة الكميات، قيمة المخزون، تنبيهات النواقص وإدارة المستودعات
+            </p>
+          </div>
+        </div>
 
-    {showWarehouseManager ? <WarehouseManager /> : <InventoryTabs products={products} warehouses={warehouses} onDataChange={loadData} />}
-  </div>;
+        <button
+          onClick={() => setShowWarehouseManager(!showWarehouseManager)}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all border ${
+            showWarehouseManager
+              ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-xs"
+          }`}
+        >
+          {showWarehouseManager ? (
+            <>
+              <Boxes size={15} />
+              <span>العودة لجدول المخزون</span>
+            </>
+          ) : (
+            <>
+              <WarehouseIcon size={15} />
+              <span>إدارة وتخصيص المخازن</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {showWarehouseManager ? (
+        <WarehouseManager />
+      ) : (
+        <InventoryTabs products={products} warehouses={warehouses} onDataChange={loadData} />
+      )}
+    </div>
+  );
 }

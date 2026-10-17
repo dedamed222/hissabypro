@@ -1,29 +1,36 @@
-
-import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { loadStoreData } from "@/utils/localStorage";
-import { Search, Loader2 } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  Printer,
+  Edit,
+  Trash2,
+  X,
+  CheckCircle,
+  AlertCircle,
+  FileText,
+  DollarSign,
+  TrendingUp,
+  Receipt,
+  FileCheck,
+  Calendar,
+  Filter,
+  User,
+  Package,
+  Clock,
+  ChevronDown
+} from "lucide-react";
 import ExportActions from "@/components/shared/ExportActions";
 import { useLocale } from "@/hooks/useLocale";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
-import { Printer, ArrowRightLeft, Edit, Trash2, X, CheckCircle, AlertCircle } from "lucide-react";
 import ProfessionalInvoice from "@/components/invoice/ProfessionalInvoice";
-import { Invoice, StoreInfo } from "@/types";
+import { Invoice, StoreInfo, Customer } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getInvoices, getCustomers, deleteInvoice, upsertInvoice } from "@/lib/database";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
-import { Customer } from "@/types";
 import { saveStoreData } from "@/utils/localStorage";
 import { updateInvoiceMovements, revertInvoiceMovements } from "@/utils/productMovements";
 
@@ -118,7 +125,7 @@ export default function Archive() {
           }
         }
 
-        // Also ensure any DailySales are represented as registered invoices in Archive
+        // Also ensure any local daily sales are reflected if not in DB
         if (localData.dailySales && localData.dailySales.length > 0) {
           for (const ds of localData.dailySales) {
             const saleInvoiceId = ds.id || `sale_${ds.date}_${ds.productId}`;
@@ -239,23 +246,53 @@ export default function Archive() {
   // Real-time sync: reload when invoices change on any device
   useRealtimeSync(['invoices', 'invoice_items'], loadAllData, user?.id);
 
-  const filteredInvoices = invoices
-    .filter(invoice => {
-      const invoiceType = invoice.type || 'sales';
-      const invoiceDate = invoice.date || invoice.createdAt;
-      const invoiceYear = invoiceDate ? new Date(invoiceDate).getFullYear() : 0;
+  const filteredInvoices = useMemo(() => {
+    return invoices
+      .filter(invoice => {
+        const invoiceType = invoice.type || 'sales';
+        const invoiceDate = invoice.date || invoice.createdAt;
+        const invoiceYear = invoiceDate ? new Date(invoiceDate).getFullYear() : 0;
 
-      const matchesYear = year === 0 || invoiceYear === year;
-      const matchesType = filterType === "all" || invoiceType === filterType;
-      // Removed matchesArchiveCondition (paid/partial only) to show ALL invoices as requested
+        const matchesYear = year === 0 || invoiceYear === year;
+        const matchesType = filterType === "all" || invoiceType === filterType;
 
-      const matchesSearch = searchTerm === "" ||
-        invoice.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.items.some(item =>
-          item.productName.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      return matchesYear && matchesType && matchesSearch;
-    });
+        const matchesSearch = searchTerm === "" ||
+          invoice.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          invoice.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          invoice.items?.some(item =>
+            item.productName?.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        return matchesYear && matchesType && matchesSearch;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.date || a.createdAt || 0).getTime();
+        const dateB = new Date(b.date || b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+  }, [invoices, year, filterType, searchTerm]);
+
+  // Dynamic KPI Stats
+  const stats = useMemo(() => {
+    const totalCount = filteredInvoices.length;
+    const totalAmount = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
+    const salesInvoices = filteredInvoices.filter(i => (i.type || 'sales') === 'sales');
+    const salesAmount = salesInvoices.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
+    const quotationInvoices = filteredInvoices.filter(i => i.type === 'quotation');
+    const quotationAmount = quotationInvoices.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
+    const debtInvoices = filteredInvoices.filter(i => i.type === 'debt');
+    const debtAmount = debtInvoices.reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
+
+    return {
+      totalCount,
+      totalAmount,
+      salesCount: salesInvoices.length,
+      salesAmount,
+      quotationCount: quotationInvoices.length,
+      quotationAmount,
+      debtCount: debtInvoices.length,
+      debtAmount,
+    };
+  }, [filteredInvoices]);
 
   const exportColumns = [
     {
@@ -267,9 +304,16 @@ export default function Archive() {
       header: "العميل",
     },
     {
+      key: "type",
+      header: "النوع",
+      render: (invoice: any) =>
+        (invoice.type || 'sales') === 'sales' ? 'فاتورة بيع' :
+        invoice.type === 'quotation' ? 'عرض سعر' : 'فاتورة دين'
+    },
+    {
       key: "items",
       header: "المنتجات",
-      render: (invoice: any) => invoice.items.map((item: any) => item.productName).join(", ")
+      render: (invoice: any) => (invoice.items || []).map((item: any) => item.productName).join(", ")
     },
     {
       key: "createdAt",
@@ -284,24 +328,15 @@ export default function Archive() {
   ];
 
   const totals = {
-    totalDebit: filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0),
+    totalDebit: stats.totalAmount,
     totalCredit: 0,
-    finalBalance: filteredInvoices.reduce((sum, invoice) => sum + invoice.total, 0)
+    finalBalance: stats.totalAmount
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-      </div>
-    );
-  }
 
   const handleOpenEdit = (invoice: Invoice) => {
     setEditingInvoice(invoice);
     setEditCustomerName(invoice.customerName);
 
-    // Extract YYYY-MM-DD from invoice.date or invoice.createdAt
     const rawDate = invoice.date || invoice.createdAt || "";
     let dStr = "";
     if (rawDate) {
@@ -387,9 +422,8 @@ export default function Archive() {
     } else {
       store.invoices.unshift(updatedInvoice);
     }
-    // Also update any customer file entry
     if (store.customerFiles) {
-      store.customerFiles = store.customerFiles.map(f => 
+      store.customerFiles = store.customerFiles.map(f =>
         (f.invoiceId === updatedInvoice.id || f.invoiceNumber === updatedInvoice.invoiceNumber)
           ? { ...f, customerName: updatedInvoice.customerName, total: updatedInvoice.total, date: finalDate }
           : f
@@ -397,7 +431,7 @@ export default function Archive() {
     }
     saveStoreData(store);
 
-    // Update product movements for this edited invoice
+    // Update product movements
     updateInvoiceMovements(updatedInvoice);
 
     // Update in Supabase
@@ -446,7 +480,6 @@ export default function Archive() {
     }
     saveStoreData(store);
 
-    // Revert/cancel movements associated with this deleted invoice
     revertInvoiceMovements(invId, invNum);
 
     // Remove from Supabase
@@ -461,11 +494,79 @@ export default function Archive() {
     loadAllData();
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          مدفوع
+        </span>;
+      case 'partial':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+          جزئي
+        </span>;
+      case 'cancelled':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+          ملغي
+        </span>;
+      default:
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+          قيد الانتظار
+        </span>;
+    }
+  };
+
+  const getTypeBadge = (type?: string) => {
+    const tVal = type || 'sales';
+    if (tVal === 'sales') {
+      return <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/60">
+        <Receipt size={12} />
+        {t('salesInvoice') || 'فاتورة بيع'}
+      </span>;
+    }
+    if (tVal === 'quotation') {
+      return <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200/60">
+        <FileText size={12} />
+        {t('quotationInvoice') || 'عرض سعر'}
+      </span>;
+    }
+    return <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/60">
+      <DollarSign size={12} />
+      {t('debtInvoice') || 'فاتورة دين'}
+    </span>;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+        <p className="text-sm font-medium text-slate-500">جاري تحميل سجل الأرشيف والبيانات...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6 print:hidden">
-        <h1 className="text-2xl font-bold">الأرشيف</h1>
-        <div className="flex items-center gap-4 flex-wrap">
+    <div className="space-y-6 pb-20">
+      {/* ── Top Header Banner ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+              <FileCheck size={22} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">سجل الأرشيف والفواتير</h1>
+              <p className="text-xs text-slate-500">
+                استعراض وإدارة جميع الفواتير المسجلة، عروض الأسعار، والمبيعات السابقة
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
           <ExportActions
             data={filteredInvoices}
             filename="archived_invoices"
@@ -473,199 +574,365 @@ export default function Archive() {
             columns={exportColumns}
             totals={totals}
           />
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="border rounded p-2"
-            title={t('invoiceTypeLabel') || 'نوع الفاتورة'}
-          >
-            <option value="all">{t('all') || 'الكل'}</option>
-            <option value="sales">{t('salesInvoice') || 'فاتورة بيع'}</option>
-            <option value="quotation">{t('quotationInvoice') || 'عرض سعر'}</option>
-            <option value="debt">{t('debtInvoice') || 'فاتورة دين'}</option>
-          </select>
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <Input
-              type="text"
-              placeholder="بحث..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-4 pr-10"
-            />
-          </div>
-          <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className="border rounded p-2"
-            title={t('filter') || 'فلترة بالعام'}
-          >
-            <option value={0}>كل السنوات</option>
-            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
         </div>
       </div>
 
-      <Card className="print:hidden">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            الفواتير المؤرشفة
-            <span className="text-sm font-normal text-gray-500">
-              إجمالي: {filteredInvoices.length} فاتورة - {formatCurrency(totals.finalBalance)}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto bg-transparent md:bg-white md:rounded-lg md:shadow-none">
-            <Table className="block md:table">
-              <TableHeader className="hidden md:table-header-group">
-                <TableRow>
-                  <TableHead className="text-right">رقم الفاتورة</TableHead>
-                  <TableHead className="text-right">العميل</TableHead>
-                  <TableHead className="text-right">المنتجات</TableHead>
-                  <TableHead className="text-right">التاريخ</TableHead>
-                  <TableHead className="text-right">المبلغ</TableHead>
-                  <TableHead className="text-right">الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="block md:table-row-group">
-                {filteredInvoices.length === 0 ? (
-                  <TableRow className="block md:table-row bg-white rounded-lg shadow-sm border border-gray-100 p-4 md:p-0 md:border-0 md:shadow-none md:rounded-none">
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500 block md:table-cell">
-                      لا توجد فواتير مؤرشفة في هذا النطاق
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredInvoices.map(invoice => (
-                    <TableRow key={invoice.id} className="mobile-card-row">
-                      <TableCell data-label="رقم الفاتورة" className="font-medium">
-                        <div className="flex flex-col gap-1 items-end md:items-start">
-                          <span>{invoice.invoiceNumber}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded w-fit ${(invoice.type || 'sales') === 'sales' ? 'bg-green-100 text-green-800' :
-                            invoice.type === 'quotation' ? 'bg-blue-100 text-blue-800' :
-                              'bg-orange-100 text-orange-800'
-                            }`}>
-                            {(invoice.type || 'sales') === 'sales' ? (t('salesInvoice') || 'فاتورة بيع') :
-                              invoice.type === 'quotation' ? (t('quotationInvoice') || 'عرض سعر') :
-                                (t('debtInvoice') || 'فاتورة دين')}
+      {/* ── Summary KPI Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 print:hidden">
+        {/* Total Invoices */}
+        <div className="gsc-card p-4 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <FileText size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-slate-500 truncate">إجمالي الفواتير</p>
+            <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.totalCount}</h3>
+            <p className="text-[11px] font-bold text-blue-600 mt-0.5">{formatCurrency(stats.totalAmount)}</p>
+          </div>
+        </div>
+
+        {/* Sales Invoices */}
+        <div className="gsc-card p-4 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <TrendingUp size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-slate-500 truncate">فواتير البيع المكتملة</p>
+            <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.salesCount}</h3>
+            <p className="text-[11px] font-bold text-emerald-600 mt-0.5">{formatCurrency(stats.salesAmount)}</p>
+          </div>
+        </div>
+
+        {/* Quotations */}
+        <div className="gsc-card p-4 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <Receipt size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-slate-500 truncate">عروض الأسعار</p>
+            <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.quotationCount}</h3>
+            <p className="text-[11px] font-bold text-purple-600 mt-0.5">{formatCurrency(stats.quotationAmount)}</p>
+          </div>
+        </div>
+
+        {/* Debt Invoices */}
+        <div className="gsc-card p-4 flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <DollarSign size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-slate-500 truncate">فواتير الديون / الآجل</p>
+            <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.debtCount}</h3>
+            <p className="text-[11px] font-bold text-amber-600 mt-0.5">{formatCurrency(stats.debtAmount)}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Filters & Search Control Bar ── */}
+      <div className="gsc-card p-4 print:hidden">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+          {/* Search Input */}
+          <div className="md:col-span-5 relative">
+            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+            <input
+              type="text"
+              placeholder="البحث برقم الفاتورة، اسم العميل، أو اسم المنتج..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* Type Filter */}
+          <div className="md:col-span-4 relative">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <Filter size={16} />
+            </div>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm pr-9 pl-8 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all"
+            >
+              <option value="all">جميع أنواع الفواتير</option>
+              <option value="sales">فواتير المبيعات فقط</option>
+              <option value="quotation">عروض الأسعار فقط</option>
+              <option value="debt">فواتير الديون فقط</option>
+            </select>
+            <ChevronDown size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+          </div>
+
+          {/* Year Filter */}
+          <div className="md:col-span-3 relative">
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <Calendar size={16} />
+            </div>
+            <select
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="w-full bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 text-sm pr-9 pl-8 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium transition-all"
+            >
+              <option value={0}>كل السنوات المالية</option>
+              {Array.from({ length: 8 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            <ChevronDown size={15} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+          </div>
+        </div>
+
+        {/* Quick Filter Tag Buttons */}
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 flex-wrap">
+          <span className="text-xs font-semibold text-slate-400 ml-1">تصفية سريعة:</span>
+          {[
+            { id: 'all', label: 'الكل' },
+            { id: 'sales', label: 'المبيعات' },
+            { id: 'quotation', label: 'عروض الأسعار' },
+            { id: 'debt', label: 'الديون' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setFilterType(tab.id)}
+              className={`text-xs px-3 py-1 rounded-lg font-bold transition-all ${
+                filterType === tab.id
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+          <div className="mr-auto text-xs font-medium text-slate-500">
+            تم العثور على <span className="font-bold text-slate-900">{filteredInvoices.length}</span> فاتورة
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main Invoices Table Card ── */}
+      <div className="gsc-card overflow-hidden print:hidden">
+        {filteredInvoices.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+              <FileText size={28} />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 mb-1">لا توجد فواتير مطابقة</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              لم نعثر على أي فواتير أو عروض أسعار تطابق معايير البحث والفلترة المحددة.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wider">
+                  <th className="py-3.5 px-4">رقم الفاتورة والنوع</th>
+                  <th className="py-3.5 px-4">العميل</th>
+                  <th className="py-3.5 px-4">المنتجات المباعة</th>
+                  <th className="py-3.5 px-4">تاريخ الإصدار</th>
+                  <th className="py-3.5 px-4">الحالة والدفع</th>
+                  <th className="py-3.5 px-4 text-left">المبلغ الإجمالي</th>
+                  <th className="py-3.5 px-4 text-center">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {filteredInvoices.map((invoice) => {
+                  const itemsList = invoice.items || [];
+                  const itemsSummary = itemsList.map(it => it.productName).filter(Boolean).join("، ") || "بدون منتجات محددة";
+                  const totalItemsQty = itemsList.reduce((acc, it) => acc + (Number(it.quantity) || 1), 0);
+
+                  return (
+                    <tr
+                      key={invoice.id}
+                      className="hover:bg-slate-50/60 transition-colors group"
+                    >
+                      {/* Invoice Number & Type */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className="font-mono font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                            {invoice.invoiceNumber}
+                          </span>
+                          {getTypeBadge(invoice.type)}
+                        </div>
+                      </td>
+
+                      {/* Customer */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 font-bold text-xs">
+                            <User size={14} />
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-900 block">{invoice.customerName || "عميل عام"}</span>
+                            {invoice.notes && (
+                              <span className="text-[11px] text-slate-400 block truncate max-w-[180px]">{invoice.notes}</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Items */}
+                      <td className="py-3.5 px-4">
+                        <div className="max-w-[240px]">
+                          <p className="text-xs font-medium text-slate-700 truncate" title={itemsSummary}>
+                            {itemsSummary}
+                          </p>
+                          <span className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <Package size={11} />
+                            {itemsList.length} أصناف ({totalItemsQty} قطعة)
                           </span>
                         </div>
-                      </TableCell>
-                      <TableCell data-label="العميل">{invoice.customerName}</TableCell>
-                      <TableCell data-label="المنتجات">
-                        <div className="max-w-xs truncate text-left md:text-right" title={invoice.items.map(item => item.productName).join(", ")}>
-                          {invoice.items.map(item => item.productName).join(", ")}
+                      </td>
+
+                      {/* Date */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-col text-xs text-slate-600">
+                          <span className="font-medium text-slate-800">
+                            {formatDate(invoice.date || invoice.createdAt)}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {invoice.createdAt && invoice.createdAt.includes('T') ? invoice.createdAt.split('T')[1].slice(0, 5) : ''}
+                          </span>
                         </div>
-                      </TableCell>
-                      <TableCell data-label="التاريخ">{formatDate(invoice.date || invoice.createdAt)}</TableCell>
-                      <TableCell data-label="المبلغ" className="font-medium text-green-600">
-                        {formatCurrency(invoice.total)}
-                      </TableCell>
-                      <TableCell data-label="الإجراءات">
-                        <div className="flex items-center justify-end md:justify-start gap-1 flex-wrap">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-9 px-2.5 flex gap-1 items-center text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg"
+                      </td>
+
+                      {/* Status & Payment Method */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          {getStatusBadge(invoice.status || 'paid')}
+                          <span className="text-[11px] font-medium text-slate-500">
+                            {invoice.paymentMethod === 'bank' ? 'تحويل بنكي' :
+                             invoice.paymentMethod === 'check' ? 'شيك بنكي' : 'نقداً'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Total Amount */}
+                      <td className="py-3.5 px-4 text-left">
+                        <span className="font-black text-slate-900 text-base font-sans block">
+                          {formatCurrency(invoice.total)}
+                        </span>
+                        {invoice.subtotal && invoice.subtotal !== invoice.total && (
+                          <span className="text-[10px] text-slate-400 line-through block">
+                            {formatCurrency(invoice.subtotal)}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
                             onClick={() => {
                               setSelectedInvoice(invoice);
                               setTimeout(() => window.print(), 100);
                             }}
-                            title="طباعة"
+                            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="طباعة الفاتورة"
                           >
-                            <Printer size={15} />
-                            <span className="hidden sm:inline">طباعة</span>
-                          </Button>
+                            <Printer size={16} />
+                          </button>
 
-                          {/* Edit button */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-9 px-2.5 flex gap-1 items-center text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg"
+                          <button
                             onClick={() => handleOpenEdit(invoice)}
-                            title={t("editInvoice")}
+                            className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="تعديل الفاتورة"
                           >
-                            <Edit size={15} />
-                            <span className="hidden sm:inline">{t("editInvoice")}</span>
-                          </Button>
-
-                          {/* Delete button */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-9 px-2.5 flex gap-1 items-center text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg"
-                            onClick={() => { setInvoiceToDelete(invoice); setIsDeleteModalOpen(true); }}
-                            title={t("deleteInvoice")}
-                          >
-                            <Trash2 size={15} />
-                            <span className="hidden sm:inline">{t("deleteInvoice")}</span>
-                          </Button>
+                            <Edit size={16} />
+                          </button>
 
                           {invoice.type === 'quotation' && (
                             <button
                               onClick={() => navigate(`/create-invoice?quoteId=${invoice.id}`)}
-                              className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-200 px-2.5 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors h-9 flex items-center"
+                              className="text-[11px] font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200/60 px-2 py-1 rounded-md transition-colors"
+                              title="تحويل هذا العرض إلى فاتورة بيع مباشرة"
                             >
                               تحويل لبيع
                             </button>
                           )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Edit Invoice Modal */}
+                          <button
+                            onClick={() => {
+                              setInvoiceToDelete(invoice);
+                              setIsDeleteModalOpen(true);
+                            }}
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="حذف الفاتورة"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Edit Invoice Modal ── */}
       {isEditModalOpen && editingInvoice && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col ${isRTL ? "text-right" : "text-left"}`}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-              <h3 className="font-bold text-gray-900 text-base">
-                {t("editInvoice")} #{editingInvoice.invoiceNumber}
-              </h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-100 ${isRTL ? "text-right" : "text-left"}`}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Edit size={16} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    تعديل الفاتورة #{editingInvoice.invoiceNumber}
+                  </h3>
+                  <p className="text-xs text-slate-400">تحديث بيانات العميل، الأصناف وتفاصيل السعر</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               {/* Customer and Date */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">{t("customer")}</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">{t("customer")}</label>
                   <input
                     type="text"
                     value={editCustomerName}
                     onChange={(e) => setEditCustomerName(e.target.value)}
-                    className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-arab-blue"
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">{t("date") || "تاريخ الفاتورة"}</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">{t("date") || "تاريخ الفاتورة"}</label>
                   <input
                     type="date"
                     value={editDate}
                     onChange={(e) => setEditDate(e.target.value)}
-                    className="w-full p-2.5 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-arab-blue font-sans"
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium font-sans"
                   />
                 </div>
               </div>
 
               {/* Status, Payment method and Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">{t("invoiceStatus")}</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">{t("invoiceStatus")}</label>
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value as any)}
-                    className="w-full p-2.5 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-arab-blue"
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                   >
                     <option value="pending">{t("pending")}</option>
                     <option value="paid">{t("paid")}</option>
@@ -674,11 +941,11 @@ export default function Archive() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">{t("paymentMethod")}</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">{t("paymentMethod")}</label>
                   <select
                     value={editPaymentMethod}
                     onChange={(e) => setEditPaymentMethod(e.target.value)}
-                    className="w-full p-2.5 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-arab-blue"
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                   >
                     <option value="cash">{t("cash")}</option>
                     <option value="bank">{(t as any)("bank") || "تحويل بنكي"}</option>
@@ -686,11 +953,11 @@ export default function Archive() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">{t("invoiceTypeLabel") || "نوع الفاتورة"}</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">{t("invoiceTypeLabel") || "نوع الفاتورة"}</label>
                   <select
                     value={editType}
                     onChange={(e) => setEditType(e.target.value as any)}
-                    className="w-full p-2.5 text-sm border border-gray-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-arab-blue"
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                   >
                     <option value="sales">{t("salesInvoice") || "فاتورة بيع"}</option>
                     <option value="quotation">{t("quotationInvoice") || "عرض سعر"}</option>
@@ -700,14 +967,15 @@ export default function Archive() {
               </div>
 
               {/* Items editing table */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <div className="bg-gray-50 px-3 py-2 text-xs font-bold text-gray-700">
-                  {t("noteItems")} ({editItems.length})
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                <div className="bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 border-b border-slate-200 flex justify-between items-center">
+                  <span>{t("noteItems")} ({editItems.length})</span>
+                  <span className="text-[11px] text-slate-400">الكمية × السعر = الإجمالي</span>
                 </div>
-                <div className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
                   {editItems.map((item, idx) => (
-                    <div key={idx} className="p-3 grid grid-cols-12 gap-2 items-center text-xs">
-                      <div className="col-span-5 font-semibold text-gray-800 truncate">
+                    <div key={idx} className="p-3 grid grid-cols-12 gap-2.5 items-center text-xs">
+                      <div className="col-span-5 font-semibold text-slate-800">
                         <input
                           type="text"
                           value={item.productName}
@@ -715,7 +983,8 @@ export default function Archive() {
                             const val = e.target.value;
                             setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, productName: val } : it));
                           }}
-                          className="w-full p-1.5 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-arab-blue"
+                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 font-medium"
+                          placeholder="اسم المنتج"
                         />
                       </div>
                       <div className="col-span-3">
@@ -728,7 +997,7 @@ export default function Archive() {
                             const qty = Number(e.target.value);
                             setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: qty, total: qty * it.price } : it));
                           }}
-                          className="w-full p-1.5 border border-gray-200 rounded-lg text-center font-bold"
+                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 font-sans"
                           placeholder="الكمية"
                         />
                       </div>
@@ -742,7 +1011,7 @@ export default function Archive() {
                             const pr = Number(e.target.value);
                             setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, price: pr, total: pr * it.quantity } : it));
                           }}
-                          className="w-full p-1.5 border border-gray-200 rounded-lg text-center font-bold"
+                          className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 font-sans"
                           placeholder="السعر"
                         />
                       </div>
@@ -750,17 +1019,17 @@ export default function Archive() {
                         <button
                           type="button"
                           onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-red-500 hover:text-red-700 p-1 rounded"
+                          className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5 rounded-lg transition-colors"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
-                <div className="bg-emerald-50 px-4 py-2 flex justify-between items-center border-t border-emerald-100 text-xs">
-                  <span className="font-bold text-emerald-800">المجموع الجديد:</span>
-                  <span className="font-black text-emerald-700 text-sm font-sans">
+                <div className="bg-emerald-50 px-4 py-3 flex justify-between items-center border-t border-emerald-100 text-xs">
+                  <span className="font-bold text-emerald-800">المجموع النهائي المعدل:</span>
+                  <span className="font-black text-emerald-700 text-base font-sans">
                     {formatCurrency(editItems.reduce((acc, it) => acc + (it.total || 0), 0))}
                   </span>
                 </div>
@@ -768,26 +1037,26 @@ export default function Archive() {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">ملاحظات الفاتورة</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">ملاحظات الفاتورة</label>
                 <textarea
                   rows={2}
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  className="w-full p-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-arab-blue resize-none"
+                  className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none font-medium"
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 px-5 py-4 border-t border-gray-100 shrink-0">
+            <div className="flex gap-3 px-6 py-4 border-t border-slate-100 shrink-0">
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 font-medium text-sm hover:bg-gray-200"
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors"
               >
                 {t("cancel")}
               </button>
               <button
                 onClick={handleSaveInvoiceEdit}
-                className="flex-1 py-2.5 rounded-xl bg-arab-blue text-white font-bold text-sm hover:bg-arab-blue-dark flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20 transition-all"
               >
                 <CheckCircle size={16} />
                 <span>{t("saveEdits")}</span>
@@ -797,27 +1066,27 @@ export default function Archive() {
         </div>
       )}
 
-      {/* Delete Invoice Modal */}
+      {/* ── Delete Invoice Modal ── */}
       {isDeleteModalOpen && invoiceToDelete && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className={`bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 text-center ${isRTL ? "text-right" : "text-left"}`}>
-            <div className="w-14 h-14 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 text-center border border-slate-100 ${isRTL ? "text-right" : "text-left"}`}>
+            <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto">
               <AlertCircle size={28} />
             </div>
-            <h3 className="text-lg font-bold text-gray-900">{t("confirmDeleteInvoice")}</h3>
-            <p className="text-sm text-gray-500">
-              {t("confirmDeleteInvoiceMsg")} "<span className="font-bold text-gray-800">#{invoiceToDelete.invoiceNumber}</span>" للعميل {invoiceToDelete.customerName}؟
+            <h3 className="text-lg font-black text-slate-900">{t("confirmDeleteInvoice")}</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              {t("confirmDeleteInvoiceMsg")} "<span className="font-bold text-slate-800">#{invoiceToDelete.invoiceNumber}</span>" للعميل {invoiceToDelete.customerName}؟ سيتم إلغاء الحركات وإرجاع المخزون المخصوم تلقائياً.
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 font-medium text-sm"
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors"
               >
                 {t("cancel")}
               </button>
               <button
                 onClick={handleDeleteInvoice}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm"
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm shadow-sm shadow-rose-500/20 transition-all"
               >
                 {t("yesDelete")}
               </button>
@@ -826,6 +1095,7 @@ export default function Archive() {
         </div>
       )}
 
+      {/* Printable Invoice */}
       {selectedInvoice && storeInfo && (
         <ProfessionalInvoice
           invoice={selectedInvoice}
