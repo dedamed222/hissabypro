@@ -613,13 +613,7 @@ export default function Suppliers() {
 
   // Open Full Account Statement Page for this person
   const handleOpenAccountStatement = (supplier: EnrichedSupplier) => {
-    // If matched with a customer, go to account statement for that customer ID
-    if (supplier.matchedCustomer) {
-      navigate(`/account-statement`);
-    } else {
-      // Prompt to link first or view in clearing drawer
-      setClearingModalSupplier(supplier);
-    }
+    navigate(`/account-statement?partyId=${supplier.id}`);
   };
 
   return (
@@ -1586,8 +1580,9 @@ export default function Suppliers() {
 
                 <button
                   onClick={() => {
+                    const id = clearingModalSupplier.id;
                     setClearingModalSupplier(null);
-                    navigate("/account-statement");
+                    navigate(`/account-statement?partyId=${id}`);
                   }}
                   className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm shadow-blue-500/20 cursor-pointer transition-all"
                 >

@@ -66,11 +66,6 @@ export function useProductFormHandlers({ state, setProducts, onSuccess, isAuthen
       return;
     }
     
-    if (!state.formData.warehouseId) {
-      state.setError("يرجى اختيار المخزن");
-      return;
-    }
-
     const price = parseFloat(state.formData.price);
     if (isNaN(price) || price < 0) {
       state.setError("يرجى إدخال سعر صحيح");

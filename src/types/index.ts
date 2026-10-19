@@ -155,7 +155,7 @@ export interface Invoice {
   tax?: number;
   shippingCost?: number;
   paymentMethod: string; // Accepting any string for payment method
-  status: "pending" | "paid" | "cancelled" | "partial";
+  status: "pending" | "paid" | "cancelled" | "partial" | "archived";
   type?: "sales" | "quotation" | "debt";
   dueDate?: string;
   debtType?: "debtor" | "creditor";
@@ -341,6 +341,7 @@ export interface StoreData {
     previewSettings?: any;
     customCurrencies?: Currency[];
     customPaymentMethods?: PaymentMethod[];
+    navPosition?: "bottom" | "sidebar";
   };
 }
 

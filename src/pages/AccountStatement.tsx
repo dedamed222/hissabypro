@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { formatCurrency, formatDate, normalizeArabic } from "@/utils/formatters";
 import { loadStoreData } from "@/utils/localStorage";
-import { Customer, Invoice, Return, Creditor, Debtor, Product, StoreInfo, ProductMovement } from "@/types";
+import { Customer, Invoice, Return, Creditor, Debtor, Product, StoreInfo, ProductMovement, Supplier } from "@/types";
 import {
   FileText,
   Search,
@@ -27,11 +28,13 @@ import {
   Layers,
   History,
   Loader2,
-  Sparkles
+  Sparkles,
+  Truck,
+  ArrowRightLeft
 } from "lucide-react";
 import ExportActions from "@/components/shared/ExportActions";
 import { useLocale } from "@/hooks/useLocale";
-import ProfessionalStatementPrint from "@/components/accountStatement/ProfessionalStatementPrint";
+import ProfessionalStatementPrint, { UnifiedStatementParty } from "@/components/accountStatement/ProfessionalStatementPrint";
 import {
   getCustomers,
   getInvoices,
@@ -39,13 +42,27 @@ import {
   getDebtors,
   getProducts,
   getReturns,
-  getProductMovementsDB
+  getProductMovementsDB,
+  getSuppliers
 } from "@/lib/database";
+
+export interface UnifiedParty {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  company?: string;
+  notes?: string;
+  partyType: "customer" | "supplier" | "dual";
+  customerId?: string;
+  supplierId?: string;
+}
 
 interface AccountTransaction {
   id: string;
   date: string;
-  type: "invoice" | "return" | "creditor" | "debtor";
+  type: "invoice" | "return" | "creditor" | "debtor" | "supply";
   description: string;
   productCode?: string;
   debit: number;
@@ -67,10 +84,12 @@ interface AccountTransaction {
 export default function AccountStatement() {
   const { t, locale, isRTL, formatDate } = useLocale();
   const isFr = locale === 'fr';
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Filters & Selected State
-  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
-  const [customerSearchInput, setCustomerSearchInput] = useState<string>("");
+  const [selectedPartyId, setSelectedPartyId] = useState<string>("");
+  const [partySearchInput, setPartySearchInput] = useState<string>("");
+  const [partyTypeFilter, setPartyTypeFilter] = useState<"all" | "customer" | "supplier" | "dual">("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [transactionType, setTransactionType] = useState<string>("all");
@@ -80,6 +99,8 @@ export default function AccountStatement() {
 
   // Raw Data Repositories
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [parties, setParties] = useState<UnifiedParty[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [creditors, setCreditors] = useState<Creditor[]>([]);
   const [debtors, setDebtors] = useState<Debtor[]>([]);
@@ -105,6 +126,7 @@ export default function AccountStatement() {
 
       // 1. Fetch Supabase Data safely
       let dbCusts: any[] = [];
+      let dbSups: any[] = [];
       let dbInvs: any[] = [];
       let dbCreds: any[] = [];
       let dbDebts: any[] = [];
@@ -113,8 +135,9 @@ export default function AccountStatement() {
       let dbMovements: any[] = [];
 
       try {
-        [dbCusts, dbInvs, dbCreds, dbDebts, dbProds, dbRets, dbMovements] = await Promise.all([
+        [dbCusts, dbSups, dbInvs, dbCreds, dbDebts, dbProds, dbRets, dbMovements] = await Promise.all([
           getCustomers(),
+          getSuppliers(),
           getInvoices(),
           getCreditors(),
           getDebtors(),
@@ -346,7 +369,44 @@ export default function AccountStatement() {
       const allMovements = Array.from(movMap.values());
       setProductMovements(allMovements);
 
-      // 8. CUSTOMERS: Comprehensive aggregation from ALL sources including Archive
+      // 8. SUPPLIERS: Ingest from Supabase and Local
+      const supMap = new Map<string, Supplier>();
+      (storeData.suppliers || []).forEach((s: any) => {
+        if (s.id && s.name) {
+          supMap.set(s.id, {
+            id: s.id,
+            name: s.name.trim(),
+            phone: s.phone || '',
+            email: s.email,
+            address: s.address,
+            photoUrl: s.photoUrl,
+            notes: s.notes,
+            createdAt: s.createdAt || s.created_at || new Date().toISOString(),
+            updatedAt: s.updatedAt || s.updated_at || new Date().toISOString()
+          });
+        }
+      });
+
+      dbSups.forEach((s: any) => {
+        if (s.id && s.name) {
+          supMap.set(s.id, {
+            id: s.id,
+            name: s.name.trim(),
+            phone: s.phone || '',
+            email: s.email,
+            address: s.address,
+            photoUrl: s.photo_url || s.photoUrl,
+            notes: s.notes,
+            createdAt: s.created_at || new Date().toISOString(),
+            updatedAt: s.updated_at || new Date().toISOString()
+          });
+        }
+      });
+
+      const allSuppliers = Array.from(supMap.values());
+      setSuppliers(allSuppliers);
+
+      // 9. CUSTOMERS: Comprehensive aggregation from ALL sources including Archive
       const custMap = new Map<string, Customer>();
 
       // From customer registers
@@ -425,6 +485,80 @@ export default function AccountStatement() {
       );
       setCustomers(sortedCustomers);
 
+      // 10. UNIFIED PARTIES (Customers + Suppliers + Dual Parties)
+      const partyList: UnifiedParty[] = [];
+      const matchedSupplierIds = new Set<string>();
+
+      // First pass: Process all customers and check if matching supplier exists
+      sortedCustomers.forEach(cust => {
+        const cNorm = normalizeArabic(cust.name);
+        const cPhone = (cust.phone || '').trim().replace(/\s+/g, '');
+
+        const matchedSup = allSuppliers.find(sup => {
+          const sNorm = normalizeArabic(sup.name);
+          const sPhone = (sup.phone || '').trim().replace(/\s+/g, '');
+          if (sNorm && cNorm && sNorm === cNorm) return true;
+          if (sPhone && cPhone && sPhone.length >= 7 && sPhone === cPhone) return true;
+          return false;
+        });
+
+        if (matchedSup) {
+          matchedSupplierIds.add(matchedSup.id);
+          partyList.push({
+            id: cust.id,
+            name: cust.name,
+            phone: cust.phone || matchedSup.phone,
+            email: cust.email || matchedSup.email,
+            address: cust.address || matchedSup.address,
+            company: cust.company,
+            notes: cust.notes || matchedSup.notes,
+            partyType: "dual",
+            customerId: cust.id,
+            supplierId: matchedSup.id
+          });
+        } else {
+          partyList.push({
+            id: cust.id,
+            name: cust.name,
+            phone: cust.phone,
+            email: cust.email,
+            address: cust.address,
+            company: cust.company,
+            notes: cust.notes,
+            partyType: "customer",
+            customerId: cust.id
+          });
+        }
+      });
+
+      // Second pass: Add remaining suppliers who are not matched with a customer
+      allSuppliers.forEach(sup => {
+        if (!matchedSupplierIds.has(sup.id)) {
+          partyList.push({
+            id: sup.id,
+            name: sup.name,
+            phone: sup.phone,
+            email: sup.email,
+            address: sup.address,
+            notes: sup.notes,
+            partyType: "supplier",
+            supplierId: sup.id
+          });
+        }
+      });
+
+      partyList.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+      setParties(partyList);
+
+      // Check query params (?partyId= or ?customerId= or ?supplierId=)
+      const urlPartyId = searchParams.get("partyId") || searchParams.get("customerId") || searchParams.get("supplierId");
+      if (urlPartyId) {
+        const found = partyList.find(p => p.id === urlPartyId || p.customerId === urlPartyId || p.supplierId === urlPartyId);
+        if (found) {
+          setSelectedPartyId(found.id);
+        }
+      }
+
     } catch (err) {
       console.error("Error loading statement data:", err);
     } finally {
@@ -432,22 +566,36 @@ export default function AccountStatement() {
     }
   };
 
-  // Build the complete transaction ledger for the selected customer
+  // Build the complete transaction ledger for the selected party (Customer, Supplier, or Dual)
   useEffect(() => {
-    if (!selectedCustomer) {
+    if (!selectedPartyId) {
       setTransactions([]);
       setFilteredTransactions([]);
       return;
     }
 
-    const customer = customers.find(c => c.id === selectedCustomer);
-    if (!customer) return;
+    const party = parties.find(p => p.id === selectedPartyId);
+    if (!party) return;
 
-    // Normalizing customer name for robust cross-source matching
-    const targetNorm = normalizeArabic(customer.name);
+    // Normalizing party name for robust cross-source matching
+    const targetNorm = normalizeArabic(party.name);
+    const targetPhone = (party.phone || '').trim().replace(/\s+/g, '');
 
-    const matchesCustomer = (itemCustomerId?: string, itemCustomerName?: string) => {
-      if (itemCustomerId && itemCustomerId === selectedCustomer) return true;
+    const matchesParty = (itemCustomerId?: string, itemCustomerName?: string, itemPhone?: string) => {
+      // 1. Direct ID match
+      if (itemCustomerId && (
+        itemCustomerId === party.id ||
+        (party.customerId && itemCustomerId === party.customerId) ||
+        (party.supplierId && itemCustomerId === party.supplierId)
+      )) return true;
+
+      // 2. Phone match
+      if (itemPhone && targetPhone && targetPhone.length >= 7) {
+        const cleanItemPhone = itemPhone.trim().replace(/\s+/g, '');
+        if (cleanItemPhone === targetPhone) return true;
+      }
+
+      // 3. Name match
       if (!itemCustomerName) return false;
       const itemNorm = normalizeArabic(itemCustomerName);
       if (itemNorm && targetNorm) {
@@ -462,9 +610,9 @@ export default function AccountStatement() {
 
     const allTransactions: AccountTransaction[] = [];
 
-    // 1. INVOICES (Debit: Customer owes us money for purchased goods)
+    // 1. INVOICES (Sales invoices: Party is buying as a customer -> Debit: owes us money)
     invoices
-      .filter((inv) => matchesCustomer(inv.customerId, inv.customerName))
+      .filter((inv) => matchesParty(inv.customerId, inv.customerName))
       .forEach((inv) => {
         const items = inv.items || [];
         const totalQuantity = items.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
@@ -496,9 +644,9 @@ export default function AccountStatement() {
         });
       });
 
-    // 2. RETURNS (Credit: We owe customer money / reduces their debt)
+    // 2. RETURNS (Return on sales: Party returns goods -> Credit: reduces their debt / in their favor)
     returns
-      .filter((ret) => matchesCustomer(ret.customerId, ret.customerName))
+      .filter((ret) => matchesParty(ret.customerId, ret.customerName))
       .forEach((ret) => {
         const items = (ret.products as any[]) || [];
         const totalQuantity = items.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
@@ -525,17 +673,25 @@ export default function AccountStatement() {
         });
       });
 
-    // 3. CREDITORS (Credit: Payments / receipts received from customer)
+    // 3. CREDITORS (Creditor / Payables: Amounts we owe him as a supplier, or credit balance / payments received)
+    // Credit: In party's favor (له)
     creditors
-      .filter((cred) => matchesCustomer((cred as any).customer_id || (cred as any).customerId, cred.name))
+      .filter((cred) => matchesParty((cred as any).customer_id || (cred as any).customerId, cred.name, cred.phone))
       .forEach((cred) => {
+        const isSupplierEntity = party.partyType === "supplier" || (party.partyType === "dual" && cred.productName);
+        const desc = cred.productName
+          ? (isFr
+              ? `Marchandise / Facture fournisseur - ${cred.productName} (En sa faveur)`
+              : `بضاعة / مستحقات توريد مورد - ${cred.productName} (مستحق له)`)
+          : (isFr
+              ? `Règlement espèces / Reçu (En sa faveur)`
+              : `دفعة نقدية / سند قبض (رصيد له)`);
+
         allTransactions.push({
           id: cred.id,
           date: cred.date ? cred.date.split('T')[0] : (cred.createdAt ? cred.createdAt.split('T')[0] : ''),
-          type: "creditor",
-          description: isFr
-            ? `Règlement espèces / Reçu - ${cred.productName || 'Acompte'}`
-            : `دفعة نقدية / سند قبض من العميل - ${cred.productName || 'تسديد دفعة حساب'}`,
+          type: isSupplierEntity ? "supply" : "creditor",
+          description: desc,
           productCode: cred.productCode || '',
           debit: 0,
           credit: Number(cred.amount) || Number(cred.total) || 0,
@@ -545,9 +701,10 @@ export default function AccountStatement() {
         });
       });
 
-    // 4. DEBTORS (Credit: Deferred debts recorded as credit balance in customer's favor 'له')
+    // 4. DEBTORS (Debtor / Receivables: Party owes us money / purchases on credit)
+    // Debit: Party owes us (عليه)
     debtors
-      .filter((debt) => matchesCustomer((debt as any).customer_id || (debt as any).customerId, debt.name || debt.debtorName))
+      .filter((debt) => matchesParty((debt as any).customer_id || (debt as any).customerId, debt.name || debt.debtorName, debt.phone))
       .forEach((debt) => {
         const pList = (debt.products as any[]) || [];
         const totalQty = pList.reduce((sum, p) => sum + (Number(p.quantity) || 1), 0);
@@ -559,11 +716,11 @@ export default function AccountStatement() {
           date: debt.date ? debt.date.split('T')[0] : '',
           type: "debtor",
           description: isFr
-            ? `Dette à terme - Solde client (Lui) - ${pList[0]?.productName || debt.productName || 'Marchandise'}`
-            : `دين آجل - رصيد للعميل (له) - ${pList[0]?.productName || debt.productName || 'بضاعة آجلة'}`,
+            ? `Dette à terme - Créance client (Dû par lui) - ${pList[0]?.productName || debt.productName || 'Marchandise'}`
+            : `دين آجل - ذمة عميل (مطلوب منه) - ${pList[0]?.productName || debt.productName || 'بضاعة آجلة'}`,
           productCode: pCodes,
-          debit: 0,
-          credit: debtAmount,
+          debit: debtAmount,
+          credit: 0,
           quantity: totalQty,
           status: debt.status,
           isArchive: false,
@@ -577,8 +734,7 @@ export default function AccountStatement() {
         });
       });
 
-    // 5. PRODUCT MOVEMENTS (Archive - key source for old/archived transactions)
-    // Group movements by invoiceNumber to reconstruct complete invoice-level transactions
+    // 5. PRODUCT MOVEMENTS (Archive - key source for old/archived sales transactions)
     const existingInvoiceNumbers = new Set(
       allTransactions
         .filter(t => t.type === 'invoice' && t.invoiceNumber)
@@ -590,18 +746,15 @@ export default function AccountStatement() {
         .map(t => t.id)
     );
 
-    // Filter movements that belong to this customer and are sales
     const customerMovements = productMovements.filter(m => {
       if (m.isDeleted) return false;
-      if (!matchesCustomer(m.customerId || undefined, m.customerName)) return false;
+      if (!matchesParty(m.customerId || undefined, m.customerName)) return false;
       if (m.type !== 'sale') return false;
-      // Skip if the invoice is already present in regular invoices
       if (m.invoiceNumber && existingInvoiceNumbers.has(m.invoiceNumber)) return false;
       if (m.invoiceId && existingInvoiceIds.has(m.invoiceId)) return false;
       return true;
     });
 
-    // Group movements by invoice identifier
     const movByInvoice = new Map<string, ProductMovement[]>();
     customerMovements.forEach(m => {
       const key = m.invoiceNumber || m.invoiceId || m.id;
@@ -609,7 +762,6 @@ export default function AccountStatement() {
       movByInvoice.get(key)!.push(m);
     });
 
-    // Convert grouped archive movements into official invoice transactions
     movByInvoice.forEach((movs, invKey) => {
       const firstMov = movs[0];
       const invoiceTotal = movs.reduce((sum, m) => sum + (Number(m.total) || 0), 0);
@@ -644,13 +796,13 @@ export default function AccountStatement() {
     // 6. Return movements from productMovements (Archive returns)
     const existingReturnNumbers = new Set(
       returns
-        .filter(r => matchesCustomer(r.customerId, r.customerName))
+        .filter(r => matchesParty(r.customerId, r.customerName))
         .map(r => r.returnNumber)
     );
 
     const customerReturnMovements = productMovements.filter(m => {
       if (m.isDeleted) return false;
-      if (!matchesCustomer(m.customerId || undefined, m.customerName)) return false;
+      if (!matchesParty(m.customerId || undefined, m.customerName)) return false;
       if (m.type !== 'return') return false;
       if (m.invoiceNumber && existingReturnNumbers.has(m.invoiceNumber)) return false;
       return true;
@@ -692,17 +844,14 @@ export default function AccountStatement() {
       });
     });
 
-    // 7. Deduplication:
-    // Retain all legitimate unique transactions. Prefer formal invoices over archive placeholders.
+    // 7. Deduplication
     const uniqueById = new Map<string, AccountTransaction>();
-    const seenInvoiceNumbers = new Map<string, string>(); // invoiceNumber -> id
+    const seenInvoiceNumbers = new Map<string, string>();
 
-    // Pass 1: Invoices and returns
     allTransactions.forEach(t => {
       if (t.type === 'invoice' || t.type === 'return') {
         if (t.invoiceNumber && seenInvoiceNumbers.has(t.invoiceNumber)) {
           if (!t.isArchive) {
-            // Replace archive version with formal invoice
             const oldId = seenInvoiceNumbers.get(t.invoiceNumber)!;
             uniqueById.delete(oldId);
             uniqueById.set(t.id, t);
@@ -713,7 +862,6 @@ export default function AccountStatement() {
           if (t.invoiceNumber) seenInvoiceNumbers.set(t.invoiceNumber, t.id);
         }
       } else {
-        // Debts and payments: keep each by its unique ID
         uniqueById.set(t.id, t);
       }
     });
@@ -727,7 +875,10 @@ export default function AccountStatement() {
       return dateA - dateB;
     });
 
-    // Calculate rolling running balance across all transactions
+    // Calculate rolling running balance across all transactions:
+    // Balance = Debit (what he owes us) - Credit (what is in his favor)
+    // If balance > 0 => He is Debtor (عليه)
+    // If balance < 0 => He is Creditor (له)
     let rollingBalance = 0;
     const transactionsWithBalance = finalTransactions.map(transaction => {
       rollingBalance += transaction.debit - transaction.credit;
@@ -762,7 +913,7 @@ export default function AccountStatement() {
     }
 
     setFilteredTransactions(filtered);
-  }, [selectedCustomer, startDate, endDate, transactionType, searchText, invoices, creditors, debtors, returns, customers, products, productMovements, locale]);
+  }, [selectedPartyId, startDate, endDate, transactionType, searchText, invoices, creditors, debtors, returns, parties, products, productMovements, locale]);
 
   // Accurate Financial Totals
   const totals = useMemo(() => {
@@ -780,7 +931,7 @@ export default function AccountStatement() {
     // Final balance at the end of the filtered period
     const finalBalance = openingBalance + totalDebit - totalCredit;
 
-    // Overall customer balance across all history
+    // Overall party balance across all history
     const allTimeBalance = transactions.length > 0
       ? transactions[transactions.length - 1].balance || 0
       : 0;
@@ -788,18 +939,23 @@ export default function AccountStatement() {
     return { totalQuantity, totalDebit, totalCredit, finalBalance, openingBalance, allTimeBalance };
   }, [filteredTransactions, transactions, startDate]);
 
-  const selectedCustomerData = customers.find(c => c.id === selectedCustomer);
+  const selectedPartyData = parties.find(p => p.id === selectedPartyId);
 
-  // Filtered customer list for the customer search box
-  const searchableCustomers = useMemo(() => {
-    if (!customerSearchInput.trim()) return customers;
-    const normSearch = normalizeArabic(customerSearchInput);
-    return customers.filter(c =>
-      normalizeArabic(c.name).includes(normSearch) ||
-      (c.phone && c.phone.includes(customerSearchInput)) ||
-      (c.company && normalizeArabic(c.company).includes(normSearch))
+  // Filtered party list for search & type selection
+  const searchableParties = useMemo(() => {
+    let result = parties;
+    if (partyTypeFilter !== "all") {
+      result = result.filter(p => p.partyType === partyTypeFilter);
+    }
+    if (!partySearchInput.trim()) return result;
+
+    const normSearch = normalizeArabic(partySearchInput);
+    return result.filter(p =>
+      normalizeArabic(p.name).includes(normSearch) ||
+      (p.phone && p.phone.includes(partySearchInput)) ||
+      (p.company && normalizeArabic(p.company).includes(normSearch))
     );
-  }, [customers, customerSearchInput]);
+  }, [parties, partySearchInput, partyTypeFilter]);
 
   const exportColumns = [
     { key: 'date', header: t('date') || (isFr ? 'Date' : 'التاريخ'), render: (t: AccountTransaction) => formatDate(t.date) },
@@ -807,7 +963,7 @@ export default function AccountStatement() {
     { key: 'description', header: isFr ? 'Libellé & Détails' : 'البيان والتفاصيل' },
     { key: 'quantity', header: t('quantity') || (isFr ? 'Quantité' : 'الكمية'), render: (item: AccountTransaction) => item.quantity?.toString() || '0' },
     { key: 'debit', header: isFr ? 'Débit (Dû par le client)' : 'مدين (المطلوب منه)', render: (item: AccountTransaction) => formatCurrency(item.debit) },
-    { key: 'credit', header: isFr ? 'Crédit (Payé / En sa faveur)' : 'دائن (المدفوع منه)', render: (item: AccountTransaction) => formatCurrency(item.credit) },
+    { key: 'credit', header: isFr ? 'Crédit (En sa faveur)' : 'دائن (المستحق له)', render: (item: AccountTransaction) => formatCurrency(item.credit) },
     { key: 'balance', header: isFr ? 'Solde Cumulé' : 'الرصيد التراكمي', render: (item: AccountTransaction) => formatCurrency(item.balance || 0) }
   ];
 
@@ -843,18 +999,52 @@ export default function AccountStatement() {
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
             <CheckCircle2 size={11} />
-            {isFr ? 'Règlement / Reçu' : 'سداد / سند قبض'}
+            {isFr ? 'Règlement / Acompte' : 'سداد / سند قبض'}
           </span>
         );
       case 'debtor':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200/60">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200/60">
             <Clock size={11} />
-            {isFr ? 'Dette à terme (Lui)' : 'دين آجل (له)'}
+            {isFr ? 'Créance à terme (Dû)' : 'دين آجل (مطلوب منه)'}
+          </span>
+        );
+      case 'supply':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
+            <Truck size={11} />
+            {isFr ? 'Approvisionnement (Lui)' : 'فاتورة توريد (له)'}
           </span>
         );
       default:
         return null;
+    }
+  };
+
+  const getPartyTypeBadge = (partyType: "customer" | "supplier" | "dual") => {
+    switch (partyType) {
+      case "dual":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
+            <ArrowRightLeft size={11} />
+            <span>{isFr ? "Client & Fournisseur (Compensé)" : "عميل ومورد (مقاصة موحدة)"}</span>
+          </span>
+        );
+      case "supplier":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200">
+            <Truck size={11} />
+            <span>{isFr ? "Fournisseur" : "مورد"}</span>
+          </span>
+        );
+      case "customer":
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+            <User size={11} />
+            <span>{isFr ? "Client" : "عميل"}</span>
+          </span>
+        );
     }
   };
 
@@ -864,26 +1054,29 @@ export default function AccountStatement() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-            <FileText size={22} />
+            <FileSpreadsheet size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-              {isFr ? "Relevé de Compte Client Global" : "كشف حساب العميل الشامل"}
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <span>{isFr ? "Grand Livre & Relevé de Compte Unifié" : "كشف الحساب المالي الموحد"}</span>
+              <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                {isFr ? "Clients & Fournisseurs" : "عملاء وموردين ومقاصة"}
+              </span>
             </h1>
             <p className="text-xs text-slate-500">
               {isFr
-                ? "Suivi et rapprochement de toutes les transactions : factures, archives, dettes et règlements avec le détail de chaque facture"
-                : "استجلاب وتتبع كافة معاملات الفواتير، الأرشيف السابقة، الديون، والسدادات مع تفاصيل كل فاتورة"}
+                ? "Le référentiel unique pour connaître la situation financière exacte de tout tiers (client, fournisseur ou compte mixte) avec calcul automatique du solde et compensation"
+                : "المرجع الشامل لمعرفة الموقف المالي الحقيقي لأي طرف (عميل، مورد، أو طرف مشترك) مع احتساب الفواتير والديون والمقاصة وتحديد الصافي بدقة"}
             </p>
           </div>
         </div>
 
-        {selectedCustomer && (
+        {selectedPartyData && (
           <div className="flex items-center gap-2">
             <ExportActions
               data={filteredTransactions}
-              filename={`statement_${selectedCustomerData?.name || 'customer'}`}
-              title={isFr ? `Relevé de compte - ${selectedCustomerData?.name || ''}` : `كشف حساب - ${selectedCustomerData?.name || ''}`}
+              filename={`statement_${selectedPartyData?.name || 'party'}`}
+              title={isFr ? `Relevé de compte - ${selectedPartyData?.name || ''}` : `كشف حساب - ${selectedPartyData?.name || ''}`}
               columns={exportColumns}
               totals={{
                 totalQuantity: totals.totalQuantity,
@@ -913,31 +1106,32 @@ export default function AccountStatement() {
             {isFr ? "Chargement et synchronisation des comptes et de l'archive..." : "جاري تحميل واستجلاب بيانات الحسابات والأرشيف..."}
           </h3>
           <p className="text-xs text-slate-400 mt-1">
-            {isFr ? "Consolidation des factures antérieures, mouvements d'archive, dettes et règlements" : "يتم دمج الفواتير السابقة وحركات الأرشيف والديون والمدفوعات"}
+            {isFr ? "Consolidation des factures, mouvements fournisseurs, dettes et règlements" : "يتم دمج الفواتير السابقة وحركات الأرشيف والتوريدات والديون والمدفوعات"}
           </p>
         </div>
       ) : (
         <>
-          {/* ── Step 1: Customer Selection & Filter Bar ── */}
+          {/* ── Step 1: Party Selection & Filter Bar ── */}
           <div className="gsc-card p-5 print:hidden space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
               <div className="flex items-center gap-2">
                 <Search size={16} className="text-blue-600" />
                 <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wider">
                   {isFr
-                    ? `Sélection du client et filtrage (${customers.length} clients enregistrés)`
-                    : `تحديد العميل وفلترة كشف الحساب (${customers.length} عميل مسجل)`}
+                    ? `Recherche et sélection du tiers (${parties.length} comptes enregistrés)`
+                    : `البحث وتحديد الطرف المالي (${parties.length} حساب مسجل)`}
                 </h3>
               </div>
-              {selectedCustomerData && (
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="font-bold text-slate-900 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg">
-                    {selectedCustomerData.name}
+              {selectedPartyData && (
+                <div className="flex items-center gap-2 text-xs flex-wrap">
+                  {getPartyTypeBadge(selectedPartyData.partyType)}
+                  <span className="font-bold text-slate-900 bg-slate-100 text-slate-800 px-2.5 py-1 rounded-lg">
+                    {selectedPartyData.name}
                   </span>
-                  {selectedCustomerData.phone && (
+                  {selectedPartyData.phone && (
                     <span className="text-slate-500 flex items-center gap-1 font-sans">
                       <Phone size={12} className="text-slate-400" />
-                      {selectedCustomerData.phone}
+                      {selectedPartyData.phone}
                     </span>
                   )}
                 </div>
@@ -945,53 +1139,106 @@ export default function AccountStatement() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
-              {/* Customer Selector with Search Input */}
+              {/* Party Type Filter (Tabs) */}
+              <div className="md:col-span-12 flex items-center gap-2 pb-1 border-b border-slate-100/60 overflow-x-auto text-xs">
+                <span className="text-slate-500 font-bold whitespace-nowrap">
+                  {isFr ? "Filtrer par rôle :" : "تصنيف الأطراف:"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPartyTypeFilter("all")}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    partyTypeFilter === "all"
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {isFr ? `Tous (${parties.length})` : `الكل (${parties.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPartyTypeFilter("customer")}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    partyTypeFilter === "customer"
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  }`}
+                >
+                  <User size={12} />
+                  <span>{isFr ? "Clients uniquement" : "عملاء فقط"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPartyTypeFilter("supplier")}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    partyTypeFilter === "supplier"
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                  }`}
+                >
+                  <Truck size={12} />
+                  <span>{isFr ? "Fournisseurs uniquement" : "موردون فقط"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPartyTypeFilter("dual")}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    partyTypeFilter === "dual"
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "bg-purple-50 text-purple-700 hover:bg-purple-100"
+                  }`}
+                >
+                  <ArrowRightLeft size={12} />
+                  <span>{isFr ? "Clients & Fournisseurs (Mixtes)" : "عملاء وموردون معاً"}</span>
+                </button>
+              </div>
+
+              {/* Party Selector with Quick Search Input */}
               <div className="md:col-span-5">
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <User size={13} className="text-slate-400" />
-                    <span>{isFr ? "Choisir le client *" : "اختر العميل *"}</span>
+                    <span>{isFr ? "Sélectionner le tiers (Client / Fournisseur) *" : "اختر الطرف (عميل / مورد) *"}</span>
                   </span>
-                  {customers.length > 5 && (
-                    <span className="text-[10px] text-slate-400 font-normal">
-                      {isFr ? "Rechercher par nom ou choisir directement" : "ابحث بالاسم أو اختر مباشرة"}
-                    </span>
-                  )}
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    {searchableParties.length} {isFr ? "disponibles" : "متاح"}
+                  </span>
                 </label>
                 <div className="space-y-1.5">
                   <div className="relative">
                     <select
-                      value={selectedCustomer}
-                      onChange={(e) => setSelectedCustomer(e.target.value)}
+                      value={selectedPartyId}
+                      onChange={(e) => setSelectedPartyId(e.target.value)}
                       className="w-full px-3.5 py-2.5 text-sm bg-slate-50 hover:bg-slate-100/70 focus:bg-white text-slate-800 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-bold transition-all"
                     >
                       <option value="">
                         {isFr
-                          ? `-- Cliquez pour choisir le client (${searchableCustomers.length}) --`
-                          : `-- اضغط لاختيار العميل من القائمة (${searchableCustomers.length}) --`}
+                          ? `-- Cliquez pour choisir (${searchableParties.length}) --`
+                          : `-- اضغط لاختيار الطرف من القائمة (${searchableParties.length}) --`}
                       </option>
-                      {searchableCustomers.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} {c.company ? `(${c.company})` : ''} {c.phone ? `- ${c.phone}` : ''}
-                        </option>
-                      ))}
+                      {searchableParties.map((p) => {
+                        const typeTag = p.partyType === "dual" ? "[عميل ومورد]" : p.partyType === "supplier" ? "[مورد]" : "[عميل]";
+                        return (
+                          <option key={p.id} value={p.id}>
+                            {p.name} {typeTag} {p.company ? `(${p.company})` : ''} {p.phone ? `- ${p.phone}` : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                     <ChevronDown size={15} className={`absolute ${isRTL ? 'left-3.5' : 'right-3.5'} top-1/2 -translate-y-1/2 pointer-events-none text-slate-400`} />
                   </div>
 
-                  {/* Customer Quick Search input */}
-                  {customers.length > 5 && (
-                    <div className="relative">
-                      <Search size={13} className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-slate-400`} />
-                      <input
-                        type="text"
-                        placeholder={isFr ? "Filtrer la liste des clients..." : "فلترة قائمة العملاء بالاسم أو الهاتف..."}
-                        value={customerSearchInput}
-                        onChange={(e) => setCustomerSearchInput(e.target.value)}
-                        className={`w-full ${isRTL ? 'pr-8 pl-3' : 'pl-8 pr-3'} py-1.5 text-xs bg-white text-slate-700 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-blue-500`}
-                      />
-                    </div>
-                  )}
+                  {/* Party Quick Search input */}
+                  <div className="relative">
+                    <Search size={13} className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 text-slate-400`} />
+                    <input
+                      type="text"
+                      placeholder={isFr ? "Filtrer par nom, téléphone ou société..." : "بحث سريع بالاسم، رقم الهاتف، أو اسم الشركة..."}
+                      value={partySearchInput}
+                      onChange={(e) => setPartySearchInput(e.target.value)}
+                      className={`w-full ${isRTL ? 'pr-8 pl-3' : 'pl-8 pr-3'} py-1.5 text-xs bg-white text-slate-700 border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-blue-500`}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1009,7 +1256,8 @@ export default function AccountStatement() {
                   >
                     <option value="all">{isFr ? "Toutes les opérations financières" : "جميع العمليات المالية والفواتير"}</option>
                     <option value="invoice">{isFr ? "Factures de vente et archives" : "فواتير المبيعات والأرشيف"}</option>
-                    <option value="debtor">{isFr ? "Dettes à terme (En sa faveur)" : "الديون الآجلة (له)"}</option>
+                    <option value="supply">{isFr ? "Approvisionnements et livraisons (Fournisseur)" : "فواتير التوريد وبضائع المورد"}</option>
+                    <option value="debtor">{isFr ? "Créances clients (Dû par lui)" : "ديون العملاء (مطلوب منه)"}</option>
                     <option value="creditor">{isFr ? "Règlements et encaissements" : "الدفعات والسدادات"}</option>
                     <option value="return">{isFr ? "Retours marchandises" : "المرتجعات"}</option>
                   </select>
@@ -1047,7 +1295,7 @@ export default function AccountStatement() {
             </div>
 
             {/* Quick Search in transactions */}
-            {selectedCustomer && (
+            {selectedPartyId && (
               <div className="pt-2 flex items-center gap-3">
                 <div className="relative flex-1">
                   <Search size={14} className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 text-slate-400`} />
@@ -1076,18 +1324,18 @@ export default function AccountStatement() {
             )}
           </div>
 
-          {!selectedCustomer ? (
+          {!selectedPartyId ? (
             <div className="gsc-card p-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4">
-                <User size={30} />
+                <FileSpreadsheet size={30} />
               </div>
               <h3 className="text-base font-bold text-slate-800 mb-1">
-                {isFr ? "Veuillez sélectionner un client pour afficher son relevé" : "يرجى اختيار العميل لعرض كشف حسابه"}
+                {isFr ? "Veuillez sélectionner un compte pour afficher son relevé" : "يرجى اختيار الحساب لعرض كشف حسابه وموقفه المالي"}
               </h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {isFr
-                  ? "Choisissez un client dans la liste ci-dessus pour extraire toutes ses factures et mouvements financiers avec précision, y compris les factures archivées."
-                  : "اختر العميل من القائمة المنسدلة بالأعلى لاستخراج جميع الفواتير والحركات المالية المرتبطة به بدقة متناهية، متضمنةً الفواتير المؤرشفة والمبيعات السابقة."}
+                  ? "Choisissez un client ou un fournisseur dans la liste ci-dessus pour extraire toutes ses factures, mouvements de stock, dettes et règlements avec le calcul automatique de compensation."
+                  : "اختر العميل أو المورد من القائمة المنسدلة بالأعلى لاستخراج كافة فواتيره وحركاته المالية والتوريدات والديون مع إجراء المقاصة وتحديد هل هو مدين أم دائن بدقة."}
               </p>
             </div>
           ) : (
@@ -1101,11 +1349,11 @@ export default function AccountStatement() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-slate-500 truncate">
-                      {isFr ? "Total Débit (Dû)" : "إجمالي المدين (عليه)"}
+                      {isFr ? "Total Débit (Dû / عليه)" : "إجمالي المدين (عليه)"}
                     </p>
                     <h3 className="text-xl font-black text-rose-600 mt-0.5 font-sans">{formatCurrency(totals.totalDebit)}</h3>
                     <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-                      {isFr ? "Factures et ventes" : "فواتير ومشتريات الفترة"}
+                      {isFr ? "Factures d'achats et dettes" : "فواتير مبيعات وديون مطلوبة منه"}
                     </p>
                   </div>
                 </div>
@@ -1117,11 +1365,11 @@ export default function AccountStatement() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold text-slate-500 truncate">
-                      {isFr ? "Total Crédit (Payé / Lui)" : "إجمالي الدائن (له / سداداته)"}
+                      {isFr ? "Total Crédit (En sa faveur / له)" : "إجمالي الدائن (له)"}
                     </p>
                     <h3 className="text-xl font-black text-emerald-600 mt-0.5 font-sans">{formatCurrency(totals.totalCredit)}</h3>
                     <p className="text-[11px] font-bold text-slate-400 mt-0.5">
-                      {isFr ? "Règlements et dettes à terme" : "مدفوعات وسندات قبض"}
+                      {isFr ? "Règlements et approvisionnements" : "مدفوعات ومستحقات توريد له"}
                     </p>
                   </div>
                 </div>
@@ -1142,12 +1390,12 @@ export default function AccountStatement() {
                   </div>
                 </div>
 
-                {/* Net Final Balance */}
+                {/* Net Final Balance with Explicit Clear Position */}
                 <div className={`gsc-card p-4 flex items-center gap-3.5 border-2 ${
                   totals.finalBalance > 0
-                    ? "border-rose-300 bg-rose-50/30"
+                    ? "border-rose-400 bg-rose-50/40"
                     : totals.finalBalance < 0
-                    ? "border-emerald-300 bg-emerald-50/30"
+                    ? "border-emerald-400 bg-emerald-50/40"
                     : "border-slate-200"
                 }`}>
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
@@ -1158,9 +1406,9 @@ export default function AccountStatement() {
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-700 truncate">
                       {totals.finalBalance > 0
-                        ? (isFr ? "Solde Net (Dû par client)" : "صافي الرصيد (مطلوب منه)")
+                        ? (isFr ? "Position : DÉBITEUR (Dû par lui)" : "الموقف المالي: مَدين (مطلوب منه)")
                         : totals.finalBalance < 0
-                        ? (isFr ? "Solde Net (Excédent en sa faveur)" : "صافي الرصيد (فائض له)")
+                        ? (isFr ? "Position : CRÉDITEUR (En sa faveur)" : "الموقف المالي: دَائن (مستحق له)")
                         : (isFr ? "Compte soldé et équilibré" : "الحساب خالص ومتزن")}
                     </p>
                     <h3 className={`text-xl font-black mt-0.5 font-sans ${
@@ -1170,16 +1418,16 @@ export default function AccountStatement() {
                     </h3>
                     <p className="text-[11px] font-bold mt-0.5">
                       {totals.finalBalance > 0 ? (
-                        <span className="text-rose-600 font-extrabold">
-                          {isFr ? "Client débiteur du montant" : "العميل مَدين بالمبلغ"}
+                        <span className="text-rose-700 font-extrabold flex items-center gap-1">
+                          <span>{isFr ? "🔴 Le tiers nous doit ce montant" : "🔴 مطلوب سداده من الطرف لصالحنا"}</span>
                         </span>
                       ) : totals.finalBalance < 0 ? (
-                        <span className="text-emerald-600 font-extrabold">
-                          {isFr ? "Client créditeur du montant" : "العميل دَائن بالمبلغ"}
+                        <span className="text-emerald-700 font-extrabold flex items-center gap-1">
+                          <span>{isFr ? "🟢 Nous lui devons ce montant (Excédent)" : "🟢 مستحق للطرف في ذمتنا (فائض له)"}</span>
                         </span>
                       ) : (
                         <span className="text-slate-500">
-                          {isFr ? "Aucun solde en suspens" : "لا توجد مبالغ معلقة"}
+                          {isFr ? "⚪ Aucun solde en suspens" : "⚪ الحساب متزن تماماً (0)"}
                         </span>
                       )}
                     </p>
@@ -1197,7 +1445,7 @@ export default function AccountStatement() {
                   </div>
                   <div className="text-left">
                     <h2 className="text-xl font-black text-blue-700 uppercase">
-                      {isFr ? "Relevé de Compte Officiel Détaillé" : "كشف حساب رسمي مع تفاصيل الفواتير"}
+                      {isFr ? "Relevé de Compte Officiel Détaillé" : "كشف حساب مالي تفصيلي رسمي"}
                     </h2>
                     <p className="text-xs text-slate-500 mt-1">
                       {isFr ? "Date d'impression : " : "تاريخ الطباعة: "}
@@ -1212,19 +1460,22 @@ export default function AccountStatement() {
 
                 <div className="mt-4 p-3 bg-slate-100 rounded-lg flex justify-between items-center text-xs">
                   <div>
-                    <span className="text-slate-500">{isFr ? "Client : " : "اسم العميل: "}</span>
-                    <strong className="text-slate-900 text-sm">{selectedCustomerData?.name}</strong>
+                    <span className="text-slate-500">{isFr ? "Tiers : " : "اسم الطرف: "}</span>
+                    <strong className="text-slate-900 text-sm">{selectedPartyData?.name}</strong>{" "}
+                    <span className="text-[11px] font-bold text-blue-700">
+                      ({selectedPartyData?.partyType === "dual" ? (isFr ? "Client & Fournisseur" : "عميل ومورد") : selectedPartyData?.partyType === "supplier" ? (isFr ? "Fournisseur" : "مورد") : (isFr ? "Client" : "عميل")})
+                    </span>
                   </div>
-                  {selectedCustomerData?.phone && (
+                  {selectedPartyData?.phone && (
                     <div>
                       <span className="text-slate-500">{isFr ? "Téléphone : " : "رقم الهاتف: "}</span>
-                      <strong className="text-slate-900">{selectedCustomerData.phone}</strong>
+                      <strong className="text-slate-900">{selectedPartyData.phone}</strong>
                     </div>
                   )}
                   <div>
-                    <span className="text-slate-500">{isFr ? "Solde dû : " : "الرصيد المستحق: "}</span>{" "}
+                    <span className="text-slate-500">{isFr ? "Situation finale : " : "الموقف المالي النهائي: "}</span>{" "}
                     <strong className={`text-sm ${totals.finalBalance > 0 ? "text-red-700" : "text-green-700"}`}>
-                      {formatCurrency(Math.abs(totals.finalBalance))} ({totals.finalBalance > 0 ? (isFr ? "Dû par client" : "مطلوب منه") : (isFr ? "Créditeur" : "دائن")})
+                      {formatCurrency(Math.abs(totals.finalBalance))} ({totals.finalBalance > 0 ? (isFr ? "Débiteur (Dû par lui)" : "مَدين (مطلوب منه)") : totals.finalBalance < 0 ? (isFr ? "Créditeur (En sa faveur)" : "دَائن (مستحق له)") : (isFr ? "Équilibré" : "متزن")})
                     </strong>
                   </div>
                 </div>
@@ -1238,7 +1489,7 @@ export default function AccountStatement() {
                     <span>
                       {isFr
                         ? `Grand livre des opérations (${filteredTransactions.length} mouvements)`
-                        : `دفتر حركات ومعاملات العميل (${filteredTransactions.length} حركة مسجلة)`}
+                        : `دفتر حركات ومعاملات الطرف (${filteredTransactions.length} حركة مسجلة)`}
                     </span>
                   </h3>
                   <span className="text-xs font-medium text-slate-500">
@@ -1252,8 +1503,8 @@ export default function AccountStatement() {
                   <div className="p-12 text-center text-slate-400">
                     <p className="text-xs font-bold text-slate-700 mb-1">
                       {isFr
-                        ? "Aucun mouvement enregistré pour ce client dans la période sélectionnée"
-                        : "لا توجد حركات مسجلة لهذا العميل في النطاق المحدد"}
+                        ? "Aucun mouvement enregistré pour ce compte dans la période sélectionnée"
+                        : "لا توجد حركات مسجلة لهذا الحساب في النطاق المحدد"}
                     </p>
                     <p className="text-[11px] text-slate-400">
                       {isFr
@@ -1272,10 +1523,10 @@ export default function AccountStatement() {
                           <th className="py-3 px-3.5">{isFr ? "Libellé & Articles" : "البيان والأصناف"}</th>
                           <th className="py-3 px-3.5 text-center">{isFr ? "Qté" : "الكمية"}</th>
                           <th className="py-3 px-3.5 text-center bg-rose-50/50 text-rose-700">
-                            {isFr ? "Débit (+ Dû)" : "مدين (المطلوب منه) +"}
+                            {isFr ? "Débit (+ عليه)" : "مدين (عليه) +"}
                           </th>
                           <th className="py-3 px-3.5 text-center bg-emerald-50/50 text-emerald-700">
-                            {isFr ? "Crédit (- Payé)" : "دائن (المدفوع منه) -"}
+                            {isFr ? "Crédit (- له)" : "دائن (له) -"}
                           </th>
                           <th className={`py-3 px-3.5 ${isRTL ? 'text-left' : 'text-right'} bg-slate-100/60 font-black`}>
                             {isFr ? "Solde Cumulé" : "الرصيد التراكمي"}
@@ -1308,7 +1559,7 @@ export default function AccountStatement() {
                             <td className={`py-2.5 px-3.5 ${isRTL ? 'text-left' : 'text-right'} font-sans font-black text-slate-900`}>
                               {formatCurrency(Math.abs(totals.openingBalance))}
                               <span className="text-[10px] text-slate-500 mr-1 ml-1">
-                                {totals.openingBalance > 0 ? (isFr ? "(Dû)" : "(عليه)") : (isFr ? "(Crédit)" : "(له)")}
+                                {totals.openingBalance > 0 ? (isFr ? "(Dû/عليه)" : "(عليه)") : (isFr ? "(Crédit/له)" : "(له)")}
                               </span>
                             </td>
                             <td className="print:hidden"></td>
@@ -1404,7 +1655,7 @@ export default function AccountStatement() {
                                 </td>
                               </tr>
 
-                              {/* Expanded Invoice Items Row (Always shown in print if has items) */}
+                              {/* Expanded Invoice Items Row */}
                               {hasItems && (
                                 <tr className={`bg-slate-50/90 border-b border-slate-200 ${isExpanded ? "" : "hidden print:table-row"}`}>
                                   <td colSpan={9} className="p-3">
@@ -1465,9 +1716,9 @@ export default function AccountStatement() {
                             </span>
                             <span className="text-[11px] font-bold text-slate-500 mr-1.5 ml-1.5">
                               {totals.finalBalance > 0
-                                ? (isFr ? "(Dû par client)" : "(مطلوب منه)")
+                                ? (isFr ? "(Dû / عليه)" : "(مطلوب منه)")
                                 : totals.finalBalance < 0
-                                ? (isFr ? "(Excédent client)" : "(فائض له)")
+                                ? (isFr ? "(En sa faveur / له)" : "(مستحق له)")
                                 : (isFr ? "(Soldé)" : "(خالص)")}
                             </span>
                           </td>
@@ -1488,21 +1739,21 @@ export default function AccountStatement() {
                     </h4>
                     <p className="text-xs text-slate-600">
                       {isFr
-                        ? `Toutes les opérations ont été consolidées et vérifiées à partir des factures de vente, de l'archive et des dettes (${formatCurrency(totals.totalDebit)}) sous déduction des règlements et avoirs (${formatCurrency(totals.totalCredit)}).`
-                        : `تم استجلاب وتدقيق جميع المعاملات من فواتير البيع والأرشيف السابقة والديون (${formatCurrency(totals.totalDebit)}) مع خصم السدادات والمرتجعات (${formatCurrency(totals.totalCredit)}).`}
+                        ? `Toutes les opérations ont été consolidées et vérifiées à partir des factures de vente, des réceptions fournisseurs, de l'archive et des dettes (${formatCurrency(totals.totalDebit)}) sous déduction des règlements et avoirs (${formatCurrency(totals.totalCredit)}).`
+                        : `تم استجلاب وتدقيق جميع المعاملات من فواتير البيع ومستحقات التوريد والأرشيف والديون (${formatCurrency(totals.totalDebit)}) مع خصم السدادات والمرتجعات (${formatCurrency(totals.totalCredit)}).`}
                     </p>
                     {totals.allTimeBalance !== totals.finalBalance && (
                       <p className="text-[11px] text-blue-700 font-bold mt-1">
                         {isFr
-                          ? `* Solde historique global du client : ${formatCurrency(Math.abs(totals.allTimeBalance))} (${totals.allTimeBalance > 0 ? "Dû" : totals.allTimeBalance < 0 ? "Crédit" : "Soldé"})`
-                          : `* إجمالي رصيد العميل عبر كل الأوقات: ${formatCurrency(Math.abs(totals.allTimeBalance))} (${totals.allTimeBalance > 0 ? "عليه" : totals.allTimeBalance < 0 ? "له" : "خالص"})`}
+                          ? `* Solde historique global du compte : ${formatCurrency(Math.abs(totals.allTimeBalance))} (${totals.allTimeBalance > 0 ? "Dû (عليه)" : totals.allTimeBalance < 0 ? "Crédit (له)" : "Soldé"})`
+                          : `* إجمالي رصيد الحساب عبر كل الأوقات: ${formatCurrency(Math.abs(totals.allTimeBalance))} (${totals.allTimeBalance > 0 ? "عليه" : totals.allTimeBalance < 0 ? "له" : "خالص"})`}
                       </p>
                     )}
                   </div>
 
                   <div className="bg-white px-5 py-3 rounded-xl border border-blue-200 text-center shadow-xs">
                     <p className="text-[11px] font-bold text-slate-500 mb-0.5">
-                      {isFr ? "État final du compte" : "الحالة الختامية لكشف الحساب"}
+                      {isFr ? "État final du compte" : "الموقف المالي النهائي"}
                     </p>
                     <div className={`text-xl font-black font-sans ${totals.finalBalance > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                       {formatCurrency(Math.abs(totals.finalBalance))}
@@ -1511,10 +1762,10 @@ export default function AccountStatement() {
                       totals.finalBalance > 0 ? "bg-rose-100 text-rose-800" : totals.finalBalance < 0 ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"
                     }`}>
                       {totals.finalBalance > 0
-                        ? (isFr ? "Montant à régler par le client" : "مطلوب سداده من العميل")
+                        ? (isFr ? "Montant dû par le tiers (مطلوب منه)" : "مطلوب سداده من الطرف (مدين)")
                         : totals.finalBalance < 0
-                        ? (isFr ? "Solde créditeur en faveur du client" : "رصيد دائن للعميل")
-                        : (isFr ? "Compte entièrement soldé" : "الحساب مسدد بالكامل")}
+                        ? (isFr ? "Solde créditeur en sa faveur (مستحق له)" : "رصيد مستحق للطرف (دائن)")
+                        : (isFr ? "Compte entièrement soldé" : "الحساب مسدد بالكامل (متزن)")}
                     </span>
                   </div>
                 </div>
@@ -1523,12 +1774,13 @@ export default function AccountStatement() {
           )}
         </>
       )}
+
       {/* ── Official Professional Statement Print & Preview Modal ── */}
-      {selectedCustomerData && (
+      {selectedPartyData && (
         <ProfessionalStatementPrint
           isOpen={isPrintModalOpen}
           onClose={() => setIsPrintModalOpen(false)}
-          customer={selectedCustomerData}
+          customer={selectedPartyData}
           transactions={filteredTransactions}
           totals={totals}
           storeInfo={storeInfo}

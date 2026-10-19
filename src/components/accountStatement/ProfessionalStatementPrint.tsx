@@ -1,7 +1,18 @@
 import React, { useState } from "react";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { Customer, StoreInfo } from "@/types";
+import { StoreInfo } from "@/types";
 import { useLocale } from "@/hooks/useLocale";
+
+export interface UnifiedStatementParty {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  company?: string;
+  notes?: string;
+  partyType?: "customer" | "supplier" | "dual";
+}
 import {
   Printer,
   X,
@@ -16,7 +27,9 @@ import {
   FileSpreadsheet,
   TrendingUp,
   TrendingDown,
-  DollarSign
+  DollarSign,
+  Truck,
+  ArrowRightLeft
 } from "lucide-react";
 
 export interface StatementItem {
@@ -30,7 +43,7 @@ export interface StatementItem {
 export interface StatementTransaction {
   id: string;
   date: string;
-  type: "invoice" | "return" | "creditor" | "debtor";
+  type: "invoice" | "return" | "creditor" | "debtor" | "supply";
   description: string;
   productCode?: string;
   debit: number;
@@ -54,7 +67,7 @@ export interface StatementTotals {
 interface ProfessionalStatementPrintProps {
   isOpen: boolean;
   onClose: () => void;
-  customer: Customer;
+  customer: UnifiedStatementParty;
   transactions: StatementTransaction[];
   totals: StatementTotals;
   storeInfo: StoreInfo | null;
@@ -108,10 +121,18 @@ export default function ProfessionalStatementPrint({
         return isFr ? 'Règlement / Reçu' : 'سداد / سند قبض';
       case 'debtor':
         return isFr ? 'Dette à terme (Lui)' : 'دين آجل (له)';
+      case 'supply':
+        return isFr ? 'Approvisionnement / Marchandise' : 'فاتورة توريد / مشتريات';
       default:
         return isFr ? 'Opération financière' : 'معاملة مالية';
     }
   };
+
+  const partyLabel = customer.partyType === 'supplier'
+    ? (isFr ? 'Fournisseur' : 'المورد')
+    : customer.partyType === 'dual'
+    ? (isFr ? 'Client & Fournisseur' : 'عميل ومورد (طرف مشترك)')
+    : (isFr ? 'Client' : 'العميل');
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 print:p-0 print:static print:bg-white print:overflow-visible">
@@ -129,7 +150,7 @@ export default function ProfessionalStatementPrint({
                 {isFr ? "Aperçu & Impression du Relevé Financier Officiel" : "معاينة وطباعة كشف الحساب المالي الرسمي"}
               </h3>
               <p className="text-xs text-slate-300">
-                {isFr ? "Client : " : "العميل: "}
+                <span>{partyLabel} : </span>
                 <strong className="text-white">{customer.name}</strong> ({transactions.length} {isFr ? "mouvements" : "حركة"})
               </p>
             </div>
@@ -264,8 +285,25 @@ export default function ProfessionalStatementPrint({
                 {/* Customer Data */}
                 <div className={`space-y-1.5 ${isRTL ? 'border-l pl-4' : 'border-r pr-4'} border-slate-200`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-500 text-[11px]">{isFr ? "Client / Raison sociale :" : "اسم العميل / المؤسسة:"}</span>
-                    <strong className="text-sm font-black text-slate-900">{customer.name}</strong>
+                    <span className="text-slate-500 text-[11px]">{partyLabel} :</span>
+                    <div className="flex items-center gap-2">
+                      <strong className="text-sm font-black text-slate-900">{customer.name}</strong>
+                      {customer.partyType === 'dual' ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
+                          <ArrowRightLeft size={10} />
+                          <span>{isFr ? "Client & Fournisseur" : "عميل ومورد"}</span>
+                        </span>
+                      ) : customer.partyType === 'supplier' ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                          <Truck size={10} />
+                          <span>{isFr ? "Fournisseur" : "مورد"}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
+                          <span>{isFr ? "Client" : "عميل"}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {customer.company && (
                     <div className="flex items-center justify-between">

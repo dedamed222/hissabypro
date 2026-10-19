@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { loadStoreData, generateId } from "@/utils/localStorage";
 import { Customer, ProductMovement } from "@/types";
 import { formatShortDate } from "@/utils/formatters";
 import {
   Plus, Search, Edit, Trash2, X,
-  Save, AlertCircle, User, Download, ImagePlus, ShoppingBag
+  Save, AlertCircle, User, Download, ImagePlus, ShoppingBag, FileSpreadsheet
 } from "lucide-react";
 import { getCustomers, upsertCustomer, deleteCustomer } from "@/lib/database";
 import { useDropzone } from "react-dropzone";
@@ -12,6 +13,7 @@ import CustomerPurchasedProductsModal from "@/components/customers/CustomerPurch
 import { useLocale } from "@/hooks/useLocale";
 
 export default function Customers() {
+  const navigate = useNavigate();
   const { locale } = useLocale();
   const isFr = locale === 'fr';
   const [customers, setCustomers] = useState<Customer[]>(() => {
@@ -351,6 +353,14 @@ export default function Customers() {
                   </td>
                   <td data-label={isFr ? "Actions" : "الإجراءات"}>
                     <div className="flex items-center gap-1.5 justify-end">
+                      <button
+                        onClick={() => navigate(`/account-statement?partyId=${customer.id}`)}
+                        className="text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs border border-blue-100 cursor-pointer"
+                        title={isFr ? "Relevé de compte client" : "كشف حساب العميل"}
+                      >
+                        <FileSpreadsheet size={15} />
+                        <span className="hidden sm:inline">{isFr ? "Relevé" : "كشف حساب"}</span>
+                      </button>
                       <button
                         onClick={() => {
                           setSelectedCustomerForPurchases(customer);

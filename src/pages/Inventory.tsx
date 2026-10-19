@@ -93,7 +93,14 @@ export default function Inventory() {
           createdAt: w.created_at || w.createdAt,
           updatedAt: w.updated_at || w.updatedAt
         }));
-        setWarehouses(mappedWarehouses);
+        // Deduplicate by name (prefer Supabase UUID entries over legacy WH-MAIN)
+        const seen = new Set<string>();
+        const deduped = mappedWarehouses.filter(w => {
+          if (seen.has(w.name)) return false;
+          seen.add(w.name);
+          return true;
+        });
+        setWarehouses(deduped);
       }
     } catch (error) {
       console.error("Error loading inventory data:", error);
