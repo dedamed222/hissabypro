@@ -441,7 +441,7 @@ export default function Archive() {
   // Payments Filter & Stats
   const filteredPayments = useMemo(() => {
     return invoices.filter(inv => {
-      const isPaid = inv.status === 'paid' || inv.status === 'archived';
+      const isPaid = inv.status === 'paid' || (inv.status as string) === 'archived';
       if (!isPaid) return false;
       const matchSearch =
         (inv.invoiceNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

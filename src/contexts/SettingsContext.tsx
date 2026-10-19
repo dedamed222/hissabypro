@@ -80,12 +80,13 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
       // 1. Load from localStorage first (for fast initial render)
       if (storeData.settings) {
+        const savedSettings = storeData.settings as any;
         loadedSettings = {
           ...defaultSettings,
           ...storeData.settings,
           customCurrencies: storeData.settings.customCurrencies || [],
           customPaymentMethods: storeData.settings.customPaymentMethods || [],
-          navPosition: storeData.settings.navPosition || "bottom",
+          navPosition: (savedSettings.navPosition as "bottom" | "sidebar") || "bottom",
         };
       }
 
