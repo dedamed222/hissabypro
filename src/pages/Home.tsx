@@ -1,326 +1,424 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Store,
+  Globe,
+  ChevronDown,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
   ArrowRight,
   ArrowLeft,
-  Sparkles,
-  ShieldCheck,
-  TrendingUp,
-  Package,
-  Users,
-  CreditCard,
-  FileText,
-  Clock,
-  Globe,
-  Lock,
+  UserPlus,
+  Loader2,
+  AlertCircle,
   CheckCircle2,
-  ChevronRight,
-  Layers,
-  Archive,
-  LogIn
+  Check,
+  X
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { AnimatedLogo } from "@/components/ui/animated-logo";
-import { loadStoreData } from "@/utils/localStorage";
+import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/hooks/useLocale";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Home() {
   const navigate = useNavigate();
+  const { isAuthenticated, login } = useAuth();
   const { locale, changeLocale, isRTL } = useLocale();
   const isFr = locale === "fr";
 
-  const [storeInfo, setStoreInfo] = useState({ name: "", photoUrl: "", phone: "" });
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // Form states
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
+  // Language Dropdown state
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+
+  // Forgot Password modal state
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+
+  // Redirect to dashboard if authenticated
   useEffect(() => {
-    // Load store information
-    const data = loadStoreData();
-    if (data && data.storeInfo) {
-      setStoreInfo({
-        name: data.storeInfo.name || "",
-        photoUrl: data.storeInfo.photoUrl || "",
-        phone: data.storeInfo.phone || "",
-      });
+    if (isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Handle Login Submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const trimmed = identifier.trim();
+    if (!trimmed) {
+      setError(isFr ? "Veuillez saisir votre nom d'utilisateur ou e-mail" : "يرجى إدخال اسم المستخدم أو البريد الإلكتروني");
+      return;
+    }
+    if (!password.trim()) {
+      setError(isFr ? "Veuillez saisir votre mot de passe" : "يرجى إدخال كلمة المرور");
+      return;
     }
 
-    // Live clock update
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    setLoading(true);
+    try {
+      // Determine if identifier is an email or username
+      const emailToUse = trimmed.includes("@") ? trimmed : `${trimmed}@hissabypro.com`;
 
-    return () => clearInterval(timer);
-  }, []);
+      const result = await login(emailToUse, password);
+      if (result.success) {
+        navigate("/dashboard");
+      } else {
+        // If it failed and didn't have an @, also try raw identifier just in case
+        if (!trimmed.includes("@")) {
+          const secondTry = await login(trimmed, password);
+          if (secondTry.success) {
+            navigate("/dashboard");
+            return;
+          }
+        }
+        setError(
+          result.error ||
+            (isFr
+              ? "Identifiant ou mot de passe incorrect."
+              : "اسم المستخدم أو كلمة المرور غير صحيحة.")
+        );
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(isFr ? "Une erreur est survenue lors de la connexion." : "حدث خطأ غير متوقع أثناء تسجيل الدخول.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const features = [
-    {
-      icon: TrendingUp,
-      title: isFr ? "Ventes & Facturation" : "المبيعات والفواتير الذكية",
-      desc: isFr
-        ? "Facturation rapide, reçus thermiques et devis professionnels en quelques clics."
-        : "إصدار وطباعة فواتير البيع والإيصالات وعروض الأسعار بدقة وسرعة فائقة.",
-      color: "from-blue-500/20 to-indigo-500/10",
-      iconColor: "text-blue-400",
-      borderColor: "border-blue-500/30",
-    },
-    {
-      icon: Package,
-      title: isFr ? "Gestion de Stock" : "إدارة المخزون والمستودعات",
-      desc: isFr
-        ? "Contrôle en temps réel des quantités, alertes de rupture et codes-barres."
-        : "متابعة كميات المنتجات فورياً وتنبيهات نفاد المخزون مع دعم الباركود.",
-      color: "from-emerald-500/20 to-teal-500/10",
-      iconColor: "text-emerald-400",
-      borderColor: "border-emerald-500/30",
-    },
-    {
-      icon: CreditCard,
-      title: isFr ? "Créances & Règlements" : "الديون والتحصيلات المالية",
-      desc: isFr
-        ? "Suivi rigoureux des dettes clients et fournisseurs avec relances directes."
-        : "متابعة ديون العملاء والموردين بدقة مع تذكير واتساب وربط مباشر بالأرشيف.",
-      color: "from-amber-500/20 to-orange-500/10",
-      iconColor: "text-amber-400",
-      borderColor: "border-amber-500/30",
-    },
-    {
-      icon: ShieldCheck,
-      title: isFr ? "Sécurité & Cloud" : "مزامنة سحابية مشفرة",
-      desc: isFr
-        ? "Architecture Offline-First, chiffrement local et synchronisation temps réel."
-        : "يعمل دون انقطاع حتى بدون إنترنت، مع تشفير محلي ومزامنة سحابية آمنة.",
-      color: "from-purple-500/20 to-violet-500/10",
-      iconColor: "text-purple-400",
-      borderColor: "border-purple-500/30",
-    },
-  ];
+  // Handle Password Reset Request
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) return;
+
+    setResetLoading(true);
+    setResetMessage("");
+    try {
+      const email = resetEmail.includes("@") ? resetEmail.trim() : `${resetEmail.trim()}@hissabypro.com`;
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/login`,
+      });
+
+      if (resetErr) {
+        setResetMessage(isFr ? "Impossible d'envoyer l'e-mail de réinitialisation: " + resetErr.message : "تعذر إرسال رابط الاستعادة: " + resetErr.message);
+      } else {
+        setResetMessage(
+          isFr
+            ? "Un lien de réinitialisation a été envoyé à votre adresse e-mail si elle existe."
+            : "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني بنجاح."
+        );
+      }
+    } catch (err) {
+      setResetMessage(isFr ? "Une erreur est survenue." : "حدث خطأ غير متوقع.");
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   return (
-    <div
-      className={`min-h-screen w-full bg-[#070b19] text-white flex flex-col justify-between relative overflow-x-hidden ${
-        locale === "ar" ? "font-arabic" : "font-sans"
-      }`}
-      dir={isRTL ? "rtl" : "ltr"}
-    >
-      {/* ── Ambient Glow Background Effects ── */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[550px] bg-gradient-to-b from-blue-600/20 via-indigo-600/10 to-transparent blur-[120px] pointer-events-none rounded-full" />
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-500/15 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-1/3 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-[600px] h-80 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-screen w-full bg-white text-slate-900 flex flex-col items-center justify-center p-4 sm:p-6 relative select-none">
+      {/* ── Top-Right Language Dropdown Pill ── */}
+      <div className="absolute top-6 right-6 sm:top-8 sm:right-8 z-30">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium shadow-xs transition-colors cursor-pointer"
+          >
+            <Globe size={15} className="text-slate-600" />
+            <span>{isFr ? "Français" : "العربية"}</span>
+            <ChevronDown
+              size={13}
+              className={`text-slate-400 transition-transform duration-200 ${
+                isLangMenuOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
 
-      {/* Grid Pattern Overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-60" />
+          {isLangMenuOpen && (
+            <div className="absolute right-0 mt-1.5 w-32 bg-white rounded-xl shadow-lg border border-slate-200 py-1 text-xs font-medium z-40 animate-fade-in">
+              <button
+                type="button"
+                onClick={() => {
+                  changeLocale("fr");
+                  setIsLangMenuOpen(false);
+                }}
+                className={`w-full text-left px-3.5 py-2 hover:bg-blue-50 transition-colors flex items-center justify-between cursor-pointer ${
+                  isFr ? "text-blue-600 font-bold bg-blue-50/50" : "text-slate-700"
+                }`}
+              >
+                <span>Français</span>
+                {isFr && <Check size={14} className="text-blue-600" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  changeLocale("ar");
+                  setIsLangMenuOpen(false);
+                }}
+                className={`w-full text-left px-3.5 py-2 hover:bg-blue-50 transition-colors flex items-center justify-between cursor-pointer ${
+                  !isFr ? "text-blue-600 font-bold bg-blue-50/50" : "text-slate-700"
+                }`}
+              >
+                <span>العربية</span>
+                {!isFr && <Check size={14} className="text-blue-600" />}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
-      {/* ── Top Navigation Bar ── */}
-      <header className="relative z-10 w-full px-4 sm:px-8 py-5 border-b border-white/[0.08] backdrop-blur-md bg-slate-950/40">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          {/* Brand & Status */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 p-0.5 shadow-lg shadow-blue-500/25 flex items-center justify-center">
-              <img
-                src="/lovable-uploads/9bf8f3b6-2cd1-4788-a907-3ea9cb2eb6fc.png"
-                alt="Logo"
-                className="w-full h-full object-contain rounded-xl"
+      {/* ── Main Form Container ── */}
+      <div className="w-full max-w-[400px] sm:max-w-[430px] flex flex-col items-center">
+        {/* App Logo Squircle */}
+        <div className="w-[76px] h-[76px] rounded-[22px] bg-gradient-to-b from-[#1D74FF] via-[#0E65FF] to-[#0051EB] shadow-xl shadow-blue-500/25 flex items-center justify-center mb-5 shrink-0 transition-transform hover:scale-105 duration-300">
+          <svg
+            viewBox="0 0 100 100"
+            className="w-11 h-11"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            {/* Left piece of the modern interlocking H */}
+            <path
+              d="M33 54.5V29.5C33 26.2 34.8 23.2 37.6 21.6L46.8 16.3C49.9 14.5 53.8 16.8 53.8 20.4V33C53.8 35.2 52 37 49.8 37H44.5V54.5C44.5 55.6 43.6 56.5 42.5 56.5H35C33.9 56.5 33 55.6 33 54.5Z"
+              fill="url(#h_left_grad)"
+            />
+            {/* Right piece of the modern interlocking H (180deg symmetric) */}
+            <g transform="rotate(180 50 50)">
+              <path
+                d="M33 54.5V29.5C33 26.2 34.8 23.2 37.6 21.6L46.8 16.3C49.9 14.5 53.8 16.8 53.8 20.4V33C53.8 35.2 52 37 49.8 37H44.5V54.5C44.5 55.6 43.6 56.5 42.5 56.5H35C33.9 56.5 33 55.6 33 54.5Z"
+                fill="url(#h_right_grad)"
               />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-lg sm:text-xl tracking-tight text-white">
-                  {isFr ? "Hissaby Pro" : "حسابي برو"}
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                  v3.5 PRO
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>{isFr ? "Système prêt et opérationnel" : "النظام متصل وجاهز للعمل"}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Tools (Clock & Language Switcher) */}
-          <div className="flex items-center gap-3">
-            {/* Live Clock */}
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-xs font-mono text-slate-300">
-              <Clock className="w-3.5 h-3.5 text-blue-400" />
-              <span>
-                {currentTime.toLocaleTimeString(isFr ? "fr-FR" : "ar-SA", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                })}
-              </span>
-            </div>
-
-            {/* Language Toggle */}
-            <button
-              onClick={() => changeLocale(isFr ? "ar" : "fr")}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-xs font-bold text-slate-200 transition-all cursor-pointer shadow-sm"
-              title={isFr ? "Passer à l'arabe" : "Changer en Français"}
-            >
-              <Globe className="w-3.5 h-3.5 text-indigo-400" />
-              <span>{isFr ? "العربية" : "Français"}</span>
-            </button>
-
-            {/* Login / Switch Account */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/login")}
-              className="hidden sm:flex border-white/[0.15] bg-white/[0.04] hover:bg-white/[0.1] text-slate-200 text-xs font-bold rounded-xl"
-            >
-              <LogIn className={`w-3.5 h-3.5 ${isRTL ? "ml-1.5" : "mr-1.5"}`} />
-              {isFr ? "Changer de compte" : "تبديل الحساب"}
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Main Hero Section ── */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-16 max-w-6xl mx-auto w-full text-center">
-        {/* Shimmer Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-blue-500/15 via-indigo-500/20 to-purple-500/15 border border-indigo-400/30 text-indigo-300 text-xs sm:text-sm font-semibold mb-6 shadow-lg shadow-indigo-500/10 backdrop-blur-md">
-          <Sparkles className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: "6s" }} />
-          <span>
-            {isFr
-              ? "Nouvelle Génération ERP & Gestion de Commerce"
-              : "الجيل المتطور لإدارة الأنشطة التجارية والمحاسبة الذكية"}
-          </span>
+            </g>
+            <defs>
+              <linearGradient
+                id="h_left_grad"
+                x1="33"
+                y1="16"
+                x2="54"
+                y2="56"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stopColor="#E0F7FF" />
+                <stop offset="1" stopColor="#FFFFFF" />
+              </linearGradient>
+              <linearGradient
+                id="h_right_grad"
+                x1="33"
+                y1="16"
+                x2="54"
+                y2="56"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stopColor="#FFFFFF" />
+                <stop offset="1" stopColor="#BAE6FD" />
+              </linearGradient>
+            </defs>
+          </svg>
         </div>
 
-        {/* Animated Brand Logo Centerpiece with Luxury Glow */}
-        <div className="relative mb-6 group cursor-pointer" onClick={() => navigate("/dashboard")}>
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 rounded-3xl blur-2xl opacity-40 group-hover:opacity-75 transition-opacity duration-700 -z-10" />
-          <div className="p-3 sm:p-4 rounded-3xl bg-slate-900/80 border border-white/15 backdrop-blur-xl shadow-2xl transition-transform duration-500 group-hover:scale-105">
-            <AnimatedLogo size="md" className="mx-auto" />
-          </div>
-        </div>
-
-        {/* Hero Title */}
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight mb-4">
-          <span className="bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
-            {isFr ? "Gérez Votre Entreprise Avec" : "أدِر نشاطك التجاري بكل"}
-          </span>{" "}
-          <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400 bg-clip-text text-transparent underline decoration-indigo-500/40 decoration-wavy decoration-2">
-            {isFr ? "Hissaby Pro" : "احترافية وثقة"}
-          </span>
+        {/* Brand Headings */}
+        <h1 className="text-[32px] sm:text-[34px] font-black tracking-tight text-slate-900 leading-tight">
+          <span>Hissaby </span>
+          <span className="text-[#2563EB]">Pro</span>
         </h1>
 
-        {/* Hero Description */}
-        <p className="max-w-2xl text-slate-300 text-sm sm:text-base lg:text-lg mb-8 leading-relaxed font-normal">
-          {isFr
-            ? "Le système intégré complet pour la facturation, la maîtrise du stock, le suivi des créances et les rapports d'activité en temps réel."
-            : "نظام شامل ومتكامل لإدارة الفواتير والمبيعات، ومراقبة المخزون، وتحصيل الديون مع ربط فوري بالأرشيف المركزي، مصمم للسرعة الفائقة والعمل الميداني."}
+        <p className="text-base font-semibold text-slate-700 mt-1">
+          {isFr ? "Système de gestion de magasin" : "نظام إدارة المتاجر"}
         </p>
 
-        {/* Active Store Showcase Card (if store configured) */}
-        {storeInfo.name && (
-          <div className="mb-8 inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/[0.06] border border-white/[0.12] backdrop-blur-md shadow-xl">
-            {storeInfo.photoUrl ? (
-              <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-indigo-400/50 shadow-md">
-                <img
-                  src={storeInfo.photoUrl}
-                  alt={storeInfo.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 flex items-center justify-center">
-                <Store className="w-5 h-5" />
-              </div>
-            )}
-            <div className="text-right rtl:text-right ltr:text-left">
-              <p className="text-[10px] text-slate-400 font-medium">
-                {isFr ? "Établissement actif" : "المتجر / المؤسسة المسجلة"}
-              </p>
-              <p className="text-sm font-bold text-white flex items-center gap-1.5">
-                <span>{storeInfo.name}</span>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              </p>
+        <p className="text-xs sm:text-[13px] text-slate-400 mt-1 mb-7 text-center">
+          {isFr
+            ? "Gérez facilement votre boutique, vos stocks et vos ventes."
+            : "أدر متجرك، مخزونك ومبيعاتك بكل سهولة واحترافية."}
+        </p>
+
+        {/* Error Alert */}
+        {error && (
+          <div className="w-full mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold flex items-center justify-between animate-fade-in">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0" />
+              <span>{error}</span>
             </div>
+            <button
+              type="button"
+              onClick={() => setError("")}
+              className="text-rose-400 hover:text-rose-600 cursor-pointer"
+            >
+              <X size={14} />
+            </button>
           </div>
         )}
 
-        {/* ── Main Call To Action Buttons ── */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto mb-12">
-          {/* Primary Action Button */}
-          <Button
-            size="lg"
-            onClick={() => navigate("/dashboard")}
-            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-base px-8 py-6 rounded-2xl shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 transition-all transform hover:-translate-y-0.5 cursor-pointer border border-blue-400/30"
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="w-full space-y-3.5">
+          {/* Input 1: Nom d'utilisateur */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <User size={18} />
+            </div>
+            <input
+              type="text"
+              placeholder={isFr ? "Nom d'utilisateur" : "اسم المستخدم أو البريد الإلكتروني"}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              required
+              disabled={loading}
+              className="w-full h-12 pl-11 pr-4 bg-white border border-[#CBD5E1] rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 transition-all"
+            />
+          </div>
+
+          {/* Input 2: Mot de passe */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <Lock size={18} />
+            </div>
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder={isFr ? "Mot de passe" : "كلمة المرور"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+              className="w-full h-12 pl-11 pr-11 bg-white border border-[#CBD5E1] rounded-xl text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#2563EB] focus:ring-3 focus:ring-[#2563EB]/15 transition-all"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+
+          {/* Primary Action Button (Se connecter ->) */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 mt-5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 active:scale-[0.99] transition-all cursor-pointer"
           >
-            <span>{isFr ? "Entrer au Tableau de Bord" : "الدخول إلى لوحة التحكم"}</span>
-            {isRTL ? (
-              <ArrowLeft className="w-5 h-5 mr-2" />
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                <span>{isFr ? "Connexion..." : "جاري تسجيل الدخول..."}</span>
+              </>
             ) : (
-              <ArrowRight className="w-5 h-5 ml-2" />
+              <>
+                <span>{isFr ? "Se connecter" : "تسجيل الدخول"}</span>
+                {isRTL ? <ArrowLeft size={16} /> : <ArrowRight size={16} />}
+              </>
             )}
-          </Button>
+          </button>
+        </form>
 
-          {/* Quick Direct Links */}
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => navigate("/create-invoice")}
-            className="w-full sm:w-auto border-white/20 bg-white/[0.05] hover:bg-white/[0.12] text-white font-bold text-sm px-6 py-6 rounded-2xl backdrop-blur-md transition-all cursor-pointer"
-          >
-            <FileText className={`w-4 h-4 ${isRTL ? "ml-2 text-blue-400" : "mr-2 text-blue-400"}`} />
-            <span>{isFr ? "Facture Rapide" : "فاتورة جديدة"}</span>
-          </Button>
-
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => navigate("/archive")}
-            className="w-full sm:w-auto border-white/20 bg-white/[0.05] hover:bg-white/[0.12] text-white font-bold text-sm px-6 py-6 rounded-2xl backdrop-blur-md transition-all cursor-pointer"
-          >
-            <Archive className={`w-4 h-4 ${isRTL ? "ml-2 text-amber-400" : "mr-2 text-amber-400"}`} />
-            <span>{isFr ? "L'Archive" : "الأرشيف المركزي"}</span>
-          </Button>
+        {/* Divider (── ou ──) */}
+        <div className="w-full relative my-5 flex items-center justify-center">
+          <div className="w-full border-t border-slate-200" />
+          <span className="absolute bg-white px-3 text-xs text-slate-400 font-medium">
+            {isFr ? "ou" : "أو"}
+          </span>
         </div>
 
-        {/* ── Feature Highlights (4 Luxury Glass Cards) ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-          {features.map((feat, index) => {
-            const Icon = feat.icon;
-            return (
-              <div
-                key={index}
-                className={`p-5 rounded-2xl bg-gradient-to-b ${feat.color} bg-slate-900/60 border ${feat.borderColor} backdrop-blur-md text-right rtl:text-right ltr:text-left shadow-lg hover:border-white/40 transition-all hover:-translate-y-1`}
-              >
-                <div
-                  className={`w-11 h-11 rounded-xl bg-white/[0.08] ${feat.iconColor} flex items-center justify-center mb-3.5 border border-white/[0.08]`}
-                >
-                  <Icon className="w-5 h-5" />
-                </div>
-                <h3 className="text-base font-bold text-white mb-1.5">{feat.title}</h3>
-                <p className="text-xs text-slate-300 leading-relaxed font-normal">{feat.desc}</p>
-              </div>
-            );
-          })}
-        </div>
-      </main>
+        {/* Secondary Action Button (Créer un compte) */}
+        <button
+          type="button"
+          onClick={() => navigate("/register")}
+          className="w-full h-12 bg-white hover:bg-blue-50/40 border border-[#93C5FD] text-[#2563EB] text-sm font-semibold rounded-xl flex items-center justify-center gap-2 shadow-xs active:scale-[0.99] transition-all cursor-pointer"
+        >
+          <UserPlus size={17} />
+          <span>{isFr ? "Créer un compte" : "إنشاء حساب جديد"}</span>
+        </button>
 
-      {/* ── Footer ── */}
-      <footer className="relative z-10 w-full px-4 sm:px-8 py-5 border-t border-white/[0.08] backdrop-blur-md bg-slate-950/60 text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-start">
-          <div className="flex items-center gap-2">
-            <Lock className="w-3.5 h-3.5 text-emerald-400" />
-            <span>
-              {isFr
-                ? "Données sécurisées avec chiffrement local et cloud"
-                : "بيانات محمية ومشفرة بأعلى معايير الأمان المحلية والسحابية"}
-            </span>
-          </div>
-
-          <div>
+        {/* Forgot Password Link */}
+        <p className="mt-8 text-center text-xs text-slate-500">
+          <span>
             {isFr
-              ? `© ${new Date().getFullYear()} Hissaby Pro Enterprise. Tous droits réservés.`
-              : `© ${new Date().getFullYear()} حسابي برو (Hissaby Pro). جميع الحقوق محفوظة.`}
+              ? "Vous avez oublié votre mot de passe ? "
+              : "هل نسيت كلمة المرور؟ "}
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsResetModalOpen(true)}
+            className="text-[#2563EB] font-semibold hover:underline cursor-pointer"
+          >
+            {isFr ? "Réinitialiser" : "إعادة التعيين"}
+          </button>
+        </p>
+      </div>
+
+      {/* ── Forgot Password Modal ── */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200 p-5 space-y-4 animate-scale-in">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-slate-900">
+                {isFr ? "Réinitialisation du mot de passe" : "إعادة تعيين كلمة المرور"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsResetModalOpen(false);
+                  setResetMessage("");
+                }}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              {isFr
+                ? "Saisissez l'adresse e-mail associée à votre compte pour recevoir un lien de réinitialisation sécurisé."
+                : "أدخل البريد الإلكتروني المرتبط بحسابك لتلقي رابط إعادة تعيين كلمة المرور."}
+            </p>
+
+            {resetMessage && (
+              <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl text-xs font-semibold">
+                {resetMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleResetPassword} className="space-y-3">
+              <input
+                type="email"
+                placeholder="nom@exemple.com"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                required
+                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+              />
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsResetModalOpen(false)}
+                  className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  {isFr ? "Fermer" : "إلغاء"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  {resetLoading && <Loader2 size={13} className="animate-spin" />}
+                  <span>{isFr ? "Envoyer le lien" : "إرسال الرابط"}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </footer>
+      )}
     </div>
   );
 }

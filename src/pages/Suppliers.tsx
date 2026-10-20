@@ -55,8 +55,11 @@ import {
   ShieldCheck,
   Building2,
   Tag,
-  Filter
+  Filter,
+  Boxes,
+  ShoppingBag
 } from "lucide-react";
+import SupplierSupplyProductsModal from "@/components/suppliers/SupplierSupplyProductsModal";
 
 interface EnrichedSupplier extends Supplier {
   matchedCustomer?: Customer;
@@ -147,6 +150,25 @@ export default function Suppliers() {
   // Statement / Clearing Details Drawer Modal
   const [clearingModalSupplier, setClearingModalSupplier] = useState<EnrichedSupplier | null>(null);
   const [clearingTab, setClearingTab] = useState<"statement" | "products" | "invoices">("statement");
+
+  // Supply / Import Products to Stock Modal
+  const [isSupplyModalOpen, setIsSupplyModalOpen] = useState<boolean>(false);
+  const [supplyTargetSupplier, setSupplyTargetSupplier] = useState<Supplier | null>(null);
+
+  const handleOpenSupplyModal = (supplier?: Supplier | null) => {
+    setSupplyTargetSupplier(supplier || null);
+    setIsSupplyModalOpen(true);
+  };
+
+  const handleSupplySuccess = (addedProducts: Product[], totalCost: number, supplierId: string) => {
+    loadData();
+    setSuccessMessage(
+      isFr
+        ? `${addedProducts.length} produit(s) ajoutés au stock avec succès ! Disponibles à la vente.`
+        : `تمت إضافة ${addedProducts.length} منتج مستورد إلى المخزون بنجاح وأصبحت جاهزة للبيع في الفواتير!`
+    );
+    setTimeout(() => setSuccessMessage(""), 5000);
+  };
 
   // Load all integrated data from Cloud & Local
   const loadData = useCallback(async () => {
@@ -639,7 +661,15 @@ export default function Suppliers() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => handleOpenSupplyModal(null)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+          >
+            <Boxes size={16} />
+            <span>{isFr ? "Approvisionner / Importer Produits" : "توريد واستيراد منتجات للمخزون"}</span>
+          </button>
+
           <button
             onClick={handleAddNew}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all cursor-pointer"
@@ -964,18 +994,31 @@ export default function Suppliers() {
 
                       {/* Supplied Products */}
                       <td className="py-3 px-4 text-center">
-                        {supplier.suppliedProducts.length > 0 ? (
-                          <div className="inline-flex flex-col items-center">
-                            <span className="font-bold font-sans text-xs px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                        <div className="inline-flex flex-col items-center gap-1">
+                          {supplier.suppliedProducts.length > 0 ? (
+                            <button
+                              onClick={() => {
+                                setClearingModalSupplier(supplier);
+                                setClearingTab("products");
+                              }}
+                              className="font-bold font-sans text-xs px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors cursor-pointer"
+                              title={isFr ? "Voir les articles au stock" : "عرض المنتجات في المخزن"}
+                            >
                               {supplier.suppliedProducts.length} {isFr ? "articles" : "صنف بالمخزن"}
-                            </span>
-                            <span className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[120px]">
-                              {supplier.suppliedProducts[0]?.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-xs">{isFr ? "Aucun article lié" : "لا أصناف مرتبطة"}</span>
-                        )}
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 text-xs">{isFr ? "Aucun article" : "لا أصناف بعد"}</span>
+                          )}
+
+                          <button
+                            onClick={() => handleOpenSupplyModal(supplier)}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                            title={isFr ? "Approvisionner des articles pour ce fournisseur" : "توريد بضاعة جديدة للمخزن من هذا المورد"}
+                          >
+                            <Plus size={10} />
+                            <span>{isFr ? "Approvisionner" : "توريد بضاعة"}</span>
+                          </button>
+                        </div>
                       </td>
 
                       {/* Payables (+) */}
@@ -1039,6 +1082,15 @@ export default function Suppliers() {
                       {/* Actions */}
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
+                          {/* Supply / Import Products for this supplier */}
+                          <button
+                            onClick={() => handleOpenSupplyModal(supplier)}
+                            className="p-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
+                            title={isFr ? "Approvisionner des marchandises au stock" : "توريد واستيراد بضاعة للمخزن"}
+                          >
+                            <Boxes size={14} />
+                          </button>
+
                           {/* Open Statement & Clearing Modal */}
                           <button
                             onClick={() => setClearingModalSupplier(supplier)}
@@ -1470,20 +1522,55 @@ export default function Suppliers() {
               )}
 
               {clearingTab === "products" && (
-                <div>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div>
+                      <h4 className="font-bold text-xs text-slate-800">
+                        {isFr ? "Articles en stock approvisionnés par ce fournisseur" : "المنتجات الموردة والمتوفرة في المخزن للبيع"}
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {isFr
+                          ? "Ces produits sont prêts à être vendus et facturés à vos clients avec leur prix de vente."
+                          : "هذه المنتجات مجهزة بأسعار التكلفة وأسعار البيع، وجاهزة للبيع في فواتير المبيعات فوراً."}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          handleOpenSupplyModal(clearingModalSupplier);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                      >
+                        <Boxes size={14} />
+                        <span>{isFr ? "+ Approvisionner au Stock" : "+ توريد بضاعة للمخزن"}</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {clearingModalSupplier.suppliedProducts.length === 0 ? (
-                    <div className="p-8 text-center text-slate-400">
-                      <Package size={32} className="mx-auto text-slate-300 mb-2" />
-                      <p className="text-xs font-bold text-slate-700">
-                        {isFr
-                          ? "Aucun produit associé à ce fournisseur dans le stock actuellement"
-                          : "لا توجد منتجات مرتبطة بهذا المورد في المخزن حالياً"}
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        {isFr
-                          ? "Vous pouvez associer des produits au fournisseur lors de leur création ou modification dans la page Produits"
-                          : "يمكنك ربط المنتجات بالمورد عند إضافتها أو تعديلها من صفحة المنتجات"}
-                      </p>
+                    <div className="p-8 text-center text-slate-400 space-y-3">
+                      <Package size={36} className="mx-auto text-slate-300" />
+                      <div>
+                        <p className="text-xs font-bold text-slate-700">
+                          {isFr
+                            ? "Aucun produit associé à ce fournisseur dans le stock actuellement"
+                            : "لا توجد منتجات مرتبطة بهذا المورد في المخزن حالياً"}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {isFr
+                            ? "Vous pouvez importer ou saisir les produits de ce fournisseur pour les intégrer au stock et les vendre."
+                            : "يمكنك إدخال أو استيراد بضاعة هذا المورد فوراً لتضاف إلى المخزن وتباع لعملائك."}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleOpenSupplyModal(clearingModalSupplier)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                      >
+                        <Boxes size={15} />
+                        <span>{isFr ? "Importer / Ajouter des Produits Maintenant" : "توريد وإضافة منتجات المورد للمخزن الآن"}</span>
+                      </button>
                     </div>
                   ) : (
                     <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -1492,10 +1579,11 @@ export default function Suppliers() {
                           <tr>
                             <th className="p-2.5">{isFr ? "Nom du Produit" : "اسم المنتج"}</th>
                             <th className="p-2.5">{isFr ? "Code" : "الكود"}</th>
-                            <th className="p-2.5 text-center">{isFr ? "Qté Disponible" : "الكمية المتوفرة"}</th>
+                            <th className="p-2.5 text-center">{isFr ? "Qté en Stock" : "الكمية المتوفرة"}</th>
                             <th className="p-2.5 text-center">{isFr ? "Prix d'Achat" : "سعر التكلفة"}</th>
-                            <th className="p-2.5 text-center">{isFr ? "Prix de Vente" : "سعر البيع"}</th>
-                            <th className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'}`}>{isFr ? "Valeur Totale" : "إجمالي القيمة"}</th>
+                            <th className="p-2.5 text-center bg-blue-50/50 text-blue-900">{isFr ? "Prix de Vente" : "سعر البيع (للعميل)"}</th>
+                            <th className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'}`}>{isFr ? "Valeur Stock" : "إجمالي القيمة"}</th>
+                            <th className="p-2.5 text-center">{isFr ? "Vente" : "البيع"}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-sans">
@@ -1503,11 +1591,34 @@ export default function Suppliers() {
                             <tr key={prod.id} className="hover:bg-slate-50">
                               <td className="p-2.5 font-bold text-slate-900">{prod.name}</td>
                               <td className="p-2.5 font-mono text-slate-600">{prod.code || '-'}</td>
-                              <td className="p-2.5 text-center font-bold text-slate-800">{prod.quantity}</td>
+                              <td className="p-2.5 text-center font-bold text-slate-800">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-sans ${
+                                  (prod.quantity || 0) <= (prod.lowStockThreshold || 5)
+                                    ? "bg-rose-100 text-rose-800"
+                                    : "bg-emerald-100 text-emerald-800"
+                                }`}>
+                                  {prod.quantity || 0}
+                                </span>
+                              </td>
                               <td className="p-2.5 text-center text-slate-700">{formatCurrency(prod.cost || 0)}</td>
-                              <td className="p-2.5 text-center text-slate-700">{formatCurrency(prod.price || 0)}</td>
+                              <td className="p-2.5 text-center font-black text-blue-700 bg-blue-50/20">
+                                {formatCurrency(prod.price || 0)}
+                              </td>
                               <td className={`p-2.5 ${isRTL ? 'text-left' : 'text-right'} font-black text-slate-900`}>
                                 {formatCurrency((prod.quantity || 0) * (prod.cost || 0))}
+                              </td>
+                              <td className="p-2.5 text-center">
+                                <button
+                                  onClick={() => {
+                                    setClearingModalSupplier(null);
+                                    navigate(`/create-invoice?productId=${prod.id}`);
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition-colors cursor-pointer"
+                                  title={isFr ? "Vendre ce produit dans une facture" : "بيع هذا المنتج في فاتورة جديدة"}
+                                >
+                                  <ShoppingBag size={12} />
+                                  <span>{isFr ? "Vendre" : "بيع الآن"}</span>
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -1594,6 +1705,19 @@ export default function Suppliers() {
           </div>
         </div>
       )}
+
+      {/* ── MODAL 3: SUPPLY & IMPORT PRODUCTS TO INVENTORY ── */}
+      <SupplierSupplyProductsModal
+        isOpen={isSupplyModalOpen}
+        onClose={() => {
+          setIsSupplyModalOpen(false);
+          setSupplyTargetSupplier(null);
+        }}
+        supplier={supplyTargetSupplier}
+        suppliers={suppliers}
+        products={products}
+        onSuccess={handleSupplySuccess}
+      />
     </div>
   );
 }
