@@ -641,6 +641,20 @@ export const translations = {
     otherMethod: "أخرى",
     customerPayment: "دفع من عميل",
     stockEntry: "إدخال مخزون",
+
+    // Accounting Module (Sage 100 style)
+    menuGroupAccounting: "المحاسبة العامة",
+    accountingJournal: "دفتر اليومية",
+    accountingLedger: "دفتر الأستاذ العام",
+    accountingTrialBalance: "ميزان المراجعة",
+    accountingStatements: "القوائم المالية",
+    chartOfAccounts: "دليل الحسابات",
+    fiscalPeriods: "السنوات والفترات المالية",
+    thirdPartyAccounts: "حسابات الأطراف والشركاء",
+    accountingBackfill: "توليد قيود الفواتير السابقة",
+    accountingSettings: "إعدادات المحاسبة",
+    accountingModule: "وحدة المحاسبة المالية (Sage 100)",
+    accountingModuleDesc: "تفعيل المحاسبة ذات القيد المزدوج، اليومية العامة، ميزان المراجعة ودليل الحسابات",
   },
   fr: {
     // General
@@ -1286,6 +1300,20 @@ export const translations = {
     otherMethod: "Autres",
     customerPayment: "Paiement reçu",
     stockEntry: "Entrée de stock",
+
+    // Accounting Module (Sage 100 style)
+    menuGroupAccounting: "Comptabilité Générale",
+    accountingJournal: "Journal Général",
+    accountingLedger: "Grand Livre",
+    accountingTrialBalance: "Balance Générale",
+    accountingStatements: "États Financiers",
+    chartOfAccounts: "Plan Comptable",
+    fiscalPeriods: "Exercices Fiscaux",
+    thirdPartyAccounts: "Comptes de Tiers",
+    accountingBackfill: "Régularisation des Écritures",
+    accountingSettings: "Paramètres Comptables",
+    accountingModule: "Module Comptabilité Financière (Sage 100)",
+    accountingModuleDesc: "Activer la comptabilité à partie double, grand livre, balance et plan comptable",
   }
 };
 

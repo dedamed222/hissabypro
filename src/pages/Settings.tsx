@@ -16,6 +16,7 @@ import { AccountSettings } from "@/components/settings/AccountSettings";
 import { CompanyProfile } from "@/components/settings/CompanyProfile";
 import { PrintSettings } from "@/components/settings/PrintSettings";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { Switch } from "@/components/ui/switch";
 import {
   Bell,
   BellOff,
@@ -33,11 +34,12 @@ import {
   Globe2,
   Sparkles,
   Save,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Settings() {
-  const { currency, locale, navPosition = "bottom", updateSettings } = useSettings();
+  const { currency, locale, navPosition = "bottom", updateSettings, accountingModuleEnabled } = useSettings();
   const { changeLocale, isRTL } = useLocale();
   const isFr = locale === "fr";
   const t = translations[locale as keyof typeof translations];
@@ -45,6 +47,7 @@ export default function Settings() {
   const [newCurrency, setNewCurrency] = useState("");
   const [newLocale, setNewLocale] = useState("");
   const [newNavPosition, setNewNavPosition] = useState<"bottom" | "sidebar">("bottom");
+  const [newAccountingEnabled, setNewAccountingEnabled] = useState(false);
   const { subscribe, unsubscribe, getPermissionState, isSupported } = usePushNotifications();
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>("default");
   const [isSaving, setIsSaving] = useState(false);
@@ -53,8 +56,9 @@ export default function Settings() {
     setNewCurrency(currency || "DZD");
     setNewLocale(locale);
     setNewNavPosition(navPosition || "bottom");
+    setNewAccountingEnabled(!!accountingModuleEnabled);
     getPermissionState().then(setNotifPermission);
-  }, [currency, locale, navPosition]);
+  }, [currency, locale, navPosition, accountingModuleEnabled]);
 
   const handleSaveSettings = () => {
     setIsSaving(true);
@@ -62,6 +66,7 @@ export default function Settings() {
       currency: newCurrency,
       locale: newLocale as "ar" | "fr",
       navPosition: newNavPosition,
+      accountingModuleEnabled: newAccountingEnabled,
     });
     changeLocale(newLocale as "ar" | "fr");
 
@@ -499,6 +504,60 @@ export default function Settings() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Card: Accounting Module (Sage 100 style) */}
+              <Card className="border-indigo-200/80 bg-gradient-to-br from-indigo-50/30 via-white to-white shadow-sm overflow-hidden">
+                <CardHeader className="bg-indigo-50/40 border-b border-indigo-100/60 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-200">
+                        <BookOpen className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base font-bold text-slate-900">
+                          {isFr ? "Module Comptabilité Financière (Sage 100)" : "وحدة المحاسبة المالية (نظام Sage 100)"}
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          {isFr
+                            ? "Activer le moteur comptable à partie double, le grand livre, le plan comptable et la balance"
+                            : "تفعيل نظام القيد المزدوج، دفتر اليومية، دفتر الأستاذ العام، وميزان المراجعة"}
+                        </CardDescription>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={newAccountingEnabled}
+                      onCheckedChange={(checked) => setNewAccountingEnabled(checked)}
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
+                    <div>
+                      {newAccountingEnabled ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <Check className="w-3.5 h-3.5" />
+                          {isFr ? "Module activé" : "الوحدة مفعّلة حالياً"}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                          {isFr ? "Module inactif" : "الوحدة غير مفعّلة"}
+                        </span>
+                      )}
+                    </div>
+                    {newAccountingEnabled && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                        onClick={() => window.location.href = "/accounting/settings"}
+                      >
+                        {isFr ? "Accéder aux paramètres comptables →" : "إدارة إعدادات المحاسبة المتقدمة ←"}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Action Save Card */}
               <Card className="border-indigo-100 bg-gradient-to-br from-indigo-50/50 via-white to-white shadow-sm overflow-hidden">
