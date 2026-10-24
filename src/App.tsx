@@ -12,7 +12,6 @@ import { get, set, del } from "idb-keyval";
 import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
 import { restoreRecoveredData } from "@/utils/restoreData";
 import { pushToCloud } from "@/hooks/useAutoSync";
-import { AccountingProvider } from "@/contexts/AccountingContext";
 
 import { Suspense, lazy, useEffect, useState } from "react";
 
@@ -42,16 +41,6 @@ const Settings = lazy(() => import("./pages/Settings"));
 const AccountStatement = lazy(() => import("./pages/AccountStatement"));
 const Payments = lazy(() => import("./pages/Payments"));
 const UnpaidInvoices = lazy(() => import("./pages/UnpaidInvoices"));
-// ── Accounting Module (feature-flagged, lazy loaded) ──────────────────────────
-const AccountingJournal = lazy(() => import("./pages/accounting/AccountingJournal"));
-const AccountingLedger = lazy(() => import("./pages/accounting/AccountingLedger"));
-const AccountingTrialBalance = lazy(() => import("./pages/accounting/AccountingTrialBalance"));
-const AccountingStatements = lazy(() => import("./pages/accounting/AccountingStatements"));
-const ChartOfAccounts = lazy(() => import("./pages/accounting/ChartOfAccounts"));
-const FiscalPeriods = lazy(() => import("./pages/accounting/FiscalPeriods"));
-const ThirdPartyAccounts = lazy(() => import("./pages/accounting/ThirdPartyAccounts"));
-const AccountingBackfill = lazy(() => import("./pages/accounting/AccountingBackfill"));
-const AccountingSettings = lazy(() => import("./pages/accounting/AccountingSettings"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -145,7 +134,6 @@ const App = () => {
           <AuthProvider>
             <AppProvider>
               <SettingsProvider>
-                <AccountingProvider>
                 <OfflineIndicator />
                 <Toaster />
                 <Sonner />
@@ -177,23 +165,12 @@ const App = () => {
                       <Route path="account-statement" element={<AccountStatement />} />
                       <Route path="payments" element={<Payments />} />
                       <Route path="unpaid-invoices" element={<UnpaidInvoices />} />
-                      {/* ── Accounting Module Routes (visible only when feature flag enabled) ── */}
-                      <Route path="accounting/journal" element={<AccountingJournal />} />
-                      <Route path="accounting/ledger" element={<AccountingLedger />} />
-                      <Route path="accounting/trial-balance" element={<AccountingTrialBalance />} />
-                      <Route path="accounting/financial-statements" element={<AccountingStatements />} />
-                      <Route path="accounting/chart-of-accounts" element={<ChartOfAccounts />} />
-                      <Route path="accounting/periods" element={<FiscalPeriods />} />
-                      <Route path="accounting/third-parties" element={<ThirdPartyAccounts />} />
-                      <Route path="accounting/backfill" element={<AccountingBackfill />} />
-                      <Route path="accounting/settings" element={<AccountingSettings />} />
                     </Route>
 
                     {/* 404 route */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
-                </AccountingProvider>
               </SettingsProvider>
             </AppProvider>
           </AuthProvider>

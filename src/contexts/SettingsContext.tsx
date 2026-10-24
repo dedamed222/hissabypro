@@ -14,8 +14,6 @@ export interface SettingsState {
   customCurrencies: Currency[];
   customPaymentMethods: PaymentMethod[];
   navPosition?: "bottom" | "sidebar";
-  // ── Accounting Module Feature Flag ──
-  accountingModuleEnabled?: boolean;
 }
 
 interface SettingsContextType extends SettingsState {
@@ -52,7 +50,6 @@ const defaultSettings: SettingsState = {
   customCurrencies: [],
   customPaymentMethods: [],
   navPosition: "bottom",
-  accountingModuleEnabled: false, // OFF by default — enable from settings
 };
 
 const SettingsContext = createContext<SettingsContextType>({

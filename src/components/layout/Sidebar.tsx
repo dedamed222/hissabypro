@@ -48,14 +48,6 @@ import {
   SlidersHorizontal,
   Home,
   MoreHorizontal,
-  BookOpen,
-  FileSpreadsheet,
-  Scale,
-  PieChart,
-  ListTree,
-  Calendar,
-  RefreshCw,
-  Sliders,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -80,7 +72,7 @@ const Sidebar = () => {
   const { logout, isAuthenticated, user, profile } = useAuth();
   const { locale, isRTL } = useLocale();
   const isFr = locale === "fr";
-  const { navPosition = "bottom", updateSettings, accountingModuleEnabled } = useSettings();
+  const { navPosition = "bottom", updateSettings } = useSettings();
   const t = translations[locale];
   const navigate = useNavigate();
   const location = useLocation();
@@ -239,79 +231,6 @@ const Sidebar = () => {
         },
       ],
     },
-    ...(accountingModuleEnabled
-      ? [
-          {
-            id: "accounting",
-            labelKey: "menuGroupAccounting",
-            items: [
-              {
-                titleKey: "accountingJournal",
-                icon: BookOpen,
-                path: "/accounting/journal",
-                color: "#4f46e5",
-                bgColor: "rgba(79, 70, 229, 0.12)",
-              },
-              {
-                titleKey: "accountingLedger",
-                icon: FileSpreadsheet,
-                path: "/accounting/ledger",
-                color: "#0891b2",
-                bgColor: "rgba(8, 145, 178, 0.12)",
-              },
-              {
-                titleKey: "accountingTrialBalance",
-                icon: Scale,
-                path: "/accounting/trial-balance",
-                color: "#059669",
-                bgColor: "rgba(5, 150, 105, 0.12)",
-              },
-              {
-                titleKey: "accountingStatements",
-                icon: PieChart,
-                path: "/accounting/financial-statements",
-                color: "#d97706",
-                bgColor: "rgba(217, 119, 6, 0.12)",
-              },
-              {
-                titleKey: "chartOfAccounts",
-                icon: ListTree,
-                path: "/accounting/chart-of-accounts",
-                color: "#7c3aed",
-                bgColor: "rgba(124, 58, 237, 0.12)",
-              },
-              {
-                titleKey: "fiscalPeriods",
-                icon: Calendar,
-                path: "/accounting/periods",
-                color: "#ea580c",
-                bgColor: "rgba(234, 88, 12, 0.12)",
-              },
-              {
-                titleKey: "thirdPartyAccounts",
-                icon: Users,
-                path: "/accounting/third-parties",
-                color: "#db2777",
-                bgColor: "rgba(219, 39, 119, 0.12)",
-              },
-              {
-                titleKey: "accountingBackfill",
-                icon: RefreshCw,
-                path: "/accounting/backfill",
-                color: "#65a30d",
-                bgColor: "rgba(101, 163, 13, 0.12)",
-              },
-              {
-                titleKey: "accountingSettings",
-                icon: Sliders,
-                path: "/accounting/settings",
-                color: "#475569",
-                bgColor: "rgba(71, 85, 105, 0.12)",
-              },
-            ],
-          },
-        ]
-      : []),
     {
       id: "system",
       labelKey: "menuGroupSystem",
@@ -403,7 +322,6 @@ const Sidebar = () => {
     { id: "sales", label: isFr ? "Ventes" : "الفواتير" },
     { id: "inventory", label: isFr ? "Stock" : "المخزون" },
     { id: "finance", label: isFr ? "Finance" : "المالية" },
-    ...(accountingModuleEnabled ? [{ id: "accounting", label: isFr ? "Comptabilité" : "المحاسبة" }] : []),
     { id: "system", label: isFr ? "Système" : "النظام" },
   ];
 
