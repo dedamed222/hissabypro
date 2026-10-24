@@ -34,23 +34,6 @@ export default function FiscalPeriods() {
   const [startDate, setStartDate] = useState(`${currentYear}-01-01`);
   const [endDate, setEndDate] = useState(`${currentYear}-12-31`);
 
-  if (!isEnabled) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-        <Calendar className="text-indigo-400 opacity-50" size={36} />
-        <p className="text-slate-400 text-sm">
-          {isFr ? "Module comptabilité désactivé." : "وحدة المحاسبة المالية معطلة حالياً."}
-        </p>
-        <button
-          onClick={() => navigate("/accounting/settings")}
-          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all cursor-pointer shadow-sm"
-        >
-          {isFr ? "Paramètres" : "الإعدادات"}
-        </button>
-      </div>
-    );
-  }
-
   const filteredPeriods = useMemo(() => {
     return fiscalPeriods
       .filter((p) => {
@@ -71,6 +54,23 @@ export default function FiscalPeriods() {
     const closed = fiscalPeriods.filter((p) => p.isClosed).length;
     return { total, open, closed };
   }, [fiscalPeriods]);
+
+  if (!isEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
+        <Calendar className="text-indigo-400 opacity-50" size={36} />
+        <p className="text-slate-400 text-sm">
+          {isFr ? "Module comptabilité désactivé." : "وحدة المحاسبة المالية معطلة حالياً."}
+        </p>
+        <button
+          onClick={() => navigate("/accounting/settings")}
+          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all cursor-pointer shadow-sm"
+        >
+          {isFr ? "Paramètres" : "الإعدادات"}
+        </button>
+      </div>
+    );
+  }
 
   const handleCreatePeriod = (e: React.FormEvent) => {
     e.preventDefault();

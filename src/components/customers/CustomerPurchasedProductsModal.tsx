@@ -86,7 +86,7 @@ export default function CustomerPurchasedProductsModal({
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "AchatsClient");
-    XLSX.writeFile(wb, `مشتريات_${customer.name.replace(/[\/\\?%*:|"<>]/g, "_")}.xlsx`);
+    XLSX.writeFile(wb, `مشتريات_${customer.name.replace(/[/\\?%*:|"<>]/g, "_")}.xlsx`);
   };
 
   // Print

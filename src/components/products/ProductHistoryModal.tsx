@@ -120,7 +120,7 @@ export default function ProductHistoryModal({
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Mouvements");
-    XLSX.writeFile(wb, `حركة_${product.name.replace(/[\/\\?%*:|"<>]/g, "_")}.xlsx`);
+    XLSX.writeFile(wb, `حركة_${product.name.replace(/[/\\?%*:|"<>]/g, "_")}.xlsx`);
   };
 
   // Print view

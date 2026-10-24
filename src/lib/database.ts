@@ -598,7 +598,6 @@ export async function upsertReturn(ret: {
 }) {
   const user = await getAuthenticatedUser();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from("returns") as any)
     .upsert({ ...ret, user_id: user.id }, { onConflict: "id" })
     .select()
@@ -678,7 +677,6 @@ export async function upsertStoreSettings(settings: {
 
   if (existing && existing.id) {
     // Update existing record
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase.from("store_settings") as any)
       .update(settings)
       .eq("id", existing.id)
@@ -688,7 +686,6 @@ export async function upsertStoreSettings(settings: {
     return data;
   } else {
     // Insert new record
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase.from("store_settings") as any)
       .insert({ ...settings, user_id: user.id })
       .select()

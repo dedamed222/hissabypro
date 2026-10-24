@@ -261,7 +261,7 @@ export default function ClientNotes() {
         customerName: targetCustomer.name,
         invoiceId: newInvoice.id,
         invoiceNumber: newInvoice.invoiceNumber,
-        fileName: `${locale === "fr" ? "Facture" : "فاتورة"}-${newInvoice.invoiceNumber}-${targetCustomer.name.replace(/[\/\\?%*:|"<>]/g, "_")}-${todayStr}.pdf`,
+        fileName: `${locale === "fr" ? "Facture" : "فاتورة"}-${newInvoice.invoiceNumber}-${targetCustomer.name.replace(/[/\\?%*:|"<>]/g, "_")}-${todayStr}.pdf`,
         fileType: "pdf",
         date: todayStr,
         total: newInvoice.total

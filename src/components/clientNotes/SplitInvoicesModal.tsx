@@ -266,7 +266,7 @@ export const SplitInvoicesModal: React.FC<SplitInvoicesModalProps> = ({
           customerName: customer.name,
           invoiceId: newInvoice.id,
           invoiceNumber: newInvoice.invoiceNumber,
-          fileName: `فاتورة-${newInvoice.invoiceNumber}-${customer.name.replace(/[\/\\?%*:|"<>]/g, "_")}-${invoiceDate}.pdf`,
+          fileName: `فاتورة-${newInvoice.invoiceNumber}-${customer.name.replace(/[/\\?%*:|"<>]/g, "_")}-${invoiceDate}.pdf`,
           fileType: "pdf",
           date: invoiceDate,
           total: newInvoice.total,

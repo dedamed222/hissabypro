@@ -189,7 +189,7 @@ export default function Suppliers() {
       if (storeData.productMovements) setProductMovements(storeData.productMovements);
 
       // Cloud fetches with local fallbacks in the background
-      let [
+      const [
         dbSuppliers,
         dbCustomers,
         dbProducts,
