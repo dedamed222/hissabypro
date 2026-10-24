@@ -111,13 +111,13 @@ const App = () => {
 
   // Step 2: After page reloads with restored data, push everything to cloud
   useEffect(() => {
-    const alreadyRestored = localStorage.getItem("arab-hub-data-restored-v1") === "done";
-    const cloudPushDone = localStorage.getItem("arab-hub-cloud-push-v1") === "done";
+    const alreadyRestored = localStorage.getItem("arab-hub-data-restored-v2") === "done";
+    const cloudPushDone = localStorage.getItem("arab-hub-cloud-push-v2") === "done";
     if (alreadyRestored && !cloudPushDone && navigator.onLine) {
       // Delay slightly to let contexts initialize first
       const timer = setTimeout(() => {
         pushToCloud(() => {}).then(() => {
-          localStorage.setItem("arab-hub-cloud-push-v1", "done");
+          localStorage.setItem("arab-hub-cloud-push-v2", "done");
           console.log("[CloudSync] Restored data pushed to cloud successfully");
         }).catch((e) => {
           console.warn("[CloudSync] Cloud push failed (will retry next load):", e);
@@ -127,7 +127,7 @@ const App = () => {
     }
   }, []);
 
-  if (!restoreChecked && localStorage.getItem("arab-hub-data-restored-v1") !== "done") {
+  if (!restoreChecked && localStorage.getItem("arab-hub-data-restored-v2") !== "done") {
     // Show a brief loading screen while we check/restore data
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", flexDirection: "column", gap: "16px", background: "#0f172a", color: "#94a3b8", fontFamily: "sans-serif" }}>

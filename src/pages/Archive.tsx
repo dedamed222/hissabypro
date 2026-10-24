@@ -301,6 +301,56 @@ export default function Archive() {
             }
           }
         }
+        // Also ensure any debtor customer invoices are reflected if not in DB
+        if (localData.debtors && localData.debtors.length > 0) {
+          for (const deb of localData.debtors) {
+            const exists = combined.some(inv => inv.id === deb.id || (deb.notes && inv.notes && inv.notes.includes(deb.id)));
+            if (!exists) {
+              const dDate = (deb.date || deb.createdAt || new Date().toISOString()).split('T')[0];
+              const match = deb.notes ? deb.notes.match(/INV-[0-9A-Z-]+/i) : null;
+              const invNum = match ? match[0].toUpperCase() : `INV-DEBT-${deb.id.slice(0, 8).toUpperCase()}`;
+              const isPaid = deb.notes === 'تم التسديد' || deb.status === 'paid';
+              combined.push({
+                id: deb.id,
+                invoiceNumber: invNum,
+                customerId: deb.customer_id,
+                customerName: deb.name,
+                total: Number(deb.totalAmount) || Number(deb.amount) || 0,
+                subtotal: Number(deb.totalAmount) || Number(deb.amount) || 0,
+                discount: 0,
+                tax: 0,
+                paymentMethod: isPaid ? 'cash' : 'debt',
+                status: isPaid ? 'paid' : 'pending',
+                type: 'debt',
+                notes: deb.notes || `فاتورة دين للعميل ${deb.name}`,
+                date: dDate,
+                createdAt: deb.createdAt || (dDate + 'T12:00:00.000Z'),
+                updatedAt: deb.updatedAt || deb.createdAt || (dDate + 'T12:00:00.000Z'),
+                items: (deb.products && deb.products.length > 0) ? deb.products.map((p: any) => ({
+                  productId: p.productId || '',
+                  productName: p.productName || 'صنف',
+                  productCode: p.productCode || '',
+                  quantity: Number(p.quantity) || 1,
+                  price: Number(p.price) || 0,
+                  total: Number(p.total) || ((Number(p.quantity) || 1) * (Number(p.price) || 0))
+                })) : [{
+                  productId: '',
+                  productName: deb.notes || 'فاتورة دين',
+                  productCode: '',
+                  quantity: 1,
+                  price: Number(deb.totalAmount) || 0,
+                  total: Number(deb.totalAmount) || 0
+                }],
+                products: (deb.products && deb.products.length > 0) ? deb.products.map((p: any) => ({
+                  productId: p.productId || '',
+                  name: p.productName || 'صنف',
+                  price: Number(p.price) || 0,
+                  quantity: Number(p.quantity) || 1
+                })) : []
+              });
+            }
+          }
+        }
       allList = combined;
       }
       setInvoices(allList);
@@ -525,7 +575,7 @@ export default function Archive() {
     }
     setEditDate(dStr || new Date().toISOString().split("T")[0]);
 
-    setEditStatus(invoice.status || "pending");
+    setEditStatus((invoice.status === "archived" ? "paid" : (invoice.status || "pending")) as "pending" | "paid" | "partial" | "cancelled");
     setEditPaymentMethod(invoice.paymentMethod || "cash");
     setEditType(invoice.type || "sales");
     setEditNotes(invoice.notes || "");
@@ -616,7 +666,7 @@ export default function Archive() {
         total: updatedInvoice.total,
         subtotal: updatedInvoice.subtotal,
         payment_method: updatedInvoice.paymentMethod,
-        status: updatedInvoice.status,
+        status: (updatedInvoice.status === "archived" ? "paid" : (updatedInvoice.status || "pending")) as "pending" | "paid" | "partial" | "cancelled",
         type: updatedInvoice.type,
         date: updatedInvoice.date,
         created_at: updatedInvoice.createdAt,

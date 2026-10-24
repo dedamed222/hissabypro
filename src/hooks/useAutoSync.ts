@@ -131,7 +131,7 @@ export const pushToCloud = async (toast: any) => {
                                 tax: inv.tax,
                                 shipping_cost: inv.shippingCost,
                                 payment_method: inv.paymentMethod,
-                                status: inv.status,
+                                status: (inv.status === "archived" ? "paid" : (inv.status || "paid")) as "pending" | "paid" | "partial" | "cancelled",
                                 type: inv.type,
                                 due_date: inv.dueDate,
                                 debt_type: inv.debtType,
@@ -466,20 +466,54 @@ export const pullFromCloud = async (toast: any) => {
                     updatedAt: wh.updated_at
                 });
 
-                // Update local storage with cloud data
+                // Helper to safely merge cloud items with local storage items by ID
+                const mergeById = <T = any>(cloudItems: any[], localItems: any[] = []): T[] => {
+                    if (!cloudItems || cloudItems.length === 0) return localItems as T[];
+                    if (!localItems || localItems.length === 0) return cloudItems as T[];
+                    const map = new Map<string, any>();
+                    localItems.forEach(item => {
+                        if (item && item.id) map.set(item.id, item);
+                    });
+                    cloudItems.forEach(item => {
+                        if (item && item.id) map.set(item.id, item);
+                    });
+                    return Array.from(map.values()) as T[];
+                };
+
+                const totalCloudRecords =
+                    dbProducts.length +
+                    dbCustomers.length +
+                    dbInvoices.length +
+                    dbDailySales.length +
+                    dbExpenses.length +
+                    dbSuppliers.length +
+                    dbCreditors.length +
+                    dbDebtors.length +
+                    dbReturns.length;
+
+                // Safety guard: if cloud returned 0 records across all entities, do NOT overwrite local storage!
+                if (totalCloudRecords === 0) {
+                    console.log("[AutoSync] Cloud has 0 records; preserving local data without overwrite.");
+                    return;
+                }
+
+                // Update local storage with cloud data safely (merging to preserve local invoices, notes and files)
                 const storeData = loadStoreData();
                 const newStoreData = {
                     ...storeData,
-                    products: dbProducts.map(mapProduct),
-                    customers: dbCustomers.map(mapCustomer),
-                    invoices: dbInvoices.map(mapInvoice),
-                    dailySales: dbDailySales.map(mapDailySale),
-                    expenses: dbExpenses.map(mapExpense),
-                    suppliers: dbSuppliers.map(mapSupplier),
-                    creditors: dbCreditors.map(mapCreditor),
-                    debtors: dbDebtors.map(mapDebtor),
-                    returns: dbReturns.map(mapReturn),
-                    warehouses: dbWarehouses.map(mapWarehouse),
+                    products: dbProducts.length > 0 ? mergeById(dbProducts.map(mapProduct), storeData.products) : storeData.products,
+                    customers: dbCustomers.length > 0 ? mergeById(dbCustomers.map(mapCustomer), storeData.customers) : storeData.customers,
+                    invoices: dbInvoices.length > 0 ? mergeById(dbInvoices.map(mapInvoice), storeData.invoices) : storeData.invoices,
+                    dailySales: dbDailySales.length > 0 ? mergeById(dbDailySales.map(mapDailySale), storeData.dailySales) : storeData.dailySales,
+                    expenses: dbExpenses.length > 0 ? mergeById(dbExpenses.map(mapExpense), storeData.expenses) : storeData.expenses,
+                    suppliers: dbSuppliers.length > 0 ? mergeById(dbSuppliers.map(mapSupplier), storeData.suppliers) : storeData.suppliers,
+                    creditors: dbCreditors.length > 0 ? mergeById(dbCreditors.map(mapCreditor), storeData.creditors) : storeData.creditors,
+                    debtors: dbDebtors.length > 0 ? mergeById(dbDebtors.map(mapDebtor), storeData.debtors) : storeData.debtors,
+                    returns: dbReturns.length > 0 ? mergeById(dbReturns.map(mapReturn), storeData.returns) : storeData.returns,
+                    warehouses: dbWarehouses.length > 0 ? mergeById(dbWarehouses.map(mapWarehouse), storeData.warehouses) : storeData.warehouses,
+                    clientNotes: storeData.clientNotes || [],
+                    customerFiles: storeData.customerFiles || [],
+                    productMovements: storeData.productMovements || [],
                 };
 
                 if (dbSettings) {
