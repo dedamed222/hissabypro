@@ -146,7 +146,7 @@ export default function FiscalPeriods() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             {isFr
-              ? "Gestion des exercices fiscaux, verrouillage et clôture comptable selon la norme Sage 100"
+              ? "Gestion des exercices fiscaux, verrouillage et clôture comptable"
               : "إدارة السنوات المالية، قفل الفترات ومنع التعديل على القيود التاريخية وفق معايير المحاسبة العامة"}
           </p>
         </div>
@@ -404,8 +404,8 @@ export default function FiscalPeriods() {
 
             <p className="text-xs leading-relaxed text-slate-600">
               {isFr
-                ? "Attention : selon les règles comptables strictes de Sage 100, la clôture est irréversible. Aucune écriture ne pourra plus être modifiée ou ajoutée dans cette période."
-                : "تنبيه هام: وفقاً للقواعد المحاسبية الصارمة (معايير Sage 100)، قفل الفترة نهائي ولا يمكن التراجع عنه. لن يُسمح بتعديل أو إضافة أي قيود في هذه الفترة بعد القفل."}
+                ? "Attention : selon les règles comptables strictes, la clôture est irréversible. Aucune écriture ne pourra plus être modifiée ou ajoutée dans cette période."
+                : "تنبيه هام: وفقاً للقواعد المحاسبية الصارمة، قفل الفترة نهائي ولا يمكن التراجع عنه. لن يُسمح بتعديل أو إضافة أي قيود في هذه الفترة بعد القفل."}
             </p>
 
             <div className="pt-2 flex justify-end gap-2.5">

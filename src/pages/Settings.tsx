@@ -505,7 +505,7 @@ export default function Settings() {
                 </Card>
               )}
 
-              {/* Card: Accounting Module (Sage 100 style) */}
+              {/* Card: Accounting Module */}
               <Card className="border-indigo-200/80 bg-gradient-to-br from-indigo-50/30 via-white to-white shadow-sm overflow-hidden">
                 <CardHeader className="bg-indigo-50/40 border-b border-indigo-100/60 pb-4">
                   <div className="flex items-center justify-between">
@@ -515,7 +515,7 @@ export default function Settings() {
                       </div>
                       <div>
                         <CardTitle className="text-base font-bold text-slate-900">
-                          {isFr ? "Module Comptabilité Financière (Sage 100)" : "وحدة المحاسبة المالية (نظام Sage 100)"}
+                          {isFr ? "Module Comptabilité Financière" : "وحدة المحاسبة المالية"}
                         </CardTitle>
                         <CardDescription className="text-xs">
                           {isFr
